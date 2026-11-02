@@ -1,5 +1,7 @@
 # TestAgent
 
+English | [中文](README.zh.md)
+
 **An ontology-driven, agent-assisted functional test platform.** Describe your system as a small
 ontology model (entities, actions, links, fields), write requirements against it, and let an LLM agent
 draft the test strategy, test cases and runnable Playwright/pytest scripts. People stay in charge at
