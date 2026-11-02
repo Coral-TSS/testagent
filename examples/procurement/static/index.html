@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Procurement approval demo</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="/assets/style.css">
+<!--DEMO_BUGS-->
+<script src="/assets/app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div><h1>Procurement approval demo</h1>
+    <p class="subtitle">The example SUT for TestAgent: Supplier → PurchaseOrder → approval → payment. All data is local demo data.</p></div>
+  <nav>
+    <button type="button" class="tab active" data-tab="orders" data-testid="tab-orders">Purchase orders</button>
+    <button type="button" class="tab" data-tab="suppliers" data-testid="tab-suppliers">Suppliers</button>
+    <a href="/docs" target="_blank" rel="noopener" data-testid="api-docs">API docs</a>
+    <button type="button" id="reset" class="danger" data-testid="reset-demo">Reset demo data</button>
+  </nav>
+</header>
+<div id="notice" class="notice" role="status" aria-live="polite" data-testid="notice">Loading…</div>
+<section class="rule" data-testid="rules">Rules: CNY with amount ≥ ¥50,000.00 needs approval, below that it is auto-approved; only "Approved" purchase orders can be paid, and only once (re-submitting the same callback id is not booked twice).</section>
+
+<main id="page-orders" class="page">
+  <div class="col">
+    <section class="card">
+      <h2>New purchase order</h2>
+      <form id="order-form" data-testid="order-form">
+        <label for="title">Purpose</label>
+        <input id="title" data-testid="order-title" maxlength="100" placeholder="e.g. Buy 20 laptops">
+        <label for="supplier">Supplier</label>
+        <select id="supplier" data-testid="order-supplier"></select>
+        <label for="amount">Amount (CNY)</label>
+        <input id="amount" data-testid="order-amount" inputmode="decimal" value="50000.00" placeholder="Leave empty for an unknown amount">
+        <span class="hint">Boundary: 49,999.99 / 50,000.00 / 50,000.01</span>
+        <label for="currency">Currency</label>
+        <select id="currency" data-testid="order-currency"><option value="CNY">CNY · Chinese yuan</option><option value="USD">USD · US dollar (approval rule does not apply)</option></select>
+        <button type="submit" class="primary" data-testid="order-submit">Create order</button>
+      </form>
+    </section>
+    <section class="card">
+      <div class="card-head"><h2>Purchase orders</h2><span id="count" class="count" data-testid="order-count">0</span>
+        <select id="state-filter" data-testid="order-filter" aria-label="Filter by state">
+          <option value="">All states</option><option value="pending">Pending approval</option><option value="approved">Approved</option>
+          <option value="rejected">Rejected</option><option value="paid">Paid</option><option value="unknown">Undecided</option>
+        </select></div>
+      <div id="orders" class="order-list" data-testid="order-list" aria-label="Purchase orders"></div>
+    </section>
+  </div>
+  <div class="col">
+    <section class="card" id="detail-card">
+      <h2>Purchase order detail</h2>
+      <p id="empty-detail" class="empty" data-testid="order-empty">Select or create a purchase order on the left.</p>
+      <div id="order-detail" data-testid="order-detail" hidden>
+        <dl class="kv">
+          <dt>Status</dt><dd><span id="d-state" class="badge" data-testid="detail-state"></span></dd>
+          <dt>Purpose</dt><dd id="d-title" data-testid="detail-title"></dd>
+          <dt>Supplier</dt><dd id="d-supplier" data-testid="detail-supplier"></dd>
+          <dt>Amount</dt><dd id="d-amount" data-testid="detail-amount"></dd>
+          <dt>Approval required</dt><dd id="d-required" data-testid="detail-required"></dd>
+          <dt>Purchase order ID</dt><dd id="d-id" class="mono" data-testid="detail-id"></dd>
+        </dl>
+        <div class="actions">
+          <button type="button" id="approve" data-testid="approve">Approve</button>
+          <button type="button" id="reject" data-testid="reject">Reject</button>
+        </div>
+        <h3>Payment</h3>
+        <label for="callback">Payment callback id</label>
+        <input id="callback" data-testid="pay-callback" maxlength="200" value="cb-1">
+        <span class="hint">Re-submitting the same callback id is booked only once.</span>
+        <button type="button" id="pay" class="primary" data-testid="pay-submit">Record payment</button>
+        <h3>Payments <span id="pay-count" class="count" data-testid="payment-count">0</span></h3>
+        <table class="table"><thead><tr><th>Callback id</th><th>Amount</th><th>Paid at</th></tr></thead>
+          <tbody id="payments" data-testid="payment-list"></tbody></table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<main id="page-suppliers" class="page" hidden>
+  <div class="col">
+    <section class="card">
+      <h2>Create supplier</h2>
+      <form id="supplier-form" data-testid="supplier-form">
+        <label for="s-name">Supplier name</label>
+        <input id="s-name" data-testid="supplier-name" maxlength="100" placeholder="Required, unique">
+        <label for="s-contact">Contact person and phone</label>
+        <input id="s-contact" data-testid="supplier-contact" maxlength="100" placeholder="Optional">
+        <button type="submit" class="primary" data-testid="supplier-submit">Create supplier</button>
+      </form>
+    </section>
+  </div>
+  <div class="col">
+    <section class="card">
+      <h2>Suppliers <span id="s-count" class="count" data-testid="supplier-count">0</span></h2>
+      <table class="table"><thead><tr><th>Name</th><th>Contact</th><th>Orders</th></tr></thead>
+        <tbody id="suppliers" data-testid="supplier-list"></tbody></table>
+    </section>
+  </div>
+</main>
+<footer>Demo app · no real money · API docs <a href="/docs">/docs</a> · OpenAPI <a href="/openapi.json">/openapi.json</a></footer>
+</body>
+</html>

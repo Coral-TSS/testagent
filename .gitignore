@@ -1,0 +1,54 @@
+# --- secrets & local config (never commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+*.dump
+*.backup
+*.sql.gz
+
+# --- runtime data (test repos, artifacts, demo SQLite, logs) ---
+runtime/
+output/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.log
+
+# --- Python ---
+.venv/
+.uv-cache/
+.pytest_cache/
+.pytest-tmp/
+.pytest-tmp-*/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+
+# --- Node / frontend ---
+node_modules/
+.npm-cache/
+*.tsbuildinfo
+# frontend build output (vite → src/testagent/web, served by FastAPI)
+src/testagent/web/
+
+# --- Playwright ---
+.playwright-cli/
+test-results/
+playwright-report/
+reports/browser/traces/
+
+# --- editors / OS ---
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

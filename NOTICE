@@ -1,0 +1,9 @@
+TestAgent
+Copyright 2026 Coral-Lee
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party components are used under their own licenses; see
+docs/third-party-licenses.md for an inventory. Notably, the PostgreSQL driver
+psycopg (psycopg, psycopg-binary, psycopg-pool) is licensed under the GNU LGPL v3;
+it is used unmodified as a separately installed library.

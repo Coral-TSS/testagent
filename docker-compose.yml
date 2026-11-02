@@ -1,0 +1,80 @@
+# TestAgent: platform + PostgreSQL 17 + the procurement demo SUT.
+#   cp .env.example .env      # then set POSTGRES_PASSWORD (and optionally TESTAGENT_ACCESS_TOKEN)
+#   docker compose up -d --build
+#   docker compose logs testagent | grep "Sign in"     # sign-in link (when no fixed token is set)
+# Then open http://localhost:8765 and configure an OpenAI-compatible model under "Agent settings".
+
+name: testagent
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: testagent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (cp .env.example .env)}
+      POSTGRES_DB: testagent
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testagent -d testagent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  demo:
+    build:
+      context: .
+      args:
+        DEBIAN_MIRROR: ${DEBIAN_MIRROR:-deb.debian.org}
+    image: testagent:${TESTAGENT_VERSION:-0.1.0}
+    command: ["demo"]
+    environment:
+      PROCUREMENT_DEMO_BUGS: ${PROCUREMENT_DEMO_BUGS:-1}
+    volumes:
+      - demo-data:/data
+    ports:
+      - "127.0.0.1:8766:8766"
+    healthcheck:
+      test: ["CMD", "/app/ops/docker-entrypoint.sh", "healthcheck", "http://127.0.0.1:8766/openapi.json"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  testagent:
+    build:
+      context: .
+      args:
+        DEBIAN_MIRROR: ${DEBIAN_MIRROR:-deb.debian.org}
+    image: testagent:${TESTAGENT_VERSION:-0.1.0}
+    command: ["platform"]
+    depends_on:
+      db:
+        condition: service_healthy
+      demo:
+        condition: service_started
+    environment:
+      TESTAGENT_DATABASE_URL: postgresql://testagent:${POSTGRES_PASSWORD}@db:5432/testagent
+      TESTAGENT_ACCESS_TOKEN: ${TESTAGENT_ACCESS_TOKEN:-}
+      TESTAGENT_ALLOWED_HOSTS: ${TESTAGENT_ALLOWED_HOSTS:-}
+      TESTAGENT_TIMEZONE: ${TESTAGENT_TIMEZONE:-UTC}
+      TESTAGENT_AGENT_LANGUAGE: ${TESTAGENT_AGENT_LANGUAGE:-English}
+      TESTAGENT_SEED_DEMO: ${TESTAGENT_SEED_DEMO:-1}
+      TESTAGENT_DEMO_URL: http://demo:8766
+    volumes:
+      - testagent-data:/data   # runtime/: model API key (secrets.json), test repos, artifacts, logs
+    ports:
+      - "127.0.0.1:${TESTAGENT_PORT:-8765}:8765"
+    healthcheck:
+      test: ["CMD", "/app/ops/docker-entrypoint.sh", "healthcheck", "http://127.0.0.1:8765/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  demo-data:
+  testagent-data:

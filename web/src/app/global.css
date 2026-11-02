@@ -1,0 +1,17 @@
+/* batch 2: model review highlights and printing */
+.review-uncovered td {
+  background: #fff7e6 !important;
+}
+@media print {
+  .ant-layout-sider,
+  .ant-layout-header,
+  [data-testid="flow-steps"],
+  .ant-segmented,
+  .ant-btn,
+  .ant-input {
+    display: none !important;
+  }
+  .ant-layout-content {
+    padding: 0 !important;
+  }
+}
