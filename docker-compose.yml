@@ -1,8 +1,9 @@
-# TestAgent: platform + PostgreSQL 17 + the procurement demo SUT.
-#   cp .env.example .env      # then set POSTGRES_PASSWORD (and optionally TESTAGENT_ACCESS_TOKEN)
+# TestAgent: platform + PostgreSQL 17 + the procurement demo SUT (+ Caddy HTTPS proxy, profile "public").
+#   cp .env.example .env      # set POSTGRES_PASSWORD, TESTAGENT_ADMIN_USER, TESTAGENT_ADMIN_PASSWORD
 #   docker compose up -d --build
-#   docker compose logs testagent | grep "Sign in"     # sign-in link (when no fixed token is set)
-# Then open http://localhost:8765 and configure an OpenAI-compatible model under "Agent settings".
+# Local: open http://localhost:8765 and sign in with the admin account.
+# Public server: also set COMPOSE_PROFILES=public and TESTAGENT_PUBLIC_HOST (see docs/deployment.md),
+# then open https://<public IP>/. Configure an OpenAI-compatible model under "Agent settings".
 
 name: testagent
 
@@ -56,8 +57,14 @@ services:
         condition: service_started
     environment:
       TESTAGENT_DATABASE_URL: postgresql://testagent:${POSTGRES_PASSWORD}@db:5432/testagent
-      TESTAGENT_ACCESS_TOKEN: ${TESTAGENT_ACCESS_TOKEN:-}
-      TESTAGENT_ALLOWED_HOSTS: ${TESTAGENT_ALLOWED_HOSTS:-}
+      # first admin, created only while there are no accounts (remove the password afterwards)
+      TESTAGENT_ADMIN_USER: ${TESTAGENT_ADMIN_USER:-}
+      TESTAGENT_ADMIN_PASSWORD: ${TESTAGENT_ADMIN_PASSWORD:-}
+      TESTAGENT_ALLOWED_HOSTS: ${TESTAGENT_PUBLIC_HOST:-},${TESTAGENT_ALLOWED_HOSTS:-}
+      # X-Forwarded-* from the proxy count; 8765 is only reachable from this host and the compose network
+      TESTAGENT_TRUSTED_PROXIES: "*"
+      TESTAGENT_SESSION_IDLE_HOURS: ${TESTAGENT_SESSION_IDLE_HOURS:-12}
+      TESTAGENT_SESSION_MAX_DAYS: ${TESTAGENT_SESSION_MAX_DAYS:-7}
       TESTAGENT_TIMEZONE: ${TESTAGENT_TIMEZONE:-UTC}
       TESTAGENT_AGENT_LANGUAGE: ${TESTAGENT_AGENT_LANGUAGE:-English}
       TESTAGENT_SEED_DEMO: ${TESTAGENT_SEED_DEMO:-1}
@@ -74,7 +81,32 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  proxy:  # public HTTPS on 443 (COMPOSE_PROFILES=public); the only service reachable from outside
+    image: caddy:2.11-alpine
+    profiles: ["public"]
+    # refuse to start without the public address (an empty site address would match every host name)
+    command:
+      - sh
+      - -c
+      - '[ -n "$$TESTAGENT_PUBLIC_HOST" ] || { echo "set TESTAGENT_PUBLIC_HOST in .env" >&2; exit 1; };
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile'
+    depends_on:
+      testagent:
+        condition: service_started
+    environment:
+      TESTAGENT_PUBLIC_HOST: ${TESTAGENT_PUBLIC_HOST:-}  # required with this profile: the public IP
+      TESTAGENT_TLS: ${TESTAGENT_TLS:-acme}
+    ports:
+      - "443:443"
+    volumes:
+      - ./ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # certificates, ACME account, internal CA: keep it (rate limits)
+      - caddy-config:/config
+    restart: unless-stopped
+
 volumes:
   pgdata:
   demo-data:
   testagent-data:
+  caddy-data:
+  caddy-config:

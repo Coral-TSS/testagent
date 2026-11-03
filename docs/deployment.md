@@ -1,15 +1,17 @@
 # Deployment guide
 
-TestAgent is a **single-user, local** web application: a FastAPI backend that also serves the built
-React UI, a PostgreSQL 17 database, and a local git repository per system under test (SUT) for the
-generated scripts. There are two ways to run it:
+TestAgent is a web application for a **small, trusted team**: a FastAPI backend that also serves the
+built React UI, a PostgreSQL 17 database, and a local git repository per system under test (SUT) for the
+generated scripts. There are three ways to run it:
 
 - [Docker Compose](#docker-compose) is the easiest and works the same on Windows, macOS and Linux.
+- [Public access (HTTPS)](#public-access-https) adds a Caddy proxy for a server reachable from the internet.
 - [Local development](#local-development) is for hacking on the code.
 
-> **Security model.** v0.1 has no user accounts. Access is protected by an access token, and requests
-> are only accepted for `localhost` host names unless you allow more (see `TESTAGENT_ALLOWED_HOSTS`).
-> Do not expose the platform to the internet.
+> **Security model.** Everyone signs in with an account (roles `admin` / `member`). Requests are only
+> accepted for `localhost`, `TESTAGENT_PUBLIC_HOST` and `TESTAGENT_ALLOWED_HOSTS`. Every signed-in user
+> can effectively run code in the platform container (generated test scripts), so only give accounts to
+> people you trust. See [SECURITY.md](../SECURITY.md).
 
 ---
 
@@ -23,7 +25,7 @@ generated scripts. There are two ways to run it:
 ### Start
 
 ```bash
-cp .env.example .env          # edit POSTGRES_PASSWORD; optionally TESTAGENT_ACCESS_TOKEN
+cp .env.example .env          # edit POSTGRES_PASSWORD, TESTAGENT_ADMIN_USER, TESTAGENT_ADMIN_PASSWORD
 docker compose up -d --build  # first build takes a few minutes
 docker compose ps             # all three services should become "healthy"
 ```
@@ -36,21 +38,36 @@ docker compose ps             # all three services should become "healthy"
 
 Ports are bound to `127.0.0.1` only.
 
-### Sign in
+### Sign in and accounts
 
-The UI needs an access token, passed in the URL fragment (`#t=…`, never sent to the server logs).
-
-- **Random token (default)**: a new token is generated at every start and the sign-in link is printed:
+- **First admin.** Set `TESTAGENT_ADMIN_USER` and `TESTAGENT_ADMIN_PASSWORD` (at least 10 characters)
+  in `.env` before the first start. The account is created only while there are no accounts at all;
+  later changes to these variables are ignored, and you can remove the password from `.env` after the
+  first sign-in. The password is never printed.
+- **More people.** An admin opens **Users** (left menu) → **New user** and sets an initial password; the
+  user must choose a new one at the first sign-in. Admins can change roles, reset passwords (signs the
+  user out everywhere), unlock and disable accounts. Accounts are never deleted, so history keeps its
+  names.
+- **Roles.** `member` can do everything in the test workflow. Only `admin` can manage accounts, change
+  the agent model settings (endpoint and API key) and set or change an environment's start command
+  (it runs on the platform host).
+- **Sessions.** An HttpOnly cookie (`Secure` over HTTPS, `SameSite=Lax`); writes also carry a CSRF
+  token. A session ends after 12 idle hours and after 7 days at the latest
+  (`TESTAGENT_SESSION_IDLE_HOURS`, `TESTAGENT_SESSION_MAX_DAYS`). Changing your password signs out your
+  other sessions.
+- **Brute force.** At most 10 sign-in attempts per minute (100 per hour) per client address; 5 wrong
+  passwords in a row lock the account for 15 minutes (an admin can unlock it earlier).
+- **Command line** (first admin without `.env`, forgotten passwords; prompts for the password):
 
   ```bash
-  docker compose logs testagent | grep "Sign in"
-  # [TestAgent] Sign in: http://localhost:8765/#t=3f9c…
+  docker compose exec testagent testagent user add <name> --admin
+  docker compose exec testagent testagent user passwd <name>     # also unlocks, signs out everywhere
+  docker compose exec testagent testagent user list
+  docker compose exec testagent testagent user unlock|disable|enable <name>
   ```
 
-- **Fixed token**: set `TESTAGENT_ACCESS_TOKEN` in `.env` (for example `openssl rand -hex 24`), then
-  open `http://localhost:8765/#t=<your token>`. Restart with `docker compose up -d`.
-
-The browser keeps the token for the session; if it expires, open the sign-in link again.
+Who did what (confirmations, manual results, defects, the change log) is recorded under the user name;
+background work (worker, scheduler, agent) appears as `system`, `scheduler` or `agent:…`.
 
 ### Configure the model
 
@@ -74,8 +91,12 @@ Set them in `.env` (Compose substitutes them) or in `docker-compose.yml`.
 |---|---|---|
 | `POSTGRES_PASSWORD` | (required) | Password of the bundled database |
 | `TESTAGENT_PORT` | `8765` | Host port of the UI |
-| `TESTAGENT_ACCESS_TOKEN` | random | Fixed sign-in token |
-| `TESTAGENT_ALLOWED_HOSTS` | empty | Extra host names accepted besides `localhost` / `127.0.0.1`, comma separated (e.g. `testagent.lan`) |
+| `TESTAGENT_ADMIN_USER` / `TESTAGENT_ADMIN_PASSWORD` | empty | First admin, created only while there are no accounts |
+| `COMPOSE_PROFILES` | empty | `public` also starts the HTTPS proxy (see [Public access](#public-access-https)) |
+| `TESTAGENT_PUBLIC_HOST` | empty | Public IP (or domain) the proxy serves; also an accepted host name |
+| `TESTAGENT_TLS` | `acme` | `acme` = Let's Encrypt (IP: 6-day certificate, TLS-ALPN-01 on 443); `internal` = Caddy's own CA |
+| `TESTAGENT_SESSION_IDLE_HOURS` / `TESTAGENT_SESSION_MAX_DAYS` | `12` / `7` | Session lifetime |
+| `TESTAGENT_ALLOWED_HOSTS` | empty | Extra host names accepted besides `localhost` / `127.0.0.1` / `TESTAGENT_PUBLIC_HOST`, comma separated (e.g. `testagent.lan`) |
 | `TESTAGENT_TIMEZONE` | `UTC` | IANA time zone for schedules and displayed times (e.g. `Europe/Berlin`) |
 | `TESTAGENT_AGENT_LANGUAGE` | `English` | Language of the text the agent writes (requirements, cases, reports) |
 | `TESTAGENT_SEED_DEMO` | `1` | Create the demo SUT (model, APIs, people, environment) on first start |
@@ -83,9 +104,12 @@ Set them in `.env` (Compose substitutes them) or in `docker-compose.yml`.
 | `DEBIAN_MIRROR` | `deb.debian.org` | Debian mirror used while building the image |
 
 Platform settings available in all modes (prefix `TESTAGENT_`): `DATABASE_URL`, `TEST_DATABASE_URL`,
-`RUNTIME_DIR`, `HOST`, `PORT`, `ACCESS_TOKEN`, `ALLOWED_HOSTS`, `DEMO_URL`, `TIMEZONE`,
+`RUNTIME_DIR`, `HOST`, `PORT`, `ADMIN_USER`, `ADMIN_PASSWORD`, `ALLOWED_HOSTS`, `DEMO_URL`, `TIMEZONE`,
 `AGENT_LANGUAGE`, `BROWSER_HEADLESS` (default `true`), `PYTEST_TIMEOUT_S` (default `300`),
-`ARTIFACT_MAX_BYTES` (default 50 MB).
+`ARTIFACT_MAX_BYTES` (default 50 MB), `SESSION_IDLE_HOURS`, `SESSION_MAX_DAYS`, `COOKIE_SECURE`
+(`auto`: `Secure` cookie over HTTPS), `TRUSTED_PROXIES` (whose `X-Forwarded-*` headers count; default
+`127.0.0.1`, `*` in Docker Compose). `TESTAGENT_ACCESS_TOKEN` from v0.1 is no longer used (a warning is
+logged if it is still set).
 
 ### Testing your own application
 
@@ -132,12 +156,67 @@ docker compose up -d --build
 Database migrations run automatically when the platform starts. Downgrades are not supported; restore
 the backup instead.
 
+**From v0.1:** the shared access token is gone. Before `docker compose up -d --build`, add
+`TESTAGENT_ADMIN_USER` / `TESTAGENT_ADMIN_PASSWORD` to `.env` (and remove `TESTAGENT_ACCESS_TOKEN`); for
+public HTTPS also see [Public access](#public-access-https). A Chinese step-by-step guide for a cloud
+server is in [server-upgrade.zh.md](server-upgrade.zh.md).
+
 ### Stop and remove
 
 ```bash
 docker compose down        # keeps the volumes (your data)
-docker compose down -v     # also deletes all data
+docker compose down -v     # also deletes all data (cannot be undone)
 ```
+
+---
+
+## Public access (HTTPS)
+
+For a server that people reach over the internet (no domain needed). Only the `proxy` service (Caddy)
+is published, on port **443**; `testagent` stays on `127.0.0.1:8765` and the demo SUT on
+`127.0.0.1:8766` (the platform reaches it as `http://demo:8766` inside the Compose network).
+
+```
+browser ──HTTPS 443──▶ proxy (Caddy) ──▶ testagent:8765 ──▶ demo:8766   (internal network only)
+```
+
+1. In `.env`:
+
+   ```ini
+   COMPOSE_PROFILES=public
+   TESTAGENT_PUBLIC_HOST=203.0.113.10     # your server's public IP
+   # TESTAGENT_TLS=acme                   # default; "internal" = self-signed fallback
+   TESTAGENT_ADMIN_USER=<admin name>
+   TESTAGENT_ADMIN_PASSWORD=<at least 10 characters>
+   ```
+
+2. Firewall / cloud security group: allow inbound **TCP 443** from anywhere (Let's Encrypt validates
+   from several places on the internet). Do not open 80, 8765, 8766 or 5432.
+3. `docker compose up -d --build`, then open `https://203.0.113.10/` and sign in.
+
+**Certificates.**
+
+| `TESTAGENT_TLS` | What you get | Needs |
+|---|---|---|
+| `acme` (default) | A browser-trusted Let's Encrypt certificate for the IP address. IP certificates are only issued with the 6-day `shortlived` profile; Caddy renews them automatically (about every 2–3 days). Validation uses **TLS-ALPN-01 on port 443**, so port 80 stays closed. | 443 reachable from the internet; outbound HTTPS to Let's Encrypt; the `caddy-data` volume kept (rate limits) |
+| `internal` | Caddy's own CA: works offline and behind any firewall, but the browser warns until you trust the root certificate. | nothing |
+
+With `internal`, copy the root certificate and import it into your OS / browser trust store
+(Windows: *Trusted Root Certification Authorities*):
+
+```bash
+docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt
+```
+
+Check the certificate: `docker compose logs proxy | grep -i certificate`. If Let's Encrypt cannot reach
+port 443 the log shows the failed challenge; fix the firewall or switch to `TESTAGENT_TLS=internal`
+and run `docker compose up -d`.
+
+**A domain later.** Point an A record at the server and set `TESTAGENT_PUBLIC_HOST=<domain>`; Caddy then
+gets a normal certificate. On servers in mainland China a domain must have an ICP filing first, or the
+cloud provider blocks it (also on other ports).
+
+The SSH tunnel to `127.0.0.1:8765` keeps working as a fallback (plain HTTP on localhost).
 
 ---
 
@@ -195,8 +274,8 @@ uv run python ops/seed_procurement.py
 ### Run
 
 ```bash
-uv run testagent                 # migrates, opens the browser signed in, starts the demo SUT
-uv run testagent --no-browser    # prints the sign-in link instead
+uv run testagent                 # migrates, opens the browser signed in (one-time ticket), starts the demo SUT
+uv run testagent --no-browser    # no browser: sign in with an account (see "Sign in and accounts")
 uv run testagent --no-env-start  # do not start SUT environments that have a start command
 ```
 
@@ -234,8 +313,10 @@ backup, which needs `pg_dump` on `PATH`) and moves the old test repo to the arch
 | Symptom | Fix |
 |---|---|
 | `POSTGRES_PASSWORD` error from `docker compose` | Create `.env` from `.env.example` and set a password. |
-| "Sign-in required" page | Open the sign-in link from `docker compose logs testagent`, or set `TESTAGENT_ACCESS_TOKEN`. |
-| "The platform only accepts local connections" when opening via an IP or host name | Add it to `TESTAGENT_ALLOWED_HOSTS` and publish the port on that interface (change `127.0.0.1:8765:8765`). Only do this on a trusted network. |
+| Sign-in page says "No account yet" | Set `TESTAGENT_ADMIN_USER` / `TESTAGENT_ADMIN_PASSWORD` and `docker compose up -d`, or `docker compose exec testagent testagent user add <name> --admin`. |
+| Forgot the admin password / account locked | `docker compose exec testagent testagent user passwd <name>` (or `user unlock <name>`). |
+| "This address is not configured for the platform" | Set `TESTAGENT_PUBLIC_HOST` (or add the name to `TESTAGENT_ALLOWED_HOSTS`) and `docker compose up -d`. |
+| `https://<IP>` does not load / certificate error | `docker compose ps proxy`, `docker compose logs proxy`; check inbound TCP 443 in the security group; use `TESTAGENT_TLS=internal` if Let's Encrypt cannot reach the server. |
 | `testagent` keeps restarting with "Cannot connect to the database" | Check `docker compose logs db`; if you changed `POSTGRES_PASSWORD` after the first start, the old password is still stored in the `pgdata` volume. |
 | AI buttons say the model is not configured | Fill in **Agent settings** and click *Test connection*. |
 | "SUT environment … cannot be reached" | The environment URL must be reachable from the platform (inside Docker use `host.docker.internal` or a service name, not `localhost`). |

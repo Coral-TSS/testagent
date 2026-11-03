@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Accounts and sign-in: users with roles `admin` / `member`, argon2id passwords, server-side sessions in
+  an HttpOnly cookie (12 h idle, 7 days at most), CSRF token for writes, per-address rate limit and a
+  15-minute lock after 5 wrong passwords, change password, admin **Users** page (create, role, reset
+  password, unlock, disable). First admin from `TESTAGENT_ADMIN_USER` / `TESTAGENT_ADMIN_PASSWORD`;
+  `testagent user add|passwd|list|unlock|disable|enable` for the command line.
+- Actions are recorded under the signed-in user name instead of `local-user`.
+- Public HTTPS: optional `proxy` service (Caddy, compose profile `public`) on port 443 with a Let's Encrypt
+  IP certificate (`TESTAGENT_TLS=acme`, TLS-ALPN-01) or Caddy's internal CA (`TESTAGENT_TLS=internal`).
+- Only admins change the agent model settings and SUT environment start commands.
+
+### Removed
+
+- The shared access token (`TESTAGENT_ACCESS_TOKEN`, `#t=` sign-in links). The desktop launcher now
+  opens the browser with a one-time sign-in ticket instead.
+
 ## [0.1.0] - 2026-11-02
 
 Initial public release.

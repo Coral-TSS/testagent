@@ -2,19 +2,26 @@
 
 ## Supported versions
 
-TestAgent is in its initial release (v0.1.x). Security fixes are made on the latest release only.
+Security fixes are made on the latest release only.
 
 ## Scope and threat model
 
-TestAgent v0.1 is designed for **a single user on a local machine or a trusted network**:
+TestAgent is designed for **a small, trusted team**:
 
-- there are no user accounts; access is protected by a bearer access token and a host check
-  (`localhost` by default, extend with `TESTAGENT_ALLOWED_HOSTS`);
-- the agent runs generated test code (pytest/Playwright) on the platform host or container against the
-  environments you configure;
+- every request needs a signed-in account (roles `admin` and `member`); passwords are hashed with
+  argon2id; sessions are server-side, in an HttpOnly cookie (`Secure` over HTTPS, `SameSite=Lax`), with
+  a CSRF token for writes; sign-in attempts are rate-limited per address and an account is locked for
+  15 minutes after 5 wrong passwords;
+- requests are only accepted for `localhost`, `TESTAGENT_PUBLIC_HOST` and `TESTAGENT_ALLOWED_HOSTS`;
+- on a server, only the Caddy proxy is published (HTTPS on 443); the platform and the demo SUT stay
+  bound to `127.0.0.1`;
+- **every signed-in user can effectively run code in the platform container**: the agent writes and runs
+  pytest/Playwright scripts there and the platform connects to any environment URL you configure.
+  Roles prevent mistakes (only admins change the model settings and SUT start commands, and manage
+  accounts); they are not an isolation boundary. Only give accounts to people you trust;
 - the model API key is stored locally in `runtime/secrets.json` (file mode 600, DPAPI on Windows).
 
-Do **not** expose the platform to the internet, and only point it at systems you are allowed to test.
+Only point the platform at systems you are allowed to test.
 
 ## Reporting a vulnerability
 

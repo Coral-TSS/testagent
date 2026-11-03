@@ -129,13 +129,12 @@ Requirements: Docker with Compose v2. The image is ~1.8 GB (it includes Chromium
 
 ```bash
 git clone https://github.com/Coral-TSS/testagent.git testagent && cd testagent
-cp .env.example .env            # set POSTGRES_PASSWORD (and optionally TESTAGENT_ACCESS_TOKEN)
+cp .env.example .env            # set POSTGRES_PASSWORD, TESTAGENT_ADMIN_USER and TESTAGENT_ADMIN_PASSWORD
 docker compose up -d --build
-docker compose logs testagent | grep "Sign in"
 ```
 
-Open the printed `http://localhost:8765/#t=…` link (or set `TESTAGENT_ACCESS_TOKEN` in `.env` and open
-`http://localhost:8765/#t=<your token>`). Then:
+Open http://localhost:8765 and sign in with the admin account from `.env` (it is created on the first
+start; admins add more accounts under **Users**). Then:
 
 1. **Agent settings** → enter an OpenAI-compatible **Base URL**, **model** and **API key**, click
    *Test connection*. Example for DeepSeek: Base URL `https://api.deepseek.com`, model `deepseek-chat`.
@@ -146,10 +145,15 @@ The stack has three services: `db` (PostgreSQL 17), `demo` (the demo SUT on http
 `testagent` (the platform on http://localhost:8765). Migrations run on start. See
 [docs/deployment.md](docs/deployment.md) for configuration, upgrades, backups and troubleshooting.
 
+**On a server (public HTTPS, no domain needed):** set `COMPOSE_PROFILES=public` and
+`TESTAGENT_PUBLIC_HOST=<public IP>` in `.env`. A fourth service, `proxy` (Caddy), then serves
+`https://<public IP>/` on port 443 with an automatically renewed Let's Encrypt IP certificate; the platform
+and the demo SUT stay bound to `127.0.0.1`. See [Public access](docs/deployment.md#public-access-https).
+
 ## Demo walkthrough
 
 The bundled [procurement approval demo](examples/procurement/README.md) has suppliers, purchase orders,
-approval by amount and payments, plus 3 deliberately seeded bugs. A typical first hour:
+approval by amount and payments, plus 3 deliberately seeded bugs. A typical first hour (after signing in):
 
 1. **API registry → Import from OpenAPI** (environment `local`): 10 APIs with schemas.
 2. **Model**: look at the seeded entities, actions and links; accept the field and link suggestions

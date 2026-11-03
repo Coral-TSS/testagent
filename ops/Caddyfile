@@ -1,0 +1,40 @@
+# TestAgent public HTTPS entry (docker compose profile "public"). Only port 443 is used.
+#   TESTAGENT_PUBLIC_HOST  the server's public IP (or, later, an ICP-filed domain)
+#   TESTAGENT_TLS          acme (default): Let's Encrypt certificate, for an IP the 6-day "shortlived"
+#                          profile, validated with TLS-ALPN-01 on port 443, renewed automatically.
+#                          internal: Caddy's own CA (self-signed; the browser warns until you
+#                          trust Caddy's root certificate). Fallback when Let's Encrypt cannot reach 443.
+{
+	auto_https disable_redirects
+	# a browser opening https://<IP> sends no SNI: answer with the certificate of this address
+	default_sni {$TESTAGENT_PUBLIC_HOST}
+}
+
+(tls_acme) {
+	tls {
+		issuer acme {
+			profile shortlived
+			disable_http_challenge
+		}
+	}
+}
+
+(tls_internal) {
+	tls internal
+}
+
+https://{$TESTAGENT_PUBLIC_HOST} {
+	import tls_{$TESTAGENT_TLS:acme}
+	encode gzip
+	request_body {
+		max_size 60MB
+	}
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy same-origin
+		-Server
+	}
+	# only the platform is published; the demo SUT stays on the internal compose network
+	reverse_proxy {$TESTAGENT_UPSTREAM:testagent:8765}
+}

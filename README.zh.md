@@ -121,13 +121,12 @@ flowchart TB
 
 ```bash
 git clone https://github.com/Coral-TSS/testagent.git testagent && cd testagent
-cp .env.example .env            # set POSTGRES_PASSWORD (and optionally TESTAGENT_ACCESS_TOKEN)
+cp .env.example .env            # 设置 POSTGRES_PASSWORD、TESTAGENT_ADMIN_USER 和 TESTAGENT_ADMIN_PASSWORD
 docker compose up -d --build
-docker compose logs testagent | grep "Sign in"
 ```
 
-打开日志里打印的 `http://localhost:8765/#t=…` 链接（或者在 `.env` 里设置 `TESTAGENT_ACCESS_TOKEN`，然后打开
-`http://localhost:8765/#t=<你的令牌>`）。接着：
+打开 http://localhost:8765，用 `.env` 里的管理员账号登录（首次启动时自动创建；管理员可以在 **Users**
+页面给其他人建账号）。接着：
 
 1. **Agent settings**（Agent 配置）→ 填写 OpenAI 兼容的 **Base URL**、**模型名**和 **API key**，点
    *Test connection*。以 DeepSeek 为例：Base URL `https://api.deepseek.com`，模型 `deepseek-chat`。
@@ -138,10 +137,15 @@ docker compose logs testagent | grep "Sign in"
 `testagent`（平台，http://localhost:8765）。启动时自动执行数据库迁移。配置、升级、备份和排错见
 [docs/deployment.md](docs/deployment.md)（英文）。
 
+**部署到服务器（公网 HTTPS，不需要域名）：** 在 `.env` 里设置 `COMPOSE_PROFILES=public` 和
+`TESTAGENT_PUBLIC_HOST=<公网IP>`，会多启动一个 `proxy`（Caddy）服务，在 443 端口提供 `https://<公网IP>/`，
+证书是自动续期的 Let's Encrypt IP 证书；平台和演示系统仍然只绑定 `127.0.0.1`。中文步骤见
+[docs/server-upgrade.zh.md](docs/server-upgrade.zh.md)。
+
 ## 演示流程
 
 自带的[采购审批演示系统](examples/procurement/README.md)（英文）包含供应商、采购单、按金额审批和付款，
-还故意埋了 3 个缺陷。第一个小时通常这样走：
+还故意埋了 3 个缺陷。登录后，第一个小时通常这样走：
 
 1. **API registry → Import from OpenAPI**（选择环境 `local`）：导入 10 个带 schema 的接口。
 2. **Model**：看看预置的实体、动作和关系；采纳导入产生的字段和关系建议；打开 **Model review**。

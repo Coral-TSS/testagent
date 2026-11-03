@@ -32,7 +32,8 @@ The image is built from `python:3.12-slim-bookworm` (Debian) and adds Debian pac
 packages include GPL/LGPL software (e.g. git, glibc); this is normal for Linux images. If you **publish
 the image**, you distribute those packages: their licenses are in `/usr/share/doc/*/copyright` inside
 the image and the sources are available from Debian. Chromium is BSD-3-Clause with third-party
-components (see `chrome://credits`). The `postgres:17` image is under the PostgreSQL License.
+components (see `chrome://credits`). The `postgres:17` image is under the PostgreSQL License. The optional `proxy` service uses the official
+`caddy` image (Caddy: Apache-2.0); it is pulled from Docker Hub, not built or redistributed by this project.
 
 ## Python runtime dependencies
 
@@ -41,7 +42,10 @@ components (see `chrome://credits`). The `postgres:17` image is under the Postgr
 | annotated-doc | 0.0.5 | MIT |
 | annotated-types | 0.8.0 | MIT |
 | anyio | 4.15.1 | MIT |
+| argon2-cffi | 25.1.0 | MIT |
+| argon2-cffi-bindings | 26.1.0 | MIT |
 | certifi | 2026.10.23 | MPL-2.0 |
+| cffi | 2.1.1 | MIT-0 |
 | charset-normalizer | 3.5.2 | MIT |
 | click | 8.5.0 | BSD-3-Clause |
 | croniter | 6.2.4 | MIT |
@@ -77,6 +81,7 @@ components (see `chrome://credits`). The `postgres:17` image is under the Postgr
 | psycopg | 3.3.6 | LGPL-3.0-only |
 | psycopg-binary | 3.3.6 | LGPL-3.0-only |
 | psycopg-pool | 3.3.3 | LGPL-3.0-only |
+| pycparser | 3.12 | BSD-3-Clause |
 | pydantic | 2.14.1 | MIT |
 | pydantic-core | 2.50.1 | MIT |
 | pydantic-settings | 2.16.2 | MIT |
