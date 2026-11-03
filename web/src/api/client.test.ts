@@ -1,19 +1,25 @@
-import { TOKEN_KEY } from "../app/token";
+import { setCsrfToken } from "../app/session";
 import { mockFetch } from "../test/utils";
 import { AUTH_EVENT, ApiError, api, describeError } from "./client";
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  sessionStorage.clear();
+  setCsrfToken(null);
 });
 
 describe("api client", () => {
-  it("sends the bearer token, JSON body and query params", async () => {
-    sessionStorage.setItem(TOKEN_KEY, "tok");
-    const calls = mockFetch({ "POST /suts": () => ({ status: 201, body: { id: "1" } }) });
+  it("sends the CSRF token on writes, the JSON body and query params", async () => {
+    setCsrfToken("csrf-1");
+    const calls = mockFetch({
+      "POST /suts": () => ({ status: 201, body: { id: "1" } }),
+      "GET /suts": () => ({ body: [] }),
+    });
     const out = await api<{ id: string }>("/suts", { method: "POST", body: { code: "A" }, params: { x: 1, empty: "" } });
     expect(out.id).toBe("1");
-    expect(calls[0].headers.Authorization).toBe("Bearer tok");
+    expect(calls[0].headers["X-CSRF-Token"]).toBe("csrf-1");
+    expect(calls[0].headers.Authorization).toBeUndefined();
+    await api("/suts");
+    expect(calls[1].headers["X-CSRF-Token"]).toBeUndefined(); // reads do not carry it
     expect(calls[0].body).toEqual({ code: "A" });
     expect((fetch as unknown as { mock: { calls: string[][] } }).mock.calls[0][0]).toBe("/api/v1/suts?x=1");
   });
@@ -42,6 +48,15 @@ describe("api client", () => {
     window.addEventListener(AUTH_EVENT, listener);
     await expect(api("/suts")).rejects.toBeInstanceOf(ApiError);
     expect(listener).toHaveBeenCalledOnce();
+    window.removeEventListener(AUTH_EVENT, listener);
+  });
+
+  it("does not raise the auth event for a failed sign-in", async () => {
+    mockFetch({ "POST /auth/login": () => ({ status: 401, body: { code: "LOGIN_FAILED", message: "Wrong user name or password" } }) });
+    const listener = vi.fn();
+    window.addEventListener(AUTH_EVENT, listener);
+    await expect(api("/auth/login", { method: "POST", body: {} })).rejects.toBeInstanceOf(ApiError);
+    expect(listener).not.toHaveBeenCalled();
     window.removeEventListener(AUTH_EVENT, listener);
   });
 });

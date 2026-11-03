@@ -4,6 +4,7 @@ import csv
 import io
 
 import pytest
+from tests.conftest import TEST_USER
 
 from testagent.agent.fake import FakeChatModel, call
 from testagent.core.errors import AppError
@@ -92,7 +93,7 @@ def test_case_revision_on_update(client, world):
     assert [r["revision"] for r in revisions] == [2, 1]
     assert revisions[1]["content"]["expected"] == "Submission refused"
     assert revisions[0]["content"]["expected"] == "Shows “Amount must be greater than 0”"
-    assert revisions[0]["author"] == "local-user"
+    assert revisions[0]["author"] == TEST_USER
 
 
 def test_only_human_sets_ready(client, world, db):

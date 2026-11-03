@@ -7,6 +7,8 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from testagent.core.auth import require_admin
+
 router = APIRouter(prefix="/api/v1/agent")
 
 
@@ -30,6 +32,7 @@ def get_config(request: Request):
 
 @router.put("/config")
 def put_config(request: Request, body: ConfigIn):
+    require_admin(request)  # the model endpoint and API key are admin-only
     values = body.model_dump(exclude_unset=True)
     for key in ("temperature", "timeout_s", "max_steps", "max_self_checks", "auto_automate"):
         if key in values and values[key] is None:
@@ -39,6 +42,7 @@ def put_config(request: Request, body: ConfigIn):
 
 @router.post("/config/test")
 def test_config(request: Request):
+    require_admin(request)
     return request.app.state.agent.models.test_connection()
 
 

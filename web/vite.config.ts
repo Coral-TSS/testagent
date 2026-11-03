@@ -12,7 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // dev: run the backend with TESTAGENT_DEV_TOKEN and open http://localhost:5173/#t=<token>
+    // dev: run the backend (uv run testagent --no-browser), open http://localhost:5173/ and sign in
     proxy: { "/api": "http://127.0.0.1:8765" },
   },
   test: {

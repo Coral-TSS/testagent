@@ -16,6 +16,7 @@ from testagent.api.schemas import (
     SutIn,
     SutPatch,
 )
+from testagent.core.auth import require_admin
 from testagent.services.registry import (
     EnvironmentService,
     ModuleService,
@@ -96,11 +97,17 @@ def list_environments(request: Request, sut_id: UUID):
 
 @router.post("/suts/{sut_id}/environments", status_code=201)
 def create_environment(request: Request, sut_id: UUID, body: EnvironmentIn):
+    if body.start_command:  # runs on the platform server: admin-only
+        require_admin(request)
     return _svc(request, EnvironmentService).create({"sut_id": sut_id, **body.model_dump()})
 
 
 @router.patch("/environments/{id_}")
 def patch_environment(request: Request, id_: UUID, body: EnvironmentPatch):
+    if "start_command" in body.model_fields_set:  # runs on the platform server: changing it is admin-only
+        current = _svc(request, EnvironmentService).get(id_).get("start_command") or None
+        if (body.start_command or None) != current:
+            require_admin(request)
     return _svc(request, EnvironmentService).update(id_, _patch(body))
 
 

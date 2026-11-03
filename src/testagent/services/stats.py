@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Literal
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.services.changelog import log_change
 from testagent.services.guards import ensure_human
@@ -191,9 +192,9 @@ def aggregate_people(cur, defects, weights, sort: str = "attributed_score") -> l
 
 
 class StatsService:
-    def __init__(self, db, actor: str = "local-user"):
+    def __init__(self, db, actor: str | None = None):
         self.db = db
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     def weights(self) -> dict[str, float]:
         with self.db.tx() as cur:

@@ -1,4 +1,4 @@
-import { getToken } from "../app/token";
+import { getCsrfToken } from "../app/session";
 
 export interface FieldError {
   field: string;
@@ -21,6 +21,7 @@ export class ApiError extends Error {
 }
 
 export const AUTH_EVENT = "testagent:auth-required";
+export const PASSWORD_EVENT = "testagent:password-change-required";
 
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -32,13 +33,15 @@ export async function api<T = unknown>(
     .filter(([, v]) => v !== undefined && v !== null && v !== "")
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
     .join("&");
+  const method = options.method || "GET";
   const headers: Record<string, string> = { Accept: "application/json" };
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const csrf = getCsrfToken();
+  if (csrf && method !== "GET") headers["X-CSRF-Token"] = csrf;
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   const resp = await fetch(`/api/v1${path}${query ? `?${query}` : ""}`, {
-    method: options.method || "GET",
+    method,
     headers,
+    credentials: "same-origin",
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
   if (resp.status === 204) return undefined as T;
@@ -46,7 +49,8 @@ export async function api<T = unknown>(
   const data = text ? JSON.parse(text) : undefined;
   if (!resp.ok) {
     const err = new ApiError(resp.status, data || {});
-    if (resp.status === 401) window.dispatchEvent(new Event(AUTH_EVENT));
+    if (resp.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new Event(AUTH_EVENT));
+    if (err.code === "PASSWORD_CHANGE_REQUIRED") window.dispatchEvent(new Event(PASSWORD_EVENT));
     throw err;
   }
   return data as T;
@@ -54,11 +58,8 @@ export async function api<T = unknown>(
 
 /** Authenticated binary fetch (artifacts, exports). */
 export async function fetchBlob(path: string, params: Record<string, string> = {}): Promise<Blob> {
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
   const query = new URLSearchParams(params).toString();
-  const resp = await fetch(`/api/v1${path}${query ? `?${query}` : ""}`, { headers });
+  const resp = await fetch(`/api/v1${path}${query ? `?${query}` : ""}`, { credentials: "same-origin" });
   if (!resp.ok) {
     const text = await resp.text();
     if (resp.status === 401) window.dispatchEvent(new Event(AUTH_EVENT));

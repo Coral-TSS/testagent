@@ -11,15 +11,18 @@ import {
   SettingOutlined,
   TeamOutlined,
   ToolOutlined,
+  UserOutlined,
+  UsergroupAddOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Breadcrumb, Button, Layout as AntLayout, Menu, Select, Space, Tooltip, Typography } from "antd";
-import type { ReactNode } from "react";
+import { Breadcrumb, Button, Dropdown, Layout as AntLayout, Menu, Modal, Select, Space, Tooltip, Typography } from "antd";
+import { useState, type ReactNode } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "../api/client";
 import type { NavContext, Sut, SutProgress } from "../api/types";
 import { FlowSteps } from "../components/FlowSteps";
+import { ChangePasswordForm, useAuth } from "./AuthGate";
 import { routeObject, withContext } from "./navContext";
 
 const { Sider, Header, Content } = AntLayout;
@@ -71,7 +74,43 @@ export function useNavState() {
   return { obj, ctx: ctx.data, sutId, versionId: versionId || progress.data?.version?.id, progress: progress.data };
 }
 
+/** Signed-in user: change password, sign out (hidden outside the auth gate, e.g. in page tests). */
+export function UserMenu() {
+  const { me, signOut, refresh } = useAuth();
+  const [changing, setChanging] = useState(false);
+  if (!me) return null;
+  return (
+    <>
+      <Dropdown
+        trigger={["click"]}
+        menu={{
+          items: [
+            { key: "role", label: `${me.username} · ${me.role}`, disabled: true },
+            { type: "divider" },
+            { key: "password", label: "Change password", onClick: () => setChanging(true) },
+            { key: "logout", label: "Sign out", onClick: () => void signOut() },
+          ],
+        }}
+      >
+        <Button aria-label="Account" icon={<UserOutlined />}>
+          {me.display_name || me.username}
+        </Button>
+      </Dropdown>
+      <Modal title="Change password" open={changing} footer={null} onCancel={() => setChanging(false)} destroyOnHidden>
+        <Typography.Paragraph type="secondary">Your other sessions are signed out; this one stays signed in.</Typography.Paragraph>
+        <ChangePasswordForm
+          onDone={(next) => {
+            refresh(next);
+            setChanging(false);
+          }}
+        />
+      </Modal>
+    </>
+  );
+}
+
 export function Layout() {
+  const { me } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { obj, ctx, sutId, versionId, progress } = useNavState();
@@ -113,6 +152,9 @@ export function Layout() {
     { key: "/agent/runs", icon: <RobotOutlined />, label: <Link to="/agent/runs">Agent runs</Link> },
     { key: "/agent/tools", icon: <ToolOutlined />, label: <Link to="/agent/tools">Agent tools</Link> },
   );
+  if (me?.role === "admin") {
+    items.push({ key: "/users", icon: <UsergroupAddOutlined />, label: <Link to="/users">Users</Link> });
+  }
 
   const crumbs = [
     { title: <Link to="/suts">Home</Link> },
@@ -187,6 +229,7 @@ export function Layout() {
               onChange={onVersion}
               options={(progress?.versions || []).map((v) => ({ value: v.id, label: `Version ${v.name}` }))}
             />
+            <UserMenu />
           </Space>
         </Header>
         {progress && (

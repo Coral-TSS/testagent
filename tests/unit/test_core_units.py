@@ -11,7 +11,7 @@ from testagent.core.events import EventBus
 from testagent.core.pipeline import DEFAULT_STAGES, StageRegistry
 from testagent.core.redact import RedactingFilter, describe_dsn, redact
 from testagent.core.secrets import SecretStore
-from testagent.launch import build_url
+from testagent.launch import ticket_url
 
 DSN = "postgresql://postgres:" + "s3cr3t-Pw" + "@localhost:5432/testagent_test"
 
@@ -137,6 +137,6 @@ def test_secret_store_file_mode_600(tmp_path):
 
 
 def test_launch_fragment_url():
-    url = build_url("127.0.0.1", 8765, "tok")
-    assert url == "http://127.0.0.1:8765/#t=tok"
-    assert "?" not in url
+    url = ticket_url("127.0.0.1", 8765, "tk")
+    assert url == "http://127.0.0.1:8765/#ticket=tk"
+    assert "?" not in url  # fragment only: never in server logs or Referer headers

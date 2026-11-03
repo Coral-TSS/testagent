@@ -2,6 +2,7 @@
 
 import pytest
 from langchain_core.messages import AIMessage
+from tests.conftest import TEST_USER
 
 from testagent.agent.fake import FakeChatModel, call
 from testagent.core.errors import AppError
@@ -170,7 +171,7 @@ def test_confirm_requires_owner(client, world):
     assert no_owner.status_code == 422 and "owner" in no_owner.json()["message"]
     staff(client, world, req["id"])
     ok = client.post(f"{V1}/requirements/{req['id']}/confirm").json()
-    assert ok["status"] == "confirmed" and ok["confirmed_by"] == "local-user"
+    assert ok["status"] == "confirmed" and ok["confirmed_by"] == TEST_USER
 
 
 def test_inactive_person_rejected(client, world):

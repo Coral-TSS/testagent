@@ -21,6 +21,7 @@ import { ReportsPage } from "../pages/ReportsPage";
 import { Placeholder } from "../pages/Placeholder";
 import { SutOverviewPage } from "../pages/SutOverviewPage";
 import { SutsPage } from "../pages/SutsPage";
+import { UsersPage } from "../pages/UsersPage";
 import { VersionPage } from "../pages/VersionPage";
 import { VersionsPage } from "../pages/VersionsPage";
 import { Layout } from "./Layout";
@@ -55,6 +56,7 @@ export const routes: RouteObject[] = [
       { path: "agent/config", element: <AgentConfigPage /> }, // P14
       { path: "agent/runs", element: <AgentRunsPage /> }, // P15 agent runs
       { path: "agent/tools", element: <AgentToolsPage /> }, // P15
+      { path: "users", element: <UsersPage /> }, // accounts (admin)
       { path: "*", element: <Placeholder code="404" title="Page not found" milestone="—" /> },
     ],
   },

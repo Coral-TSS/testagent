@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 from psycopg.types.json import Jsonb
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services import environments as envs
@@ -56,12 +57,12 @@ class RunService:
         bus: EventBus,
         *,
         executions: Callable[[], ExecutionService] | None = None,
-        actor: str = "local-user",
+        actor: str | None = None,
     ):
         self.db = db
         self.bus = bus
         self.executions = executions
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     # ------------------------------------------------------------ helpers
     def _notify(self, cur, run_id, payload: dict) -> None:

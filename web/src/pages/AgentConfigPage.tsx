@@ -5,10 +5,13 @@ import { useEffect, useState } from "react";
 import { api, describeError } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import type { AgentConfig } from "../api/types";
+import { useAuth } from "../app/AuthGate";
 
 /** P14 agent model settings (OpenAI-compatible); the API key is write-only, the page shows only a mask */
 export function AgentConfigPage() {
   const cfg = useQuery({ queryKey: ["agent-config"], queryFn: () => api<AgentConfig>("/agent/config") });
+  const { me } = useAuth();
+  const readOnly = me?.role === "member"; // model endpoint and API key are admin-only
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const [testing, setTesting] = useState(false);
@@ -43,7 +46,8 @@ export function AgentConfigPage() {
       {cfg.data && !cfg.data.configured && (
         <Alert type="warning" showIcon style={{ marginBottom: 16 }} title="No model configured yet; AI structuring, completion and strategy generation are unavailable." />
       )}
-      <Form form={form} layout="vertical" onFinish={onFinish}>
+      {readOnly && <Alert type="info" showIcon style={{ marginBottom: 16 }} title="Only an admin can change the model settings." />}
+      <Form form={form} layout="vertical" onFinish={onFinish} disabled={readOnly}>
         <Form.Item name="base_url" label="Base URL (OpenAI-compatible)" rules={[{ required: true }]}>
           <Input placeholder="https://api.example.com/v1" />
         </Form.Item>

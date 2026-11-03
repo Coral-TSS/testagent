@@ -1,4 +1,3 @@
-import { getToken } from "../app/token";
 import { ApiError } from "./client";
 
 export interface SseEvent {
@@ -32,12 +31,10 @@ export function parseSse(buffer: string): { events: SseEvent[]; rest: string } {
   return { events, rest };
 }
 
-/** Server-sent events over fetch (EventSource cannot send the Authorization header). */
+/** Server-sent events over fetch (the session cookie goes along; easier to cancel than EventSource). */
 export async function streamEvents(path: string, onEvent: (e: SseEvent) => void, signal: AbortSignal): Promise<void> {
   const headers: Record<string, string> = { Accept: "text/event-stream" };
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const resp = await fetch(`/api/v1${path}`, { headers, signal });
+  const resp = await fetch(`/api/v1${path}`, { headers, signal, credentials: "same-origin" });
   if (!resp.ok || !resp.body) throw new ApiError(resp.status, {});
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();

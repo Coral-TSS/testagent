@@ -12,6 +12,7 @@ import hashlib
 import json
 from datetime import datetime
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.services.action_rules import effect_text, precondition_text
 from testagent.services.changelog import log_change
@@ -50,9 +51,9 @@ def _param_text(params) -> list[str]:
 
 
 class ModelReviewService:
-    def __init__(self, db, actor: str = "local-user"):
+    def __init__(self, db, actor: str | None = None):
         self.db = db
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     # ------------------------------------------------------------ coverage
     @staticmethod

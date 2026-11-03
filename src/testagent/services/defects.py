@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.attribution import AttributionRules
@@ -17,10 +18,10 @@ FAILED = ("failed", "error")
 
 
 class DefectService:
-    def __init__(self, db, bus: EventBus, actor: str = "local-user", rules=None):
+    def __init__(self, db, bus: EventBus, actor: str | None = None, rules=None):
         self.db = db
         self.bus = bus
-        self.actor = actor
+        self.actor = actor or current_actor()
         self.rules = rules or AttributionRules()
 
     @property

@@ -10,6 +10,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from testagent.agent.runtime import AgentRuntime, Entry
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.integrations.git_repo import TestRepo, target_test_path
@@ -342,7 +343,7 @@ class AutomationService:
             raise AppError("NOT_FOUND", f"does not exist in the test repo {rel}")
         if rel in repo.dirty_files():
             raise AppError("REPO_DIRTY", f"{rel} has uncommitted changes; commit them first", related=[rel])
-        return self._bind(case_id, rel, repo.head(), actor="local-user")
+        return self._bind(case_id, rel, repo.head(), actor=current_actor())
 
     def _bind(self, case_id, code_path: str, sha: str, *, actor: str) -> dict:
         cases = CaseService(self.db, self.bus, actor=actor)

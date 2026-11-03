@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import type { Environment, Module, Sut, SutProgress, Version } from "../api/types";
+import { useAuth } from "../app/AuthGate";
 import { EmptyState } from "../components/EmptyState";
 import { PathText } from "../components/ObjLink";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
@@ -15,6 +16,7 @@ import { VersionStatusTag } from "../components/StatusTags";
 
 /** SUT overview: environments, optional groups, version list */
 export function SutOverviewPage() {
+  const isMember = useAuth().me?.role === "member";
   const { sutId = "" } = useParams();
   const sut = useQuery({ queryKey: ["sut", sutId], queryFn: () => api<Sut>(`/suts/${sutId}`) });
   const envs = useQuery({ queryKey: ["envs", sutId], queryFn: () => api<Environment[]>(`/suts/${sutId}/environments`) });
@@ -107,8 +109,9 @@ export function SutOverviewPage() {
                 <Form.Item
                   name="start_command"
                   label="Start command (optional, starts the SUT on this machine; run automatically on platform start when unreachable)"
+                  extra={isMember ? "Only an admin can change the start command (it runs on the platform server)." : undefined}
                 >
-                  <Input placeholder="uv run uvicorn examples.procurement.api:create_app --factory --host 127.0.0.1 --port 8766" />
+                  <Input disabled={isMember} placeholder="uv run uvicorn examples.procurement.api:create_app --factory --host 127.0.0.1 --port 8766" />
                 </Form.Item>
               </>
             }

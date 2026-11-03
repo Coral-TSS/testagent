@@ -14,6 +14,7 @@ import re
 
 from psycopg.types.json import Jsonb
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
@@ -119,10 +120,10 @@ def resource_stems(cur, sut_id) -> dict[str, str]:
 
 
 class LinkService:
-    def __init__(self, db, bus: EventBus | None, actor: str = "local-user"):
+    def __init__(self, db, bus: EventBus | None, actor: str | None = None):
         self.db = db
         self.bus = bus or EventBus()
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     # ------------------------------------------------------------ queries
     @staticmethod

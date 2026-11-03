@@ -14,6 +14,7 @@ from testagent import __version__
 from testagent.agent.container import build_agent
 from testagent.api import (
     agent,
+    auth,
     cases,
     defects,
     executions,
@@ -28,7 +29,7 @@ from testagent.api import (
     strategy,
 )
 from testagent.core.artifacts import ArtifactStore
-from testagent.core.auth import LocalAuthMiddleware
+from testagent.core.auth import AuthMiddleware
 from testagent.core.config import DEFAULT_TIMEZONE
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
@@ -58,7 +59,6 @@ def _describe_payload(db, payload: dict) -> str:
 
 def create_app(
     db,
-    token: str,
     bus: EventBus | None = None,
     web_dist: Path = WEB_DIST,
     secrets: SecretStore | None = None,
@@ -71,6 +71,11 @@ def create_app(
     instance_lock=None,
     timezone: str = DEFAULT_TIMEZONE,
     allowed_hosts: list[str] | tuple[str, ...] = (),
+    cookie_secure: str = "auto",
+    session_idle_hours: float = 12,
+    session_max_days: float = 7,
+    login_per_minute: int = 10,
+    login_per_hour: int = 100,
 ) -> FastAPI:
     """`background=True` (launcher) starts the Worker thread; the scheduler additionally needs the
     held `instance_lock`. Tests leave both off and drive `app.state.worker.run_once()`."""
@@ -109,7 +114,13 @@ def create_app(
     state = app.state
     state.executor_runners = {}  # EP-03 overrides (tests install fakes here)
     state.jobs = JobQueue(db)
-    state.runs_factory = lambda actor="local-user": RunService(
+    from testagent.services.auth import AuthService, LocalTickets, LoginRateLimiter
+
+    state.auth = AuthService(db, session_idle_hours, session_max_days)
+    state.tickets = LocalTickets()
+    state.login_limiter = LoginRateLimiter(login_per_minute, login_per_hour)
+    state.cookie_secure = cookie_secure
+    state.runs_factory = lambda actor=None: RunService(
         db, state.bus, executions=lambda: execution_service(state, "system"), actor=actor
     )
     state.runs_channel = lambda run_id: run_channel(db, run_id)
@@ -156,7 +167,7 @@ def create_app(
         state.bus.subscribe(event, _reconcile_case)
     state.bus.subscribe("correction.created", _digest_later)
     state.bus.subscribe("correction.reprocess", _digest_later)
-    app.add_middleware(LocalAuthMiddleware, token=token, allowed_hosts=allowed_hosts)
+    app.add_middleware(AuthMiddleware, auth=state.auth, allowed_hosts=allowed_hosts)
     from testagent.core.access_log import AccessLogMiddleware
 
     app.add_middleware(AccessLogMiddleware)  # outermost: also logs 401s
@@ -179,6 +190,7 @@ def create_app(
     def health():
         return {"status": "ok" if db.ping() else "db_unavailable", "version": __version__}
 
+    app.include_router(auth.router)
     app.include_router(learning.router)
     app.include_router(registry.router)
     app.include_router(model.router)

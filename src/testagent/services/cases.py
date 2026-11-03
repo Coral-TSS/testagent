@@ -10,6 +10,7 @@ from typing import Any
 
 from psycopg.types.json import Jsonb
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
@@ -99,10 +100,10 @@ def case_relations(cur, case_ids) -> dict[str, list[dict]]:
 
 
 class CaseService:
-    def __init__(self, db, bus: EventBus, actor: str = "local-user"):
+    def __init__(self, db, bus: EventBus, actor: str | None = None):
         self.db = db
         self.bus = bus
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     @property
     def is_agent(self) -> bool:

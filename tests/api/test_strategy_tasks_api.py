@@ -3,6 +3,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from tests.conftest import TEST_USER
 
 from testagent.agent.fake import FakeChatModel, call
 from testagent.core.config import DEFAULT_TIMEZONE
@@ -73,7 +74,7 @@ def test_strategy_edit_after_confirm_returns_draft(client, frozen):
     assert first["status"] == "draft" and first["revision"] == 1
     assert first["snapshot_id"] == frozen["snapshot"]  # BR-02
     confirmed = client.post(f"{V1}/strategy/{first['id']}/confirm").json()
-    assert confirmed["status"] == "confirmed" and confirmed["confirmed_by"] == "local-user"
+    assert confirmed["status"] == "confirmed" and confirmed["confirmed_by"] == TEST_USER
     assert client.post(f"{V1}/strategy/{first['id']}/confirm").status_code == 409
     edited = client.put(url, json={"scope": "Purchase+payment", "test_types": ["functional"]}).json()
     assert edited["status"] == "draft" and edited["revision"] == 2

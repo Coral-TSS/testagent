@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from psycopg.types.json import Jsonb
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.attributes import AttributeService
@@ -50,10 +51,10 @@ def with_node_name(row: dict) -> dict:
 
 
 class SuggestionService:
-    def __init__(self, db, bus: EventBus, actor: str = "local-user"):
+    def __init__(self, db, bus: EventBus, actor: str | None = None):
         self.db = db
         self.bus = bus
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     def add_many(self, cur, sut_id, items: list[dict], *, agent_run_id=None) -> list[dict]:
         """Insert suggestions, skipping ones already pending or already present in the model."""

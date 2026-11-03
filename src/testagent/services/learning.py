@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from testagent.agent.prompts import DEFAULT_SYSTEM
 from testagent.agent.runtime import Entry
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
@@ -143,10 +144,10 @@ def _jsonable(value) -> Any:
 
 # ------------------------------------------------------------------ prompts
 class PromptService:
-    def __init__(self, db, names: list[str], actor: str = "local-user"):
+    def __init__(self, db, names: list[str], actor: str | None = None):
         self.db = db
         self.names = [SYSTEM_PROMPT, *sorted(n for n in names if n != SYSTEM_PROMPT)]
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     def _check(self, name: str) -> None:
         if name not in self.names:
@@ -272,9 +273,9 @@ class PromptService:
 
 # ------------------------------------------------------------------ memories
 class MemoryService:
-    def __init__(self, db, actor: str = "local-user"):
+    def __init__(self, db, actor: str | None = None):
         self.db = db
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     def list(self, scope=None, sut_id=None, enabled=None) -> list[dict]:
         with self.db.tx() as cur:
@@ -304,10 +305,10 @@ class MemoryService:
 class CorrectionService:
     """Raw corrections (US-18). Text is stored byte-for-byte; digesting happens in a job."""
 
-    def __init__(self, db, bus: EventBus, actor: str = "local-user"):
+    def __init__(self, db, bus: EventBus, actor: str | None = None):
         self.db = db
         self.bus = bus
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     @staticmethod
     def resolve(cur, target_type: str, target_id) -> dict:
@@ -501,11 +502,11 @@ class RegistryOnlyService:
         "mcp_server": ("name", "transport", "command", "url", "description", "enabled"),
     }
 
-    def __init__(self, db, table: str, actor: str = "local-user"):
+    def __init__(self, db, table: str, actor: str | None = None):
         self.db = db
         self.table = table
         self.fields = self.TABLES[table]
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     def list(self) -> list[dict]:
         with self.db.tx() as cur:

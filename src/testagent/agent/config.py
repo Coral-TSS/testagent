@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.secrets import SecretStore
 from testagent.services.changelog import log_change
@@ -41,10 +42,14 @@ class LlmConfig:
 
 
 class AgentConfigService:
-    def __init__(self, db, secrets: SecretStore, actor: str = "local-user"):
+    def __init__(self, db, secrets: SecretStore, actor: str | None = None):
         self.db = db
         self.secrets = secrets
-        self.actor = actor
+        self._actor = actor  # long-lived (built at start-up): resolve the actor per call
+
+    @property
+    def actor(self) -> str:
+        return self._actor or current_actor()
 
     def _row(self, cur) -> dict:
         cur.execute("INSERT INTO agent_config(id) VALUES ('default') ON CONFLICT DO NOTHING")

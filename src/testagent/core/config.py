@@ -21,8 +21,14 @@ class Settings(BaseSettings):
     runtime_dir: Path = REPO_ROOT / "runtime"
     host: str = "127.0.0.1"
     port: int = 8765
-    access_token: SecretStr | None = None  # fixed sign-in token (Docker / headless); else random
-    dev_token: SecretStr | None = None  # older name of access_token
+    access_token: SecretStr | None = None  # removed in 0.2 (accounts); only read to warn when still set
+    dev_token: SecretStr | None = None  # older name of access_token, same
+    admin_user: str | None = None  # first admin, created only while there are no accounts
+    admin_password: SecretStr | None = None
+    cookie_secure: str = "auto"  # auto = Secure cookie on https; "true" / "false" to force
+    session_idle_hours: float = 12
+    session_max_days: float = 7
+    trusted_proxies: str = "127.0.0.1"  # whose X-Forwarded-* headers count (Docker behind Caddy: "*")
     allowed_hosts: str = ""  # extra Host names besides loopback, comma separated (LAN / Docker)
     demo_url: str | None = None  # where the procurement demo runs when it is not local (Docker)
     artifact_max_bytes: int = 50 * 1024 * 1024

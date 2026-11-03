@@ -18,6 +18,7 @@ from testagent.agent.tools import (
     check_request_bodies,
     link_summaries,
 )
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.case_gen import StepOut, model_id_errors
@@ -126,11 +127,11 @@ def _version_of(cur, case: dict):
 
 
 class CaseCompletionService:
-    def __init__(self, db, bus: EventBus, runtime: AgentRuntime | None, actor: str = "local-user"):
+    def __init__(self, db, bus: EventBus, runtime: AgentRuntime | None, actor: str | None = None):
         self.db = db
         self.bus = bus
         self.runtime = runtime
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     def _cases(self, actor: str | None = None) -> CaseService:
         return CaseService(self.db, self.bus, actor=actor or self.actor)

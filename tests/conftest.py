@@ -16,7 +16,8 @@ from testagent.core.migrations import migrate
 # platform tests run it with the bugs off unless a test turns them on explicitly.
 os.environ["PROCUREMENT_DEMO_BUGS"] = "0"
 
-TOKEN = "test-token-" + "x" * 20
+TEST_USER = "tester"  # the signed-in admin of the `client` fixture (actor of what it changes)
+TEST_PASSWORD = "tester-password-1"  # test-only credential
 KEEP_TABLES = {"schema_migrations", "severity_weight"}
 
 
@@ -78,14 +79,27 @@ def client(db, tmp_path):
 
     app = create_app(  # a non-UTC default zone exercises local-time scheduling
         db,
-        TOKEN,
         secrets=SecretStore(tmp_path / "secrets.json"),
         runtime_dir=tmp_path / "rt",
         timezone="Asia/Shanghai",
     )
     with TestClient(app, base_url="http://127.0.0.1") as c:
-        c.headers["Authorization"] = f"Bearer {TOKEN}"
+        sign_in(c, db, TEST_USER, role="admin")
         yield c
+
+
+def sign_in(c, db, username: str, role: str = "member", password: str = TEST_PASSWORD) -> dict:
+    """Create the account if needed, sign the client in and send the CSRF header on writes."""
+    from testagent.services.auth import AuthService
+
+    auth = AuthService(db)
+    if auth.find(username) is None:
+        auth.create_user(username, password, role=role)
+    resp = c.post("/api/v1/auth/login", json={"username": username, "password": password})
+    assert resp.status_code == 200, resp.text
+    me = resp.json()
+    c.headers["X-CSRF-Token"] = me["csrf_token"]
+    return me
 
 
 def pytest_configure(config):

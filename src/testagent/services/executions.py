@@ -13,6 +13,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from testagent.agent.runtime import AgentRuntime, Entry
+from testagent.core.actor import current_actor
 from testagent.core.artifacts import ArtifactStore
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
@@ -135,7 +136,7 @@ class ExecutionService:
         repos_root: Path | None = None,
         headless: bool = True,
         pytest_timeout_s: float = 300,
-        actor: str = "local-user",
+        actor: str | None = None,
         runners: dict | None = None,
     ):
         self.db = db
@@ -145,7 +146,7 @@ class ExecutionService:
         self.repos_root = repos_root
         self.headless = headless
         self.pytest_timeout_s = pytest_timeout_s
-        self.actor = actor
+        self.actor = actor or current_actor()
         # EP-03: executor overrides, `runner(case, env, execution_id) -> fields`; tests use fakes
         self.runners = runners or {}
 

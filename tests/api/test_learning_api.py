@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from tests.api.world import V1, FakeRunner, build_world, install_runner, make_case, make_task
 from tests.api.world import run_task as run_task_now
+from tests.conftest import TEST_USER
 
 from testagent.agent.fake import FakeChatModel, call
 from testagent.agent.prompts import DEFAULT_SYSTEM
@@ -213,7 +214,7 @@ def test_prompt_rollback(client, w):
         f"{V1}/agent/prompts/generate_cases/versions",
         json={"content": "Manually rewritten guidance", "note": "Rewritten after review"},
     ).json()
-    assert new["version"] == 3 and new["active"] and new["created_by"] == "local-user"
+    assert new["version"] == 3 and new["active"] and new["created_by"] == TEST_USER
     assert client.post(f"{V1}/agent/prompts/generate_cases/versions/9/activate").status_code == 404
     assert client.post(f"{V1}/agent/prompts/nope/versions", json={"content": "x"}).status_code == 422
 

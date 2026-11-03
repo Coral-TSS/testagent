@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { fetchBlob } from "../api/client";
 
-/** Screenshot from the artifact store; fetched with the token (an <img src> can't send headers). */
+/** Screenshot from the artifact store, fetched as a blob (errors show a clear message instead of a broken image). */
 export function ArtifactImage({ sha, alt, width = 240 }: { sha: string; alt: string; width?: number }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);

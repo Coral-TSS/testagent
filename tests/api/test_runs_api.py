@@ -13,6 +13,7 @@ from tests.api.world import (
     make_task,
     run_task,
 )
+from tests.conftest import TEST_USER
 
 from testagent.core.db import InstanceLock
 from testagent.services.scheduler import Scheduler
@@ -107,7 +108,7 @@ def test_human_case_not_blocking(client, db):
         json={"status": "failed", "failed_assertion": "Button does nothing", "result": "Manual execution"},
     )
     assert done.status_code == 200, done.text
-    assert done.json()["status"] == "failed" and done.json()["executed_by"] == "local-user"
+    assert done.json()["status"] == "failed" and done.json()["executed_by"] == TEST_USER
     again = client.post(f"{V1}/executions/{blocked['id']}/complete", json={"status": "passed"})
     assert again.status_code == 409
 

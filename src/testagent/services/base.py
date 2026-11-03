@@ -7,6 +7,7 @@ from typing import Any
 from psycopg import sql
 from psycopg.errors import ForeignKeyViolation
 
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
@@ -21,10 +22,10 @@ class Crud:
     entity: str
     label: str
 
-    def __init__(self, db, bus: EventBus, actor: str = "local-user"):
+    def __init__(self, db, bus: EventBus, actor: str | None = None):
         self.db = db
         self.bus = bus
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     def _missing(self) -> AppError:
         return AppError("NOT_FOUND", f"{self.label} does not exist")

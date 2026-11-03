@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from croniter import croniter
 from psycopg.types.json import Jsonb
 
+from testagent.core.actor import current_actor
 from testagent.core.config import DEFAULT_TIMEZONE
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
@@ -69,11 +70,11 @@ def next_run(schedule: dict | None, now: datetime | None = None, default_tz: str
 
 
 class TaskService:
-    def __init__(self, db, bus: EventBus, actor: str = "local-user", default_tz: str = DEFAULT_TIMEZONE):
+    def __init__(self, db, bus: EventBus, actor: str | None = None, default_tz: str = DEFAULT_TIMEZONE):
         self.default_tz = default_tz
         self.db = db
         self.bus = bus
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     @staticmethod
     def _version(cur, version_id) -> dict:

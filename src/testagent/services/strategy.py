@@ -8,6 +8,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from testagent.agent.runtime import AgentRuntime, Entry
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
@@ -79,10 +80,10 @@ def strategy_entry(db) -> Entry:
 
 
 class StrategyService:
-    def __init__(self, db, bus: EventBus, actor: str = "local-user"):
+    def __init__(self, db, bus: EventBus, actor: str | None = None):
         self.db = db
         self.bus = bus
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     @staticmethod
     def _version(cur, version_id, lock=False) -> dict:

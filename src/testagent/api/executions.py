@@ -64,7 +64,7 @@ class BindIn(_In):
     code_path: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
-def execution_service(state, actor: str = "local-user") -> ExecutionService:
+def execution_service(state, actor: str | None = None) -> ExecutionService:
     return ExecutionService(
         state.db,
         state.bus,

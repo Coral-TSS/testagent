@@ -4,6 +4,7 @@ pytest debug, manual results."""
 import base64
 
 import pytest
+from tests.conftest import TEST_USER
 from tests.fixtures.mini_shop import MiniShop, browser_available
 
 from testagent.agent.fake import FakeChatModel, call
@@ -312,7 +313,7 @@ def test_manual_execution_recorded(client, world, db):
     assert resp.status_code == 201, resp.text
     ex = resp.json()
     assert ex["executor"] == "manual" and ex["status"] == "failed"
-    assert ex["executed_by"] == "local-user" and ex["task_run_id"] is None
+    assert ex["executed_by"] == TEST_USER and ex["task_run_id"] is None
     assert ex["test_data"] == {"amount": 0, "browser": "Edge"} and ex["ended_at"]
     sha = ex["artifacts"][0]["sha256"]
     assert client.get(f"{V1}/artifacts/{sha}").content == b"\x89PNG fake screenshot"

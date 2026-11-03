@@ -11,6 +11,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from testagent.agent.runtime import Entry
+from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.stats import (
@@ -64,11 +65,11 @@ def _summary(statuses: list[str], total: int) -> dict:
 
 
 class ReportService:
-    def __init__(self, db, bus: EventBus, runtime=None, actor: str = "local-user"):
+    def __init__(self, db, bus: EventBus, runtime=None, actor: str | None = None):
         self.db = db
         self.bus = bus
         self.runtime = runtime
-        self.actor = actor
+        self.actor = actor or current_actor()
 
     # ------------------------------------------------------------ reads
     def get(self, report_id) -> dict:
