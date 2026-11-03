@@ -26,8 +26,12 @@ services:
   demo:
     build:
       context: .
-      args:
-        DEBIAN_MIRROR: ${DEBIAN_MIRROR:-deb.debian.org}
+      args: &build-args  # optional package mirrors, empty = official sources (see .env.example)
+        DEBIAN_MIRROR: ${DEBIAN_MIRROR:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-}
+        NPM_REGISTRY: ${NPM_REGISTRY:-}
+        PLAYWRIGHT_DOWNLOAD_HOST: ${PLAYWRIGHT_DOWNLOAD_HOST:-}
+        UV_IMAGE: ${UV_IMAGE:-ghcr.io/astral-sh/uv:0.13}
     image: testagent:${TESTAGENT_VERSION:-0.1.0}
     command: ["demo"]
     environment:
@@ -46,8 +50,7 @@ services:
   testagent:
     build:
       context: .
-      args:
-        DEBIAN_MIRROR: ${DEBIAN_MIRROR:-deb.debian.org}
+      args: *build-args
     image: testagent:${TESTAGENT_VERSION:-0.1.0}
     command: ["platform"]
     depends_on:

@@ -18,6 +18,14 @@ All notable changes to this project are documented here. The format follows
   IP certificate (`TESTAGENT_TLS=acme`, TLS-ALPN-01) or Caddy's internal CA (`TESTAGENT_TLS=internal`).
 - Only admins change the agent model settings and SUT environment start commands.
 
+- Optional package mirrors for building the image: `PIP_INDEX_URL`, `NPM_REGISTRY`,
+  `PLAYWRIGHT_DOWNLOAD_HOST` and `UV_IMAGE` (next to `DEBIAN_MIRROR`), passed from `.env` as build
+  arguments. Empty by default (official sources); packages are still checked against the lock-file hashes.
+
+### Changed
+
+- `DEBIAN_MIRROR` defaults to empty (the image's own `deb.debian.org` sources are kept unchanged).
+
 ### Removed
 
 - The shared access token (`TESTAGENT_ACCESS_TOKEN`, `#t=` sign-in links). The desktop launcher now

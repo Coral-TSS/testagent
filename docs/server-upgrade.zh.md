@@ -42,6 +42,30 @@ TESTAGENT_ADMIN_PASSWORD=<管理员密码>      # 至少 10 位
 
 并**删除** `TESTAGENT_ACCESS_TOKEN` 这一行（新版本不再使用，留着只会在日志里告警）。
 
+### 国内镜像源（可选，强烈建议）
+
+构建镜像时要下载 Debian 包、Python 包、npm 包和 Playwright 的 Chromium，服务器在国内时直连官方源很慢
+（构建会长时间卡在 `uv sync` / `playwright install` / `npm ci` 那几步）。在 `.env` 里再加上：
+
+```ini
+DEBIAN_MIRROR=mirrors.aliyun.com
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+NPM_REGISTRY=https://registry.npmmirror.com
+PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
+```
+
+不填就是官方源。换镜像不影响安全性：Python 和 npm 包仍按 `uv.lock`、`web/package-lock.json` 里的哈希校验。
+
+基础镜像（`python`、`node`、`postgres`、`caddy`）来自 Docker Hub，`uv` 来自 `ghcr.io`。如果
+`docker compose up -d --build` 一开始拉镜像就很慢或失败，需要给 Docker 配镜像加速器：在阿里云控制台
+“容器镜像服务 ACR → 镜像工具 → 镜像加速器”拿到你自己的加速地址，写进 `/etc/docker/daemon.json`：
+
+```json
+{ "registry-mirrors": ["https://<你的加速地址>.mirror.aliyuncs.com"] }
+```
+
+然后 `sudo systemctl restart docker`。
+
 ## 3. 启动（二选一）
 
 **A. 保留现有数据升级（推荐）**：数据库迁移 0022 会自动执行，原有 SUT、需求、用例、执行记录都还在。
@@ -93,6 +117,7 @@ curl -s https://<服务器公网IP>/api/v1/health      # {"status":"ok",...}
 | 日志里证书申请失败（challenge failed / timeout） | 多半是 443 没对外开放，或服务器不能出网。临时改用自签名证书：`.env` 里设 `TESTAGENT_TLS=internal`，`docker compose up -d`；浏览器会提示“不安全”，点“继续访问”，或导入根证书：`docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt`，在 Windows 里导入“受信任的根证书颁发机构” |
 | 登录页显示 “No account yet” | `.env` 里管理员变量没生效：检查拼写后 `docker compose up -d`，或 `docker compose exec testagent testagent user add <管理员用户名> --admin` |
 | 忘记密码 / 账号被锁（连续 5 次输错锁 15 分钟） | `docker compose exec testagent testagent user passwd <用户名>`（同时解锁）或 `... user unlock <用户名>` |
+| 构建很慢 / 卡在某一步很久 | 按第 2 步“国内镜像源”在 `.env` 里配镜像后重新 `docker compose up -d --build`；看具体卡在哪：`docker compose build --progress=plain testagent` |
 | “This address is not configured for the platform” | `.env` 里的 `TESTAGENT_PUBLIC_HOST` 和你访问的地址不一致，改好后 `docker compose up -d` |
 
 SSH 隧道（`127.0.0.1:8765`）仍然可以用作备用入口。

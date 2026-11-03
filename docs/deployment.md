@@ -101,7 +101,9 @@ Set them in `.env` (Compose substitutes them) or in `docker-compose.yml`.
 | `TESTAGENT_AGENT_LANGUAGE` | `English` | Language of the text the agent writes (requirements, cases, reports) |
 | `TESTAGENT_SEED_DEMO` | `1` | Create the demo SUT (model, APIs, people, environment) on first start |
 | `PROCUREMENT_DEMO_BUGS` | `1` | Seeded bugs in the demo SUT on (`1`) or off (`0`) |
-| `DEBIAN_MIRROR` | `deb.debian.org` | Debian mirror used while building the image |
+| `DEBIAN_MIRROR` | empty (`deb.debian.org`) | Debian mirror host used while building the image (see [Package mirrors](#package-mirrors-for-the-build)) |
+| `PIP_INDEX_URL` / `NPM_REGISTRY` / `PLAYWRIGHT_DOWNLOAD_HOST` | empty | Python index, npm registry and Chromium download host used while building the image |
+| `UV_IMAGE` | `ghcr.io/astral-sh/uv:0.13` | Image the `uv` binary is copied from |
 
 Platform settings available in all modes (prefix `TESTAGENT_`): `DATABASE_URL`, `TEST_DATABASE_URL`,
 `RUNTIME_DIR`, `HOST`, `PORT`, `ADMIN_USER`, `ADMIN_PASSWORD`, `ALLOWED_HOSTS`, `DEMO_URL`, `TIMEZONE`,
@@ -120,6 +122,25 @@ Add a SUT in the UI and create an **environment** with the base URL of your app 
   `extra_hosts: ["host.docker.internal:host-gateway"]` to the `testagent` service)
 - another container: put it on the same Compose network and use its service name
 - a remote test environment: its normal URL
+
+### Package mirrors for the build
+
+`docker compose up -d --build` downloads Debian packages, Python packages, npm packages and
+Playwright's Chromium. If that is slow (for example on a server in mainland China), set mirrors in
+`.env`; all are empty by default, which means the official sources:
+
+```ini
+DEBIAN_MIRROR=mirrors.aliyun.com
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+NPM_REGISTRY=https://registry.npmmirror.com
+PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
+```
+
+Python and npm packages are still verified against the hashes in `uv.lock` and
+`web/package-lock.json`. The base images (`python`, `node`, `postgres`, `caddy`) come from Docker Hub
+and the `uv` binary from `ghcr.io`; if pulling them is slow, configure a registry mirror for the
+Docker daemon (`"registry-mirrors"` in `/etc/docker/daemon.json`, then `systemctl restart docker`),
+and if needed point `UV_IMAGE` at a proxy of `ghcr.io/astral-sh/uv:0.13`.
 
 ### Data and volumes
 
@@ -320,6 +341,6 @@ backup, which needs `pg_dump` on `PATH`) and moves the old test repo to the arch
 | `testagent` keeps restarting with "Cannot connect to the database" | Check `docker compose logs db`; if you changed `POSTGRES_PASSWORD` after the first start, the old password is still stored in the `pgdata` volume. |
 | AI buttons say the model is not configured | Fill in **Agent settings** and click *Test connection*. |
 | "SUT environment … cannot be reached" | The environment URL must be reachable from the platform (inside Docker use `host.docker.internal` or a service name, not `localhost`). |
-| `apt-get` fails during `docker build` | Use another mirror: `DEBIAN_MIRROR=<mirror host> docker compose build`. |
+| `apt-get` fails or downloads are slow during `docker build` | Set package mirrors in `.env` (see [Package mirrors](#package-mirrors-for-the-build)) and `docker compose build`. |
 | Browser executions fail to launch Chromium (local) | Run the Playwright install command above with `PLAYWRIGHT_BROWSERS_PATH=0`. |
 | "Another platform instance is already running" | Only one instance per database; stop the other one. |
