@@ -31,6 +31,12 @@ All notable changes to this project are documented here. The format follows
   The image shrinks from about 1.8 GB to 1.1 GB. Base images are configurable (`PYTHON_IMAGE`,
   `NODE_IMAGE`). Building now requires BuildKit (`docker buildx`).
 
+### Fixed
+
+- `DEBIAN_MIRROR` now also replaces `security.debian.org` and works with the classic `sources.list`
+  format; apt retries with 30 s timeouts instead of hanging, and the build log prints the apt sources,
+  npm registry and Python index actually used.
+
 ### Removed
 
 - The shared access token (`TESTAGENT_ACCESS_TOKEN`, `#t=` sign-in links). The desktop launcher now

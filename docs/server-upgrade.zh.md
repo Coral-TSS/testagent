@@ -54,6 +54,14 @@ NPM_REGISTRY=https://registry.npmmirror.com
 PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
 ```
 
+检查是否生效（4 个值都应该显示出来，空的就是没读到 `.env`）：
+
+```bash
+docker compose config | grep -E 'DEBIAN_MIRROR|PIP_INDEX_URL|NPM_REGISTRY|PLAYWRIGHT_DOWNLOAD_HOST'
+```
+
+构建日志里也会打印 `apt sources`、`npm registry`、`Python index` 三行，能直接看到用的是哪个源。
+
 不填就是官方源。换镜像不影响安全性：Python 和 npm 包仍按 `uv.lock`、`web/package-lock.json` 里的哈希校验。
 
 基础镜像（`python`、`node`、`postgres`、`caddy`）来自 Docker Hub，`uv` 来自 `ghcr.io`。如果

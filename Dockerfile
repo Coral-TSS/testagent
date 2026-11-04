@@ -28,6 +28,7 @@ COPY web/package.json web/package-lock.json ./
 ARG NPM_REGISTRY=
 RUN --mount=type=cache,target=/root/.npm,sharing=locked \
     if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
+ && echo "npm registry: $(npm config get registry)" \
  && npm ci --no-audit --no-fund --prefer-offline
 COPY web/ ./
 # vite writes the bundle to ../src/testagent/web
@@ -45,14 +46,23 @@ ENV PYTHONUNBUFFERED=1 \
 # optional Debian mirror host (also used by "playwright install --with-deps" below)
 ARG DEBIAN_MIRROR=
 # apt downloads stay in a cache mount (the image's docker-clean hook would delete them)
+# The mirror replaces deb.debian.org for debian, debian-updates and debian-security, in both the
+# deb822 (debian.sources) and the classic sources.list format. Retries and timeouts keep a slow
+# mirror from hanging the build; the chosen sources are printed in the build log.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
- && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
+ && printf '%s\n' 'Binary::apt::APT::Keep-Downloaded-Packages "true";' \
+      'Acquire::Retries "5";' 'Acquire::http::Timeout "30";' 'Acquire::https::Timeout "30";' \
+      > /etc/apt/apt.conf.d/90testagent-build \
  && if [ -n "$DEBIAN_MIRROR" ]; then \
-      sed -i "s#deb.debian.org#${DEBIAN_MIRROR}#g" /etc/apt/sources.list.d/debian.sources; \
+      for f in /etc/apt/sources.list.d/debian.sources /etc/apt/sources.list; do \
+        if [ -f "$f" ]; then sed -i -E "s#(https?://)(deb|security)\.debian\.org#\1${DEBIAN_MIRROR}#g" "$f"; fi; \
+      done; \
     fi \
- && apt-get -o Acquire::Retries=5 update \
+ && echo "apt sources (DEBIAN_MIRROR='${DEBIAN_MIRROR}'):" \
+ && { grep -hE '^(URIs:|deb )' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true; } \
+ && apt-get update \
  && apt-get install -y --no-install-recommends git ca-certificates tini
 WORKDIR /app
 
@@ -63,7 +73,8 @@ COPY pyproject.toml uv.lock README.md LICENSE NOTICE ./
 # only verifies it.
 ARG PIP_INDEX_URL=
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
-    if [ -n "$PIP_INDEX_URL" ]; then \
+    echo "Python index: ${PIP_INDEX_URL:-PyPI (uv.lock URLs)}" \
+ && if [ -n "$PIP_INDEX_URL" ]; then \
       uv export --frozen --no-dev --no-emit-project --format requirements.txt -o /tmp/requirements.txt \
       && uv venv .venv \
       && uv pip install --python .venv/bin/python --index-url "$PIP_INDEX_URL" -r /tmp/requirements.txt \
