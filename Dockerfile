@@ -8,38 +8,52 @@
 #   NPM_REGISTRY=https://registry.npmmirror.com
 #   PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
 # Packages are still checked against the hashes in uv.lock / package-lock.json.
+#
+# Build speed: needs BuildKit (default for "docker compose build" with the buildx plugin). Downloads
+# of apt, uv and npm are kept in BuildKit cache mounts, so even a changed lock file only fetches the
+# difference; a code-only change rebuilds just the last layers. Per-step timing:
+#   docker compose build --progress=plain
+# Base images can be pointed at a registry mirror/proxy as well (PYTHON_IMAGE, NODE_IMAGE, UV_IMAGE).
 
 # image that provides the uv binary (override if ghcr.io is unreachable, e.g. a registry proxy)
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.13
+ARG PYTHON_IMAGE=python:3.12-slim-bookworm
+ARG NODE_IMAGE=node:22-bookworm-slim
 FROM ${UV_IMAGE} AS uv
 
 # ---- web UI (React + Vite) -------------------------------------------------------------
-FROM node:22-bookworm-slim AS web
+FROM ${NODE_IMAGE} AS web
 WORKDIR /build/web
 COPY web/package.json web/package-lock.json ./
 ARG NPM_REGISTRY=
-RUN if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
- && npm ci --no-audit --no-fund
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    if [ -n "$NPM_REGISTRY" ]; then npm config set registry "$NPM_REGISTRY"; fi \
+ && npm ci --no-audit --no-fund --prefer-offline
 COPY web/ ./
 # vite writes the bundle to ../src/testagent/web
 RUN npm run build
 
 # ---- platform ---------------------------------------------------------------------------
-FROM python:3.12-slim-bookworm
+FROM ${PYTHON_IMAGE}
 COPY --from=uv /uv /usr/local/bin/uv
 ENV PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never \
+    UV_CACHE_DIR=/root/.cache/uv \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 # optional Debian mirror host (also used by "playwright install --with-deps" below)
 ARG DEBIAN_MIRROR=
-RUN if [ -n "$DEBIAN_MIRROR" ]; then \
+# apt downloads stay in a cache mount (the image's docker-clean hook would delete them)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+ && echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache \
+ && if [ -n "$DEBIAN_MIRROR" ]; then \
       sed -i "s#deb.debian.org#${DEBIAN_MIRROR}#g" /etc/apt/sources.list.d/debian.sources; \
     fi \
  && apt-get -o Acquire::Retries=5 update \
- && apt-get install -y --no-install-recommends git ca-certificates tini \
- && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends git ca-certificates tini
 WORKDIR /app
 
 # dependencies first (better layer caching)
@@ -48,24 +62,31 @@ COPY pyproject.toml uv.lock README.md LICENSE NOTICE ./
 # mirror the locked set is exported with its hashes and installed from the mirror first; uv sync then
 # only verifies it.
 ARG PIP_INDEX_URL=
-RUN if [ -n "$PIP_INDEX_URL" ]; then \
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    if [ -n "$PIP_INDEX_URL" ]; then \
       uv export --frozen --no-dev --no-emit-project --format requirements.txt -o /tmp/requirements.txt \
       && uv venv .venv \
       && uv pip install --python .venv/bin/python --index-url "$PIP_INDEX_URL" -r /tmp/requirements.txt \
       && rm /tmp/requirements.txt; \
     fi \
  && uv sync --frozen --no-dev --no-install-project
-# Chromium + its system libraries for browser execution and Playwright test scripts
+# Headless Chromium + its system libraries for browser execution and Playwright test scripts.
+# The container has no display, so only the headless shell is installed (about half the download);
+# PLAYWRIGHT_ONLY_SHELL=0 installs the full Chromium build as well (e.g. for channel="chromium").
 ARG PLAYWRIGHT_DOWNLOAD_HOST=
-RUN if [ -z "$PLAYWRIGHT_DOWNLOAD_HOST" ]; then unset PLAYWRIGHT_DOWNLOAD_HOST; fi \
- && .venv/bin/playwright install --with-deps chromium \
- && rm -rf /var/lib/apt/lists/*
+ARG PLAYWRIGHT_ONLY_SHELL=1
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    if [ -z "$PLAYWRIGHT_DOWNLOAD_HOST" ]; then unset PLAYWRIGHT_DOWNLOAD_HOST; fi \
+ && if [ "$PLAYWRIGHT_ONLY_SHELL" = 1 ]; then only="--only-shell"; else only=""; fi \
+ && .venv/bin/playwright install --with-deps $only chromium
 
 COPY src ./src
 COPY examples ./examples
 COPY ops ./ops
 COPY --from=web /build/src/testagent/web ./src/testagent/web
-RUN uv sync --frozen --no-dev \
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    uv sync --frozen --no-dev \
  && chmod +x ops/docker-entrypoint.sh \
  && useradd --create-home --uid 10001 testagent \
  && mkdir -p /data/runtime /data/demo \

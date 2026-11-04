@@ -66,6 +66,20 @@ PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
 
 然后 `sudo systemctl restart docker`。
 
+### 构建速度说明
+
+- **第一次构建最慢**（要下载基础镜像、系统包、Python/npm 包和无头 Chromium），配好上面的镜像源后一般几分钟。
+- **之后只改代码**：只重建最后几层，通常几秒到十几秒。
+- **依赖变了**（`uv.lock` / `package-lock.json` 更新）：下载过的包保存在 BuildKit 缓存里，只下载新增的部分。
+  所以平时**不要**执行 `docker builder prune`，否则缓存会被清掉，下次又像第一次一样慢。
+- `demo` 和 `testagent` 共用同一个镜像，只构建一次。
+- 需要 BuildKit：`docker buildx version` 能输出版本即可；没有的话 `sudo yum install -y docker-buildx-plugin`
+  （Ubuntu/Debian 用 `sudo apt install docker-buildx-plugin`）。
+- 想看每一步花了多少时间：`docker compose build --progress=plain 2>&1 | tee build.log`，
+  每步结束会显示 `DONE 12.3s`，`grep DONE build.log` 就能找到最慢的那步。
+- Docker Hub 或 ghcr.io 本身拉不动、又没法配加速器时，可以在 `.env` 里用 `PYTHON_IMAGE`、`NODE_IMAGE`、
+  `UV_IMAGE` 指向你信任的镜像代理地址（默认是官方镜像）。
+
 ## 3. 启动（二选一）
 
 **A. 保留现有数据升级（推荐）**：数据库迁移 0022 会自动执行，原有 SUT、需求、用例、执行记录都还在。

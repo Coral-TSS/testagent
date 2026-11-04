@@ -25,6 +25,11 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 
 - `DEBIAN_MIRROR` defaults to empty (the image's own `deb.debian.org` sources are kept unchanged).
+- Faster image builds: BuildKit cache mounts for apt, uv and npm downloads (a changed lock file only
+  fetches the difference), the image is built once for `testagent` and reused by `demo`, and only
+  Playwright's headless Chromium shell is installed (`PLAYWRIGHT_ONLY_SHELL=0` restores the full build).
+  The image shrinks from about 1.8 GB to 1.1 GB. Base images are configurable (`PYTHON_IMAGE`,
+  `NODE_IMAGE`). Building now requires BuildKit (`docker buildx`).
 
 ### Removed
 

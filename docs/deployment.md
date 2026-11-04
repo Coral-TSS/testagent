@@ -104,6 +104,7 @@ Set them in `.env` (Compose substitutes them) or in `docker-compose.yml`.
 | `DEBIAN_MIRROR` | empty (`deb.debian.org`) | Debian mirror host used while building the image (see [Package mirrors](#package-mirrors-for-the-build)) |
 | `PIP_INDEX_URL` / `NPM_REGISTRY` / `PLAYWRIGHT_DOWNLOAD_HOST` | empty | Python index, npm registry and Chromium download host used while building the image |
 | `UV_IMAGE` | `ghcr.io/astral-sh/uv:0.13` | Image the `uv` binary is copied from |
+| `PYTHON_IMAGE` / `NODE_IMAGE` | `python:3.12-slim-bookworm` / `node:22-bookworm-slim` | Base images (for a registry proxy) |
 
 Platform settings available in all modes (prefix `TESTAGENT_`): `DATABASE_URL`, `TEST_DATABASE_URL`,
 `RUNTIME_DIR`, `HOST`, `PORT`, `ADMIN_USER`, `ADMIN_PASSWORD`, `ALLOWED_HOSTS`, `DEMO_URL`, `TIMEZONE`,
@@ -141,6 +142,12 @@ Python and npm packages are still verified against the hashes in `uv.lock` and
 and the `uv` binary from `ghcr.io`; if pulling them is slow, configure a registry mirror for the
 Docker daemon (`"registry-mirrors"` in `/etc/docker/daemon.json`, then `systemctl restart docker`),
 and if needed point `UV_IMAGE` at a proxy of `ghcr.io/astral-sh/uv:0.13`.
+
+The build needs BuildKit (`docker buildx version`). Downloads are kept in BuildKit cache mounts, so
+later builds only fetch what changed and a code-only change rebuilds in seconds; avoid
+`docker builder prune` unless you need the disk space. Only Playwright's headless Chromium shell is
+installed; build with `PLAYWRIGHT_ONLY_SHELL=0` for the full Chromium build. Per-step timing:
+`docker compose build --progress=plain`.
 
 ### Data and volumes
 
