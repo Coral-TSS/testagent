@@ -80,6 +80,14 @@ class AcceptIn(_In):
     forward_api_name: str | None = Field(default=None, max_length=100)
     reverse_api_name: str | None = Field(default=None, max_length=100)
     cardinality: Literal["one_to_one", "many_to_one", "one_to_many", "many_to_many"] | None = None
+    # an AI inference without a source needs the person's reason (#6, 5+ characters)
+    note: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None = None
+
+
+class AcceptBatchIn(_In):
+    ids: list[UUID] = Field(min_length=1, max_length=500)
+    include_ai_inferred: bool = False
+    note: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None = None
 
 
 class RejectIn(_In):
@@ -206,6 +214,13 @@ def list_suggestions(request: Request, sut_id: UUID, status: Literal["pending", 
 def accept_suggestion(request: Request, sugg_id: UUID, body: AcceptIn):
     service = SuggestionService(request.app.state.db, request.app.state.bus)
     return service.accept(sugg_id, body.model_dump(exclude_none=True))
+
+
+@router.post("/suts/{sut_id}/suggestions/accept-batch")
+def accept_suggestions(request: Request, sut_id: UUID, body: AcceptBatchIn):
+    """#6: accept the chosen suggestions; AI inferences are skipped unless included (with a note)."""
+    service = SuggestionService(request.app.state.db, request.app.state.bus)
+    return service.accept_batch(sut_id, body.ids, include_ai_inferred=body.include_ai_inferred, note=body.note)
 
 
 @router.post("/suggestions/{sugg_id}/reject")

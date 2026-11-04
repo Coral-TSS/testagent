@@ -22,6 +22,7 @@ from testagent.services.openapi_import import (
 )
 
 V1 = "/api/v1"
+NOTE = {"note": "Confirmed with the product owner"}  # accepting an AI inference (#6)
 ORDER_INPUTS = ["amount_minor", "currency", "title", "supplier_id"]  # + supplier, title
 
 
@@ -331,7 +332,7 @@ def test_complete_model_io_suggestion_accept_merges(client, world):
     assert sugg["kind"] == "io" and sugg["payload"]["node_name"] == "Approve purchase order"
     approved = sugg["payload"]["inputs"][1]
     assert "attribute_id" not in approved and "PurchaseOrder.approved" in approved["description"]
-    accepted = client.post(f"{V1}/suggestions/{sugg['id']}/accept", json={})
+    accepted = client.post(f"{V1}/suggestions/{sugg['id']}/accept", json=NOTE)
     assert accepted.status_code == 200, accepted.text
     node = client.get(f"{V1}/nodes/{world['approve']}").json()
     assert node["description"].startswith("The approver")

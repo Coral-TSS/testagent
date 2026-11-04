@@ -22,6 +22,7 @@ from testagent.seed import seed_procurement
 pytestmark = pytest.mark.skipif(not browser_available(), reason="playwright chromium not installed")
 
 V1 = "/api/v1"
+NOTE = {"note": "Confirmed with the product owner"}  # accepting an AI inference (#6)
 
 
 def use_model(client, *script):
@@ -160,7 +161,7 @@ def test_main_chain(client, db, demo_app):
     )
     completion = ok(client.post(f"{V1}/suts/{sut}/model/complete", json={}))
     (sugg,) = completion["suggestions"]
-    ok(client.post(f"{V1}/suggestions/{sugg['id']}/accept", json={}))
+    ok(client.post(f"{V1}/suggestions/{sugg['id']}/accept", json=NOTE))
     order = ok(client.get(f"{V1}/nodes/{nodes['PurchaseOrder']}"))
     assert {"text": "An amount of 50,000.00 or more needs approval"} in order["attributes"]["constraints"]
 

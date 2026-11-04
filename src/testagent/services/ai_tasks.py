@@ -19,7 +19,7 @@ from testagent.services.changelog import log_change
 from testagent.services.io_spec import DataType, IoParam
 from testagent.services.model import find_similar_node
 from testagent.services.requirements import PARTS, RequirementService
-from testagent.services.suggestions import SuggestionService
+from testagent.services.suggestions import Dropped, SuggestionService, _norm
 
 Part = Literal["actor", "condition", "action", "result", "constraint"]
 Text = Annotated[str, Field(min_length=1, max_length=2000)]
@@ -29,7 +29,12 @@ class NodeSuggestion(BaseModel):
     kind: Literal["node"] = "node"
     node_kind: Literal["entity", "action"]
     name: Text
-    description: str | None = Field(default=None, description="for an action: what it does")
+    description: str | None = Field(default=None, description="for an action: what it does (required, 5+ characters)")
+    api: str | None = Field(
+        default=None,
+        max_length=300,
+        description="for an action: the API it corresponds to as 'METHOD /path' (one not yet bound to an action)",
+    )
     inputs: list[IoParam] = Field(default_factory=list, description="action inputs")
     outputs: list[IoParam] = Field(default_factory=list, description="action outputs")
     input_format: str | None = Field(default=None, max_length=500)
@@ -37,6 +42,11 @@ class NodeSuggestion(BaseModel):
     requirement_id: UUID | None = None
     part: Part | None = None
     reason: str | None = None
+    evidence: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="quote of the requirement text this is based on (verbatim); leave empty when there is none",
+    )
 
 
 class AttributeSuggestion(BaseModel):
@@ -48,6 +58,11 @@ class AttributeSuggestion(BaseModel):
     requirement_id: UUID | None = None
     part: Part | None = None
     reason: str | None = None
+    evidence: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="quote of the requirement text this is based on (verbatim); leave empty when there is none",
+    )
 
 
 class FieldSuggestion(BaseModel):
@@ -71,6 +86,11 @@ class FieldSuggestion(BaseModel):
     requirement_id: UUID | None = None
     part: Part | None = None
     reason: str | None = None
+    evidence: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="quote of the requirement text this is based on (verbatim); leave empty when there is none",
+    )
 
 
 class IoSuggestion(BaseModel):
@@ -87,6 +107,11 @@ class IoSuggestion(BaseModel):
     requirement_id: UUID | None = None
     part: Part | None = None
     reason: str | None = None
+    evidence: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="quote of the requirement text this is based on (verbatim); leave empty when there is none",
+    )
 
 
 class LinkSuggestion(BaseModel):
@@ -113,6 +138,11 @@ class LinkSuggestion(BaseModel):
     requirement_id: UUID | None = None
     part: Part | None = None
     reason: str | None = None
+    evidence: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="quote of the requirement text this is based on (verbatim); leave empty when there is none",
+    )
 
 
 class RulesSuggestion(BaseModel):
@@ -125,6 +155,11 @@ class RulesSuggestion(BaseModel):
     requirement_id: UUID | None = None
     part: Part | None = None
     reason: str | None = None
+    evidence: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="quote of the requirement text this is based on (verbatim); leave empty when there is none",
+    )
 
 
 Suggestion = Annotated[
@@ -397,12 +432,28 @@ def build_entries(db) -> list[Entry]:
                 "with description (what the action does), inputs, outputs (name, display_name, "
                 "data_type, required, format, field = Entity.field when it maps to an entity field) "
                 "and input_format/output_format; use the linked API's schema (get_api_schema). "
-                + FIELD_NAMES
-                + LINKS_AND_RULES
+                "Only propose what the requirement text supports: set requirement_id and quote the "
+                "supporting words of that requirement verbatim in evidence; leave out what has no "
+                "basis in a requirement. A new action needs a description (what it does) and must "
+                "match an API not yet bound to an action (set api = 'METHOD /path', see list_apis) or "
+                "an operation the requirement states explicitly; the APIs already bound to actions "
+                "are in `model`. " + FIELD_NAMES + LINKS_AND_RULES
             ),
             validate=validate_complete,
         ),
     ]
+
+
+def requirement_source(cur, requirement_id, evidence) -> str:
+    """#6: 'requirement' only when the quoted evidence really is in that requirement's text."""
+    quote = _norm(evidence or "").strip(" .,;:\"'“”‘’。，；：")
+    if not requirement_id or len(quote) < 4:
+        return "ai_inferred"
+    cur.execute("SELECT title, raw_text FROM requirement WHERE id=%s", (str(requirement_id),))
+    req = cur.fetchone()
+    if req is None:
+        return "ai_inferred"
+    return "requirement" if quote in _norm(f"{req['title'] or ''} {req['raw_text'] or ''}") else "ai_inferred"
 
 
 class AiTaskService:
@@ -467,11 +518,17 @@ class AiTaskService:
             structure[item.part].append(entry)
             if node_id is None and attr_id is None and not item.link_id and sugg is not None:
                 data = sugg.model_dump(mode="json")
-                data.update(requirement_id=str(req_id), part=item.part, source_text=item.text)
+                data.update(
+                    requirement_id=str(req_id),
+                    part=item.part,
+                    source_text=item.text,
+                    source="requirement",
+                    evidence=item.text,
+                )
                 suggestions.append(data)
         for io in out.io_suggestions:
             data = io.model_dump(mode="json")
-            data.update(requirement_id=str(req_id))
+            data.update(requirement_id=str(req_id), source="requirement")
             suggestions.append(data)
         with self.db.tx() as cur:
             req = reqs._req(cur, req_id, editable=True, lock=True)
@@ -499,6 +556,18 @@ class AiTaskService:
             return result
         out = CompleteOut.model_validate(run["result"])
         items = [s.model_dump(mode="json") for s in out.suggestions]
+        dropped = Dropped()
         with self.db.tx() as cur:
-            created = SuggestionService(self.db, self.bus).add_many(cur, sut_id, items, agent_run_id=run["id"])
-        return {**result, "suggestions": created, "skipped": len(items) - len(created)}
+            for item in items:
+                item["source"] = requirement_source(cur, item.get("requirement_id"), item.get("evidence"))
+            created = SuggestionService(self.db, self.bus).add_many(
+                cur, sut_id, items, agent_run_id=run["id"], dropped=dropped, strict_nodes=True
+            )
+        return {
+            **result,
+            "suggestions": created,
+            # skipped: everything not created (dropped below, or already pending / in the model)
+            "skipped": len(items) - len(created),
+            "dropped": dropped.counts,
+            "dropped_notes": dropped.notes,
+        }

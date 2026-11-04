@@ -460,6 +460,8 @@ def link_suggestions(cur, sut_id) -> list[dict]:
                 "cardinality": "many_to_one",
                 "fk_attribute_id": str(f["id"]),
                 "fk_field": f"{f['node_name']}.{f['name']}",
+                "source": "model_rule",
+                "evidence": f"foreign-key field {f['node_name']}.{f['name']}",
                 "reason": why
                 + "; suggest a many-to-one link, please confirm the names on both sides (preposition/verb)",
             }

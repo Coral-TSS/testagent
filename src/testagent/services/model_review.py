@@ -245,6 +245,11 @@ class ModelReviewService:
             (sut_id,),
         )
         by_kind = {r["kind"]: r["n"] for r in cur.fetchall()}
+        cur.execute(
+            "SELECT source, count(*) AS n FROM model_suggestion WHERE sut_id=%s AND status='pending' GROUP BY source",
+            (sut_id,),
+        )
+        by_source = {r["source"]: r["n"] for r in cur.fetchall()}
         everything = entities + link_items + actions
         marked = [e["mark"] for e in everything if e["mark"] and e["mark"]["reviewed"]]
         return {
@@ -267,6 +272,7 @@ class ModelReviewService:
                 "pending_suggestions": sum(by_kind.values()),
             },
             "pending_by_kind": by_kind,
+            "pending_by_source": by_source,
             "entities": entities,
             "links": link_items,
             "actions": actions,

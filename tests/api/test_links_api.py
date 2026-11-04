@@ -14,6 +14,7 @@ from testagent.services.links import link_suggestions, link_text, migrate_relati
 from testagent.services.model import ModelService
 
 V1 = "/api/v1"
+NOTE = {"note": "Confirmed with the product owner"}  # accepting an AI inference (#6)
 
 
 def use_model(client, *script):
@@ -360,7 +361,7 @@ def test_ai_suggests_links_and_action_rules(client, world):
     kinds = sorted(s["kind"] for s in out["suggestions"])
     assert kinds == ["link", "rules"]
     for sugg in out["suggestions"]:
-        resp = client.post(f"{V1}/suggestions/{sugg['id']}/accept", json={})
+        resp = client.post(f"{V1}/suggestions/{sugg['id']}/accept", json=NOTE)
         assert resp.status_code == 200, resp.text
     node = client.get(f"{V1}/nodes/{ids['Approve purchase order']}").json()
     assert node["preconditions"][0]["field"] == "PurchaseOrder.state"

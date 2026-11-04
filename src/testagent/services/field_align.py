@@ -97,6 +97,8 @@ def field_suggestions(cur, sut_id) -> list[dict]:
                 "format": param.get("format"),
                 "enum_values": param.get("enum_values") or [],
                 "description": param.get("description"),
+                "source": "openapi",
+                "evidence": f"{source}: {name}",
             }
             if len(cands) == 1 and len(rival) == 1:
                 old = cands[0]

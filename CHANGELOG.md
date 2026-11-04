@@ -43,6 +43,17 @@ All notable changes to this project are documented here. The format follows
     "Run tasks" step opens the same dialog.
   - Reports and run pages count failures by suspected cause and list cases skipped for a missing script
     (`skipped_no_script` in the summary); the pass-rate note says how many skipped cases had no script.
+- Model suggestions show where they come from: **Requirement** (with the quoted text), **OpenAPI**
+  (the API field), **Model rule** (the foreign-key field) or **AI inferred**. An AI completion only
+  counts as from a requirement when the quote it gives really is in that requirement. **Accept
+  selected** accepts many suggestions at once (`POST /suts/{id}/suggestions/accept-batch`); AI inferences
+  and links are not pre-selected, and accepting an AI inference asks why it is right (kept in the change
+  log). The model review shows how many pending suggestions are AI inferences.
+- AI model completion no longer proposes duplicates: a new action for an API that an action is already
+  bound to, the same node twice in one batch, a node similar to one already pending or one a person
+  rejected, and actions without a description are left out, with the counts shown after the run. An
+  action suggestion may name its API, which is bound when it is accepted; a suggestion close to an
+  existing node is marked "possible duplicate".
 
 ### Changed
 
@@ -56,6 +67,7 @@ All notable changes to this project are documented here. The format follows
   `no_script`) instead of `error`, so it no longer lowers the pass rate as an error.
 - The needs-fix note of AI automation is now the readable one-line failure summary; the raw output is
   kept with the case (`automation_failure.raw`).
+- Accepting a model suggestion inferred by the AI without a source needs a note (`note`, 5+ characters).
 
 ### Fixed
 

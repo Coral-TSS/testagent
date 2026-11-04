@@ -10,6 +10,7 @@ from testagent.services.requirements import RequirementService
 from testagent.services.versions import VersionService
 
 V1 = "/api/v1"
+NOTE = {"note": "Confirmed with the product owner"}  # accepting an AI inference (#6)
 
 
 @pytest.fixture
@@ -366,13 +367,19 @@ def test_accept_creates_node_and_backfills_link(client, world):
         world,
         {"kind": "attribute", "node_id": world["order"], "attr": "states", "text": "paid"},
     )["suggestions"][0]
-    client.post(f"{V1}/suggestions/{attr['id']}/accept", json={})
+    assert attr["source"] == "ai_inferred"  # no requirement quoted (#6)
+    refused = client.post(f"{V1}/suggestions/{attr['id']}/accept", json={})
+    assert refused.status_code == 422 and refused.json()["field_errors"][0]["field"] == "note"
+    assert client.post(f"{V1}/suggestions/{attr['id']}/accept", json={"note": "ok"}).status_code == 422
+    client.post(f"{V1}/suggestions/{attr['id']}/accept", json=NOTE)
     order = client.get(f"{V1}/nodes/{world['order']}").json()
     assert order["attributes"]["states"] == [{"text": "paid"}]
 
 
 def test_reject_keeps_record(client, world):
-    sugg = _complete(client, world, {"kind": "node", "node_kind": "action", "name": "Undo"})["suggestions"][0]
+    sugg = _complete(
+        client, world, {"kind": "node", "node_kind": "action", "name": "Undo", "description": "Undo the last change"}
+    )["suggestions"][0]
     rejected = client.post(f"{V1}/suggestions/{sugg['id']}/reject", json={"reason": "Won't do"}).json()
     assert rejected["status"] == "rejected" and rejected["reason"] == "Won't do"
     rows = client.get(f"{V1}/suts/{world['sut']}/suggestions").json()

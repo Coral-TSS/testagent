@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from psycopg.types.json import Jsonb
 
 from testagent.core.actor import current_actor
@@ -16,6 +18,52 @@ from testagent.services.model import ModelService, find_similar_node, normalize_
 
 def _norm(text: str) -> str:
     return " ".join(str(text).split()).lower()
+
+
+SOURCES = ("requirement", "openapi", "model_rule", "ai_inferred")
+DROP_REASONS = ("duplicate_node", "duplicate_api", "duplicate_in_batch", "previously_rejected", "invalid")
+_WORD = re.compile(r"[a-z0-9]+|[\u4e00-\u9fff]")
+
+
+def _tokens(name: str) -> set[str]:
+    return set(_WORD.findall(re.sub(r"\(.*?\)", " ", str(name or "")).lower()))
+
+
+def loosely_similar(a: str, b: str) -> bool:
+    """Half the words / characters in common (shown as "possible duplicate", never dropped)."""
+    ta, tb = _tokens(a), _tokens(b)
+    if not ta or not tb:
+        return False
+    return len(ta & tb) / len(ta | tb) >= 0.5
+
+
+def _names_match(a: str, b: str) -> bool:
+    """The rule of find_similar_node: same normalized name, or one contains the other."""
+    x, y = normalize_name(a), normalize_name(b)
+    if len(x) < 2 or len(y) < 2:
+        return False
+    return x == y or x in y or y in x
+
+
+def parse_api(text: str | None) -> tuple[str, str] | None:
+    """'POST /sample/orders' → ('POST', '/sample/orders')."""
+    parts = str(text or "").split()
+    if len(parts) != 2 or not parts[1].startswith("/"):
+        return None
+    return parts[0].upper(), parts[1]
+
+
+class Dropped:
+    """What add_many left out and why (#4), returned to the person who asked for the completion."""
+
+    def __init__(self):
+        self.counts = dict.fromkeys(DROP_REASONS, 0)
+        self.notes: list[str] = []
+
+    def add(self, reason: str, note: str | None = None) -> None:
+        self.counts[reason] += 1
+        if note:
+            self.notes.append(note)
 
 
 def dedup_key(payload: dict) -> str:
@@ -56,12 +104,34 @@ class SuggestionService:
         self.bus = bus
         self.actor = actor or current_actor()
 
-    def add_many(self, cur, sut_id, items: list[dict], *, agent_run_id=None) -> list[dict]:
-        """Insert suggestions, skipping ones already pending or already present in the model."""
+    def add_many(
+        self,
+        cur,
+        sut_id,
+        items: list[dict],
+        *,
+        agent_run_id=None,
+        source: str | None = None,
+        dropped: Dropped | None = None,
+        strict_nodes: bool = False,
+    ) -> list[dict]:
+        """Insert suggestions, skipping ones already pending or already present in the model.
+
+        `source` (#6) is where the suggestion comes from (an item may carry its own `source` /
+        `evidence`); without one: requirement when it names a requirement, else ai_inferred.
+        New nodes (#4) are also dropped when they repeat one of the same batch, an action already
+        bound to the same API, or a similar suggestion that a person rejected; with `strict_nodes`
+        a name needs 2+ characters and an action a description of 5+ characters."""
         created = []
+        dropped = dropped if dropped is not None else Dropped()
+        seen: set = set()
         for item in items:
             payload = {k: (str(v) if k.endswith("_id") and v else v) for k, v in item.items()}
             requirement_id = payload.pop("requirement_id", None)
+            item_source = payload.pop("source", None) or source or ("requirement" if requirement_id else "ai_inferred")
+            evidence = (payload.pop("evidence", None) or "").strip() or None
+            if item_source not in SOURCES:
+                item_source = "ai_inferred"
             for key in ("inputs", "outputs"):  # bind Entity.field now; unknown refs become notes
                 if payload.get(key):
                     payload[key] = validate_params(cur, sut_id, payload[key], key, strict=False)
@@ -89,8 +159,8 @@ class SuggestionService:
                 if not (new_in or new_out or new_purpose):
                     continue  # nothing the action does not already describe
             elif payload["kind"] == "node":
-                if find_similar_node(cur, sut_id, payload["node_kind"], payload["name"]):
-                    continue  # 7(d): an equivalent node already exists
+                if not self._node_payload(cur, sut_id, payload, seen, dropped, strict_nodes):
+                    continue
             elif payload["kind"] == "field":
                 cur.execute(
                     "SELECT name FROM model_node WHERE id=%s AND deleted_at IS NULL",
@@ -136,7 +206,7 @@ class SuggestionService:
                     continue
             cur.execute(
                 "INSERT INTO model_suggestion(sut_id, requirement_id, agent_run_id, payload, kind,"
-                " dedup_key) VALUES (%s,%s,%s,%s,%s,%s)"
+                " dedup_key, source, evidence) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
                 " ON CONFLICT (sut_id, dedup_key) WHERE status='pending' DO NOTHING RETURNING *",
                 (
                     sut_id,
@@ -145,12 +215,72 @@ class SuggestionService:
                     Jsonb(payload),
                     payload["kind"],
                     dedup_key(payload),
+                    item_source,
+                    evidence,
                 ),
             )
             row = cur.fetchone()
             if row:
                 created.append(row)
         return created
+
+    @staticmethod
+    def _node_payload(cur, sut_id, payload: dict, seen: set, dropped: Dropped, strict: bool) -> bool:
+        """#4: False (and the reason in `dropped`) when a new node should not be suggested."""
+        kind, name = payload["node_kind"], str(payload.get("name") or "").strip()
+        payload["name"] = name
+        if strict and (len(name) < 2 or (kind == "action" and len(str(payload.get("description") or "").strip()) < 5)):
+            dropped.add("invalid", f"{name or '(no name)'}: a name and, for an action, what it does are required")
+            return False
+        if find_similar_node(cur, sut_id, kind, name):
+            dropped.add("duplicate_node")  # 7(d): an equivalent node already exists
+            return False
+        api = parse_api(payload.get("api")) if kind == "action" else None
+        if payload.get("api") and api is None:
+            payload.pop("api")
+        if api:
+            payload["api"] = f"{api[0]} {api[1]}"
+            cur.execute(
+                "SELECT a.id, (SELECT n.name FROM node_api_link l JOIN model_node n ON n.id=l.node_id"
+                "  WHERE l.api_id=a.id AND l.invalid_at IS NULL AND n.deleted_at IS NULL AND n.kind='action'"
+                " LIMIT 1) AS bound_to"
+                " FROM api_endpoint a WHERE a.sut_id=%s AND a.method=%s AND a.path=%s",
+                (sut_id, api[0], api[1]),
+            )
+            row = cur.fetchone()
+            if row and row["bound_to"]:
+                dropped.add("duplicate_api", f"{name}: action “{row['bound_to']}” is already bound to {payload['api']}")
+                return False
+            if row:
+                payload["api_id"] = str(row["id"])
+        key = (kind, normalize_name(name))
+        if key in seen or (api and (kind, payload["api"]) in seen):
+            dropped.add("duplicate_in_batch")
+            return False
+        cur.execute(
+            "SELECT status, payload->>'name' AS name FROM model_suggestion WHERE sut_id=%s AND kind='node'"
+            " AND status IN ('pending','rejected') AND payload->>'node_kind'=%s",
+            (sut_id, kind),
+        )
+        for prior in cur.fetchall():
+            if _names_match(prior["name"] or "", name):
+                if prior["status"] == "rejected":
+                    dropped.add("previously_rejected", f"{name}: a similar suggestion “{prior['name']}” was rejected")
+                    return False
+                if normalize_name(prior["name"] or "") != normalize_name(name):
+                    dropped.add("duplicate_node")  # a similar one is already waiting
+                    return False
+        seen.add(key)
+        if api:
+            seen.add((kind, payload["api"]))
+        cur.execute(
+            "SELECT name FROM model_node WHERE sut_id=%s AND kind=%s AND deleted_at IS NULL",
+            (sut_id, kind),
+        )
+        similar = next((r["name"] for r in cur.fetchall() if loosely_similar(r["name"], name)), None)
+        if similar:
+            payload["similar_to"] = similar
+        return True
 
     @staticmethod
     def _link_payload(cur, sut_id, payload: dict) -> bool:
@@ -236,6 +366,13 @@ class SuggestionService:
         model = ModelService(self.db, self.bus, self.actor)
         with self.db.tx() as cur:
             sugg = self._pending(cur, sugg_id)
+        note = str(overrides.get("note") or "").strip()
+        if sugg.get("source") == "ai_inferred" and len(note) < 5:
+            raise AppError(
+                "VALIDATION",
+                "This suggestion is an AI inference without a source: say why it is right (5+ characters)",
+                field_errors=[{"field": "note", "message": "at least 5 characters"}],
+            )
         payload = sugg["payload"]
         field = None
         link = None
@@ -293,6 +430,17 @@ class SuggestionService:
                         if payload.get(key):
                             data[key] = payload[key]
                 node = model.create_node(sugg["sut_id"], data)
+                if payload["node_kind"] == "action" and payload.get("api_id"):
+                    from testagent.services.apis import ApiService
+
+                    with self.db.tx() as cur:
+                        cur.execute(
+                            "SELECT 1 FROM node_api_link WHERE api_id=%s AND invalid_at IS NULL",
+                            (payload["api_id"],),
+                        )
+                        free = cur.fetchone() is None
+                    if free:  # the API the suggestion named, still not bound to an action
+                        ApiService(self.db, self.bus).set_node_apis(node["id"], [payload["api_id"]])
         elif sugg["kind"] == "field" and payload.get("rename_attribute_id"):
             # entity fields follow the API names: rename in place, links are kept
             data = {
@@ -350,7 +498,14 @@ class SuggestionService:
                 (node["id"], self.actor, Jsonb(payload), sugg_id),
             )
             row = cur.fetchone()
-            log_change(cur, "model_suggestion", sugg_id, "accept", self.actor, {"node_id": node["id"]})
+            log_change(
+                cur,
+                "model_suggestion",
+                sugg_id,
+                "accept",
+                self.actor,
+                {"node_id": node["id"], "source": sugg.get("source"), **({"note": note} if note else {})},
+            )
         self.bus.publish("model_suggestion.accepted", {"id": str(sugg_id)})
         return {**row, "backfilled": backfilled}
 
@@ -397,6 +552,41 @@ class SuggestionService:
             )
         cur.execute("UPDATE requirement SET structured=%s WHERE id=%s", (Jsonb(structured), requirement_id))
         return True
+
+    def accept_batch(self, sut_id, ids: list, *, include_ai_inferred: bool = False, note: str | None = None) -> dict:
+        """#6: accept many at once. AI inferences only when asked (with one note for all); links
+        are left for a person to confirm the names of both sides."""
+        ensure_human(self.actor, "Accept model suggestions")
+        note = (note or "").strip()
+        if include_ai_inferred and len(note) < 5:
+            raise AppError(
+                "VALIDATION",
+                "Accepting AI inferences needs a note on why they are right (5+ characters)",
+                field_errors=[{"field": "note", "message": "at least 5 characters"}],
+            )
+        accepted, skipped = [], []
+        for sugg_id in dict.fromkeys(str(i) for i in ids):
+            with self.db.tx() as cur:
+                cur.execute("SELECT id, sut_id, status, source, kind FROM model_suggestion WHERE id=%s", (sugg_id,))
+                row = cur.fetchone()
+            reason = None
+            if row is None or str(row["sut_id"]) != str(sut_id):
+                reason = ("not_found", "Suggestion not found")
+            elif row["status"] != "pending":
+                reason = ("handled", "Already handled")
+            elif row["source"] == "ai_inferred" and not include_ai_inferred:
+                reason = ("ai_inferred", "AI inference without a source: accept it on its own with a note")
+            elif row["kind"] == "link":
+                reason = ("needs_review", "Confirm the names of both sides of the link on its own")
+            if reason:
+                skipped.append({"id": sugg_id, "reason": reason[0], "message": reason[1]})
+                continue
+            try:
+                self.accept(sugg_id, {"note": note} if row["source"] == "ai_inferred" else {})
+                accepted.append(sugg_id)
+            except AppError as exc:
+                skipped.append({"id": sugg_id, "reason": exc.code.lower(), "message": exc.message})
+        return {"accepted": accepted, "skipped": skipped}
 
     def reject(self, sugg_id, reason: str | None = None) -> dict:
         ensure_human(self.actor, "Reject model suggestion")

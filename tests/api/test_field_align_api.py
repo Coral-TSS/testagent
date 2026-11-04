@@ -12,6 +12,7 @@ from testagent.services.model import ModelService
 from testagent.services.openapi_import import OpenApiImportService
 
 V1 = "/api/v1"
+NOTE = {"note": "Confirmed with the product owner"}  # accepting an AI inference (#6)
 
 
 def use_model(client, *script):
@@ -160,6 +161,6 @@ def test_ai_field_rename_suggestion(client, world):
     assert any("rename_from price" in str(m) for m in fake.seen[-1])
     sugg = out["suggestions"][0]
     assert sugg["payload"]["rename_attribute_id"] == world["fields"]["amount"]["id"]
-    assert client.post(f"{V1}/suggestions/{sugg['id']}/accept", json={}).status_code == 200
+    assert client.post(f"{V1}/suggestions/{sugg['id']}/accept", json=NOTE).status_code == 200
     names = [f["name"] for f in client.get(f"{V1}/nodes/{world['order']}/fields").json()]
     assert names == ["id", "amount_minor", "status"]
