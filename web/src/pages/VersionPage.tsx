@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
-import type { AiOutcome, Requirement, Suggestion, Version } from "../api/types";
+import type { CompletionOutcome, Requirement, Suggestion, Version } from "../api/types";
 import { AgentRunDrawer } from "../components/AgentRunDrawer";
 import { CaseList } from "../components/CaseList";
 import { BatchBar } from "../components/BatchBar";
@@ -15,7 +15,7 @@ import { RequirementDrawer } from "../components/RequirementDrawer";
 import { RequirementStatusTag, VersionStatusTag } from "../components/StatusTags";
 import { StrategyTab } from "../components/StrategyTab";
 import { RunTasksModal } from "../components/RunTasksModal";
-import { SuggestionList } from "../components/SuggestionList";
+import { SuggestionList, completionNote } from "../components/SuggestionList";
 import { fmtTime } from "../utils/time";
 
 const ROLE: Record<string, string> = { owner: "Owner", developer: "Developer", tester: "Tester" };
@@ -26,7 +26,7 @@ export function VersionPage() {
   const [params, setParams] = useSearchParams();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { modal } = App.useApp();
+  const { modal, message } = App.useApp();
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
   const [unfreezeReason, setUnfreezeReason] = useState<string | null>(null);
@@ -79,9 +79,13 @@ export function VersionPage() {
     onSuccess: refreshVersion,
     success: "Status updated",
   });
-  const complete = useApiMutation(() => api<AiOutcome>(`/suts/${sutId}/model/complete`, { method: "POST", body: { version_id: versionId } }), {
+  const complete = useApiMutation(() => api<CompletionOutcome>(`/suts/${sutId}/model/complete`, { method: "POST", body: { version_id: versionId } }), {
     invalidate: [["suggestions", sutId]],
-    onSuccess: (out) => setParam("run", out.agent_run_id),
+    onSuccess: (out) => {
+      const note = completionNote(out);
+      if (note) message.info(note, 8);
+      setParam("run", out.agent_run_id);
+    },
   });
 
   const versionReport = useApiMutation(() => api<{ id: string }>(`/versions/${versionId}/report`, { method: "POST" }), {

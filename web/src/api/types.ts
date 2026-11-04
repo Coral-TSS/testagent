@@ -298,6 +298,10 @@ export interface SuggestionPayload {
   enum_values?: string[];
   /** field suggestion: rename this existing field to `name` (API name is canonical) */
   rename_from?: string | null;
+  /** #4: action suggestion naming its API ("METHOD /path") */
+  api?: string | null;
+  /** #4: an existing node with a similar name (possible duplicate) */
+  similar_to?: string | null;
   inputs?: IoParam[];
   outputs?: IoParam[];
   input_format?: string | null;
@@ -328,6 +332,20 @@ export interface Suggestion {
   requirement_code?: string | null;
   reason?: string | null;
   agent_run_id?: string | null;
+  /** #6: where it comes from; AI inferences are not pre-selected and need a note to accept */
+  source?: SuggestionSource;
+  evidence?: string | null;
+}
+export type SuggestionSource = "requirement" | "openapi" | "model_rule" | "ai_inferred";
+export interface CompletionOutcome extends AiOutcome {
+  suggestions?: Suggestion[];
+  skipped?: number;
+  dropped?: Partial<Record<"duplicate_node" | "duplicate_api" | "duplicate_in_batch" | "previously_rejected" | "invalid", number>>;
+  dropped_notes?: string[];
+}
+export interface AcceptBatchResult {
+  accepted: string[];
+  skipped: { id: string; reason: string; message: string }[];
 }
 export interface Requirement {
   id: string;
@@ -1175,6 +1193,8 @@ export interface ModelReview {
     pending_suggestions: number;
   };
   pending_by_kind: Record<string, number>;
+  /** #6: pending suggestions by source (requirement / openapi / model_rule / ai_inferred) */
+  pending_by_source?: Partial<Record<SuggestionSource, number>>;
   entities: ReviewEntity[];
   links: ReviewLink[];
   actions: ReviewAction[];

@@ -128,7 +128,17 @@ export function ModelReviewPage() {
           </div>
           <Statistic title="Changed since review" value={s.stale} styles={{ content: { color: s.stale ? "#cf1322" : undefined } }} />
           <Statistic title="Not covered" value={s.uncovered} styles={{ content: { color: s.uncovered ? "#d46b08" : undefined } }} />
-          <Statistic title="Pending model suggestions" value={s.pending_suggestions} />
+          <Statistic
+            title="Pending model suggestions"
+            value={s.pending_suggestions}
+            suffix={
+              r.pending_by_source?.ai_inferred ? (
+                <Typography.Text type="warning" style={{ fontSize: 12 }} data-testid="pending-ai">
+                  {r.pending_by_source.ai_inferred} AI inferred
+                </Typography.Text>
+              ) : undefined
+            }
+          />
         </Space>
         <div style={{ marginTop: 12 }}>
           <Segmented<Filter>

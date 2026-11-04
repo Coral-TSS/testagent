@@ -4248,6 +4248,55 @@
     }
    }
   },
+  "/api/v1/suts/{sut_id}/suggestions/accept-batch": {
+   "post": {
+    "summary": "Accept Suggestions",
+    "description": "#6: accept the chosen suggestions; AI inferences are skipped unless included (with a note).",
+    "operationId": "accept_suggestions_api_v1_suts__sut_id__suggestions_accept_batch_post",
+    "parameters": [
+     {
+      "name": "sut_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Sut Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AcceptBatchIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/suggestions/{sugg_id}/reject": {
    "post": {
     "summary": "Reject Suggestion",
@@ -8136,6 +8185,43 @@
  },
  "components": {
   "schemas": {
+   "AcceptBatchIn": {
+    "properties": {
+     "ids": {
+      "items": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "type": "array",
+      "maxItems": 500,
+      "minItems": 1,
+      "title": "Ids"
+     },
+     "include_ai_inferred": {
+      "type": "boolean",
+      "title": "Include Ai Inferred",
+      "default": false
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "ids"
+    ],
+    "title": "AcceptBatchIn"
+   },
    "ApiIn": {
     "properties": {
      "method": {
@@ -12800,6 +12886,18 @@
        }
       ],
       "title": "Cardinality"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 500
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
      }
     },
     "additionalProperties": false,

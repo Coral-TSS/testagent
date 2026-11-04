@@ -1294,6 +1294,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/suts/{sut_id}/suggestions/accept-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Suggestions
+         * @description #6: accept the chosen suggestions; AI inferences are skipped unless included (with a note).
+         */
+        post: operations["accept_suggestions_api_v1_suts__sut_id__suggestions_accept_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/suggestions/{sugg_id}/reject": {
         parameters: {
             query?: never;
@@ -2572,6 +2592,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptBatchIn */
+        AcceptBatchIn: {
+            /** Ids */
+            ids: string[];
+            /**
+             * Include Ai Inferred
+             * @default false
+             */
+            include_ai_inferred: boolean;
+            /** Note */
+            note?: string | null;
+        };
         /** ApiIn */
         ApiIn: {
             /**
@@ -3796,6 +3828,8 @@ export interface components {
             reverse_api_name?: string | null;
             /** Cardinality */
             cardinality?: ("one_to_one" | "many_to_one" | "one_to_many" | "many_to_many") | null;
+            /** Note */
+            note?: string | null;
         };
         /** CompleteIn */
         testagent__api__requirements__CompleteIn: {
@@ -7054,6 +7088,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["testagent__api__requirements__AcceptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_suggestions_api_v1_suts__sut_id__suggestions_accept_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sut_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptBatchIn"];
             };
         };
         responses: {
