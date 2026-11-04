@@ -94,6 +94,8 @@ def test_alignment_proposes_renames_and_missing_fields(client, db, world):
 def test_accepting_a_rename_keeps_requirement_and_case_links(client, db, world):
     created = suggest_alignment(db, client.app.state.bus, world["sut"])
     by_name = {s["payload"]["name"]: s for s in created}
+    # #6: from the OpenAPI schema, so accepted without a note
+    assert by_name["amount_minor"]["source"] == "openapi" and "amount_minor" in by_name["amount_minor"]["evidence"]
     resp = client.post(f"{V1}/suggestions/{by_name['amount_minor']['id']}/accept", json={})
     assert resp.status_code == 200, resp.text
     field = client.get(f"{V1}/fields/{world['fields']['amount']['id']}").json()

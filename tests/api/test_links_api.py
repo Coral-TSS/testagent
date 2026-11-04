@@ -258,6 +258,7 @@ def test_links_are_suggested_from_reference_and_resource_fields(client, db, worl
     assert out["created"] == 0  # already pending from the field creation
     pending = client.get(f"{V1}/suts/{sut}/suggestions", params={"status": "pending"}).json()
     sugg = next(s for s in pending if s["payload"].get("fk_field") == "Payment.order_id")
+    assert (sugg["source"], sugg["evidence"]) == ("model_rule", "foreign-key field Payment.order_id")  # #6
     accepted = client.post(
         f"{V1}/suggestions/{sugg['id']}/accept",
         json={"forward_name": "pays", "reverse_name": "receives"},
