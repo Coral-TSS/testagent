@@ -137,6 +137,7 @@ curl -s https://<服务器公网IP>/api/v1/health      # {"status":"ok",...}
 |---|---|
 | 打不开 `https://<IP>` | 确认安全组入方向 TCP 443 已放行 `0.0.0.0/0`；`docker compose ps proxy`；`docker compose logs proxy` |
 | 日志里证书申请失败（challenge failed / timeout） | 多半是 443 没对外开放，或服务器不能出网。临时改用自签名证书：`.env` 里设 `TESTAGENT_TLS=internal`，`docker compose up -d`；浏览器会提示“不安全”，点“继续访问”，或导入根证书：`docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt ./caddy-root.crt`，在 Windows 里导入“受信任的根证书颁发机构” |
+| proxy 日志反复 `will retry`，错误里是 `acme-staging-v02.api.letsencrypt.org` + `connection reset by peer` | 旧版 Caddy 配置在失败重试时会先去 Let's Encrypt **测试环境（staging）**，国内经常连不上。新版已固定只用正式环境：`git pull` 后 `docker compose up -d --force-recreate proxy`，不用清 `caddy-data`。之后每次重试间隔会逐步变长（1 分钟起），可以 `docker compose restart proxy` 立即重试。正式环境也连不上时，临时用 `TESTAGENT_TLS=internal` |
 | 登录页显示 “No account yet” | `.env` 里管理员变量没生效：检查拼写后 `docker compose up -d`，或 `docker compose exec testagent testagent user add <管理员用户名> --admin` |
 | 忘记密码 / 账号被锁（连续 5 次输错锁 15 分钟） | `docker compose exec testagent testagent user passwd <用户名>`（同时解锁）或 `... user unlock <用户名>` |
 | 构建很慢 / 卡在某一步很久 | 按第 2 步“国内镜像源”在 `.env` 里配镜像后重新 `docker compose up -d --build`；看具体卡在哪：`docker compose build --progress=plain testagent` |

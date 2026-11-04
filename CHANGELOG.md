@@ -33,6 +33,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Public HTTPS (`TESTAGENT_TLS=acme`): the Caddy issuer uses Let's Encrypt production explicitly, also
+  for retries. Before, a failed first attempt was retried against the staging CA, which is often
+  unreachable from mainland China, so the certificate was never issued.
 - `DEBIAN_MIRROR` now also replaces `security.debian.org` and works with the classic `sources.list`
   format; apt retries with 30 s timeouts instead of hanging, and the build log prints the apt sources,
   npm registry and Python index actually used.

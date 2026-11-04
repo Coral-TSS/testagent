@@ -13,6 +13,11 @@
 (tls_acme) {
 	tls {
 		issuer acme {
+			# production Let's Encrypt explicitly, and the same URL as "test" CA: by default Caddy
+			# retries a failed order against the staging CA first, which is often unreachable from
+			# mainland China ("connection reset") and blocks issuance. Same URL = no staging detour.
+			dir https://acme-v02.api.letsencrypt.org/directory
+			test_dir https://acme-v02.api.letsencrypt.org/directory
 			profile shortlived
 			disable_http_challenge
 		}
