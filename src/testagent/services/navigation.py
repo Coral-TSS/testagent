@@ -154,6 +154,7 @@ RUN_TEXT = {
     "queued": "Queued",
     "running": "Running",
     "passed": "Passed",
+    "not_executed": "Not executed",
     "failed": "failed",
     "error": "Error",
     "cancelled": "Cancelled",

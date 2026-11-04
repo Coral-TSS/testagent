@@ -391,6 +391,25 @@ def test_missing_script_is_skipped_not_error(client, db):
     assert [n["case"]["code"] for n in report["no_script"]] == [code]
 
 
+def test_run_with_only_missing_scripts_is_not_executed(client, db):
+    w = build_world(client, db)
+    bare = make_case(client, w, "No script")
+    install_runner(client, FakeRunner())
+    task = make_task(client, w, [bare], executor="automation", ready=False)
+    client.post(f"{V1}/tasks/{task}/status", json={"status": "ready", "allow_missing_scripts": True})
+    resp = client.post(f"{V1}/tasks/{task}/run", json={"allow_missing_scripts": True})
+    assert client.app.state.worker.run_once() is True
+    run = client.get(f"{V1}/runs/{resp.json()['id']}").json()
+    assert run["status"] == "not_executed"  # nothing ran: neither passed nor failed
+    assert client.get(f"{V1}/tasks/{task}").json()["status"] == "done"
+    report = client.get(f"{V1}/reports/{run['report_id']}").json()["content"]
+    assert report["scope"]["status"] == "not_executed"
+    assert report["summary"]["executed"] == 0 and report["summary"]["pass_rate"] is None
+    assert report["summary"]["skipped_no_script"] == 1
+    # the task can run again
+    assert client.post(f"{V1}/tasks/{task}/run", json={"allow_missing_scripts": True}).status_code == 201
+
+
 def test_scheduled_run_does_not_ask_about_missing_scripts(client, db):
     w = build_world(client, db)
     bare = make_case(client, w, "No script")

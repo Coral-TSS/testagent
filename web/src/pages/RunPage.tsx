@@ -25,7 +25,7 @@ export function causeCounts(executions: RunExecution[]): [SuspectedCause, number
   return [...out.entries()];
 }
 
-const TERMINAL = new Set(["passed", "failed", "error", "cancelled"]);
+const TERMINAL = new Set(["passed", "failed", "error", "cancelled", "not_executed"]);
 
 /** Task run: live progress (SSE), per-case results, cancel, report link */
 export function RunPage() {
@@ -85,7 +85,9 @@ export function RunPage() {
       >
         <Progress
           percent={percent}
-          status={r.status === "running" || r.status === "queued" ? "active" : r.status === "passed" ? "success" : "exception"}
+          status={
+            r.status === "running" || r.status === "queued" ? "active" : r.status === "passed" ? "success" : r.status === "not_executed" ? "normal" : "exception"
+          }
           format={() => `${c.done}/${c.total}`}
         />
         <Space wrap style={{ margin: "8px 0" }}>
@@ -116,6 +118,14 @@ export function RunPage() {
           <Descriptions.Item label="End">{fmtTime(r.ended_at, { seconds: true })}</Descriptions.Item>
         </Descriptions>
         {r.error && <Alert type="error" showIcon title={r.error} />}
+        {r.status === "not_executed" && (
+          <Alert
+            type="warning"
+            showIcon
+            data-testid="not-executed"
+            title="Not executed: no case ran because none has an automation script yet. This is neither a pass nor a failure; there is no pass rate."
+          />
+        )}
         {r.not_ready.length > 0 && (
           <Alert
             type="info"

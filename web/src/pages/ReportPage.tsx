@@ -10,7 +10,7 @@ import { CAUSE_TAG, CauseTag } from "../components/FailureSummary";
 import { CAUSE_LABEL, DefectStatusTag, ROLE_LABEL, SEVERITY, SeverityTag } from "../components/DefectTags";
 import { ExecutionStatusTag } from "../components/StatusTags";
 import { ByRole, RequirementStatsTable, fmtScore } from "../components/StatsTables";
-import { SCOPE_LABEL, passRateNote, pct } from "./ReportsPage";
+import { SCOPE_LABEL, passRateNote, passRateText, pct } from "./ReportsPage";
 import { CorrectionButton } from "../components/CorrectionButton";
 
 type PersonRow = ReportContent["by_person"][number];
@@ -62,7 +62,7 @@ export function ReportPage() {
           <Col span={4}><Statistic title="Failed / error" value={`${s.failed} / ${s.error}`} /></Col>
           <Col span={4}><Statistic title="Blocked / skipped" value={`${s.blocked} / ${s.skipped}`} /></Col>
           <Col span={4}><Statistic title="Not run" value={s.not_executed} /></Col>
-          <Col span={4}><Statistic title="Pass rate" value={pct(s.pass_rate)} /></Col>
+          <Col span={4}><Statistic title="Pass rate" value={passRateText(s)} /></Col>
         </Row>
         {(s.skipped > 0 || s.blocked > 0 || s.not_executed > 0) && (
           <Alert type="warning" showIcon style={{ marginBottom: 12 }} data-testid="pass-rate-note" title={passRateNote(s)} />

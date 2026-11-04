@@ -85,6 +85,26 @@ describe("RunPage result trust (#15/#18)", () => {
   });
 });
 
+describe("RunPage not executed", () => {
+  it("labels a run where nothing ran as not executed", async () => {
+    const r = {
+      ...run,
+      status: "not_executed",
+      executor: "automation",
+      counts: { total: 1, done: 1, passed: 0, failed: 0, error: 0, blocked: 0, skipped: 1 },
+      not_ready: [],
+      no_script: [{ case_id: "c3", code: "TC-003", title: "Refund" }],
+      executions: [{ id: "e3", case_id: "c3", case_code: "TC-003", case_title: "Refund", executor: "manual", status: "skipped", failure_kind: "no_script", created_at: "x" }],
+    };
+    mockFetch({ "GET /runs/r1": () => ({ body: r }) });
+    renderPage(<RunPage />, { path: "/runs/:runId", route: "/runs/r1" });
+    expect(await screen.findByText("Not executed")).toBeTruthy();
+    expect(screen.getByTestId("not-executed").textContent).toContain("neither a pass nor a failure");
+    expect(document.querySelector(".ant-progress-status-exception")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel run" })).toBeNull();
+  });
+});
+
 describe("scheduleBody", () => {
   it("maps the schedule form", () => {
     expect(scheduleBody({ kind: "none" })).toBeNull();

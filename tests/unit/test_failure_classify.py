@@ -141,3 +141,20 @@ def test_agent_verdict_note_and_rule():
     assert s["requirement_refs"][0]["rule"] == "amount >= threshold needs approval"
     assert s["agent_note"].startswith("The system approves")
     assert s["headline"] == "Expected 'pending', got 'approved'"
+
+
+def test_run_outcome():
+    from testagent.services.runs import run_outcome
+
+    def ex(status, kind=None):
+        return {"status": status, "failure_kind": kind}
+
+    no_script = ex("skipped", "no_script")
+    assert run_outcome([no_script, no_script]) == "not_executed"
+    assert run_outcome([no_script, ex("passed")]) == "passed"
+    assert run_outcome([no_script, ex("failed", "assertion")]) == "failed"
+    assert run_outcome([no_script, ex("error", "platform")]) == "failed"
+    # other skips / awaiting manual keep the old behaviour
+    assert run_outcome([no_script, ex("skipped", "non_functional")]) == "passed"
+    assert run_outcome([no_script, ex("blocked")]) == "passed"
+    assert run_outcome([]) == "passed"

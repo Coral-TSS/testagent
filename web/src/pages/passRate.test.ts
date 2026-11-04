@@ -1,4 +1,4 @@
-import { passRateNote } from "./ReportsPage";
+import { nothingExecuted, passRateNote, passRateText } from "./ReportsPage";
 
 describe("pass rate note", () => {
   it("never counts skipped / blocked / not run as passed", () => {
@@ -10,5 +10,16 @@ describe("pass rate note", () => {
   it("says how many skipped cases had no automation script", () => {
     const s = { total: 5, passed: 2, failed: 1, error: 0, blocked: 0, skipped: 2, skipped_no_script: 2, not_executed: 0, executed: 3, pass_rate: 0.667 };
     expect(passRateNote(s)).toBe("Pass rate = passed 2 / executed 3; 2 skipped (2 without an automation script) do not count as passed");
+  });
+
+  it("says nothing was executed when every case lacks a script", () => {
+    const s = { total: 2, passed: 0, failed: 0, error: 0, blocked: 0, skipped: 2, skipped_no_script: 2, not_executed: 0, executed: 0, pass_rate: null };
+    expect(nothingExecuted(s)).toBe(true);
+    expect(passRateText(s)).toBe("Not executed");
+    expect(passRateNote(s)).toBe("Not executed: no case ran (2 without an automation script), so there is no pass rate");
+    // one non-functional skip among them: the old wording
+    const mixed = { ...s, skipped: 3, total: 3 };
+    expect(nothingExecuted(mixed)).toBe(false);
+    expect(passRateText(mixed)).toBe("-");
   });
 });

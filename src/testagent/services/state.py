@@ -28,8 +28,9 @@ MACHINES: dict[str, dict[str, set[str]]] = {
     "case": {"draft": {"ready"}, "ready": {"deprecated", "draft"}, "deprecated": set()},
     "task_run": {
         "queued": {"running", "cancelled", "error"},
-        "running": {"passed", "failed", "error", "cancelled"},
+        "running": {"passed", "failed", "error", "cancelled", "not_executed"},
         "passed": set(),
+        "not_executed": set(),
         "failed": set(),
         "error": set(),
         "cancelled": set(),

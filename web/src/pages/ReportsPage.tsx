@@ -18,10 +18,22 @@ export function SummaryText({ s }: { s: ReportSummary }) {
   );
 }
 
+/** Nothing ran because every case lacks an automation script (run status not_executed). */
+export function nothingExecuted(s: ReportSummary): boolean {
+  const executed = s.executed ?? s.passed + s.failed + s.error;
+  const noScript = s.skipped_no_script || 0;
+  return executed === 0 && s.total > 0 && noScript > 0 && noScript === s.skipped && !s.blocked;
+}
+
+/** Pass-rate cell: "Not executed" instead of "-" when nothing could run. */
+export const passRateText = (s: ReportSummary) => (nothingExecuted(s) ? "Not executed" : pct(s.pass_rate));
+
 /** skipped / blocked / not run never count as passed — say so next to every pass rate. */
 export function passRateNote(s: ReportSummary): string | null {
   const executed = s.executed ?? s.passed + s.failed + s.error;
   const noScript = s.skipped_no_script || 0;
+  if (nothingExecuted(s))
+    return `Not executed: no case ran (${noScript} without an automation script), so there is no pass rate`;
   const left = [
     s.skipped ? (noScript ? `${s.skipped} skipped (${noScript} without an automation script)` : `${s.skipped} skipped`) : "",
     s.blocked ? `${s.blocked} awaiting manual` : "",
@@ -81,7 +93,7 @@ export function ReportsPage() {
           { title: "Type", dataIndex: "scope_type", width: 100, render: (v: string) => <Tag color={v === "version" ? "blue" : "default"}>{SCOPE_LABEL[v] || v}</Tag> },
           { title: "Version", dataIndex: "version_name", width: 100, render: (v: string | null) => v || "-" },
           { title: "Result", dataIndex: "summary", render: (s: ReportSummary) => <SummaryText s={s} /> },
-          { title: "Pass rate", dataIndex: "summary", key: "rate", width: 80, render: (s: ReportSummary) => <span title={passRateNote(s) || undefined}>{pct(s.pass_rate)}{s.skipped || s.not_executed ? "*" : ""}</span> },
+          { title: "Pass rate", dataIndex: "summary", key: "rate", width: 80, render: (s: ReportSummary) => <span title={passRateNote(s) || undefined}>{passRateText(s)}{(s.skipped || s.not_executed) && !nothingExecuted(s) ? "*" : ""}</span> },
           { title: "AI summary", dataIndex: "has_ai_summary", width: 80, render: (v: boolean) => (v ? <Tag color="purple">has</Tag> : "-") },
           { title: "Generated at", dataIndex: "created_at", width: 130, render: (v: string) => dayjs(v).format("MM-DD HH:mm") },
         ]}

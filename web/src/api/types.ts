@@ -850,7 +850,7 @@ export interface AutomationProgress {
   counts: Record<string, number>;
 }
 
-export type RunStatus = "queued" | "running" | "passed" | "failed" | "error" | "cancelled";
+export type RunStatus = "queued" | "running" | "passed" | "failed" | "error" | "cancelled" | "not_executed";
 export interface RunCounts {
   total: number;
   done: number;

@@ -308,3 +308,56 @@ def test_result_trust_migration_backfills_history(test_dsn, fresh_schema, tmp_pa
         assert sources == {"f": "openapi", "l": "model_rule", "n": "ai_inferred", "r": "requirement"}
     finally:
         db.close()
+
+
+def test_not_executed_run_migration(test_dsn, fresh_schema, tmp_path):
+    """0024: a run where every case was skipped for a missing script becomes not_executed;
+    other runs keep their status."""
+    from testagent.core.migrations import MIGRATIONS_DIR
+
+    for f in sorted(MIGRATIONS_DIR.glob("*.sql")):
+        if f.name < "0024":
+            shutil.copy(f, tmp_path / f.name)
+    db = Database(test_dsn, schema=fresh_schema)
+    try:
+        migrate(db, tmp_path)
+        with db.tx() as cur:
+            cur.execute("INSERT INTO sut(code, name) VALUES ('S', 'S') RETURNING id")
+            sut = cur.fetchone()["id"]
+            cur.execute("INSERT INTO version(sut_id, name) VALUES (%s, 'v1') RETURNING id", (sut,))
+            version = cur.fetchone()["id"]
+            cur.execute("INSERT INTO test_task(version_id, name) VALUES (%s, 'T') RETURNING id", (version,))
+            task = cur.fetchone()["id"]
+            cur.execute("INSERT INTO test_case(sut_id, code, title) VALUES (%s, 'TC-1', 'T') RETURNING id", (sut,))
+            case = cur.fetchone()["id"]
+            runs = {}
+            for name, execs in {
+                "only_no_script": [("skipped", "no_script"), ("skipped", "no_script")],
+                "mixed": [("skipped", "no_script"), ("passed", None)],
+                "other_skip": [("skipped", "no_script"), ("skipped", "non_functional")],
+                "empty": [],
+            }.items():
+                cur.execute("INSERT INTO task_run(task_id, status) VALUES (%s, 'passed') RETURNING id", (task,))
+                runs[name] = cur.fetchone()["id"]
+                for status, kind in execs:
+                    cur.execute(
+                        "INSERT INTO case_execution(task_run_id, case_id, executor, status, failure_kind)"
+                        " VALUES (%s,%s,'manual',%s,%s)",
+                        (runs[name], case, status, kind),
+                    )
+        shutil.copy(MIGRATIONS_DIR / "0024_run_not_executed.sql", tmp_path)
+        assert migrate(db, tmp_path) == ["0024_run_not_executed.sql"]
+        with db.tx() as cur:
+            cur.execute("SELECT id, status FROM task_run")
+            got = {r["id"]: r["status"] for r in cur.fetchall()}
+            assert {n: got[i] for n, i in runs.items()} == {
+                "only_no_script": "not_executed",
+                "mixed": "passed",
+                "other_skip": "passed",
+                "empty": "passed",
+            }
+            cur.execute("UPDATE task_run SET status='not_executed' WHERE id=%s", (runs["mixed"],))
+        with pytest.raises(AppError, match="constraint"), db.tx() as cur:
+            cur.execute("UPDATE task_run SET status='bogus' WHERE id=%s", (runs["mixed"],))
+    finally:
+        db.close()

@@ -24,7 +24,20 @@ from testagent.services.task_binding import require_scripts, script_gaps
 log = logging.getLogger("testagent.runs")
 JOB_KIND = "task_run"
 STARTABLE = {"ready", "done", "cancelled"}
-TERMINAL = {"passed", "failed", "error", "cancelled"}
+TERMINAL = {"passed", "failed", "error", "cancelled", "not_executed"}
+
+
+def run_outcome(executions: list[dict]) -> str:
+    """Final status of a run from its executions: failed when any failed or errored;
+    not_executed when nothing ran because every case lacks an automation script; else passed
+    (skipped / awaiting-manual cases never count as passed in the pass rate)."""
+    if any(e["status"] in ("failed", "error") for e in executions):
+        return "failed"
+    if executions and all(e["status"] == "skipped" and e.get("failure_kind") == "no_script" for e in executions):
+        return "not_executed"
+    return "passed"
+
+
 FORCED_REASON = {
     "skipped": (
         "Non-functional cases (performance, security, …) are not executed in this version "
@@ -393,7 +406,7 @@ class RunService:
 
     def _loop(self, run: dict, cases: list[dict], env: dict | None) -> str:
         svc = self.executions()
-        results: list[str] = []
+        results: list[dict] = []
         for index, case in enumerate(cases, start=1):
             if self._cancel_requested(run["id"]):
                 return "cancelled"
@@ -427,7 +440,7 @@ class RunService:
                 )
             else:
                 ex = svc.execute_case(case, env, executor, task_run_id=run["id"])
-            results.append(ex["status"])
+            results.append({"status": ex["status"], "failure_kind": ex.get("failure_kind")})
             log.info(
                 "Run %s: case %d/%d “%s (%s)” → %s (%s)",
                 str(run["id"])[:8],
@@ -450,7 +463,7 @@ class RunService:
                     "status": ex["status"],
                 },
             )
-        return "failed" if any(s in ("failed", "error") for s in results) else "passed"
+        return run_outcome(results)
 
     def _finish(self, run: dict, status: str, error: str | None = None) -> None:
         with self.db.tx() as cur:

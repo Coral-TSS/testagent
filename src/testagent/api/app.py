@@ -150,7 +150,7 @@ def create_app(
     def _report_on_finish(_event: str, payload: dict) -> None:
         from testagent.services.reports import ReportService
 
-        if payload.get("status") in ("passed", "failed", "cancelled"):
+        if payload.get("status") in ("passed", "failed", "cancelled", "not_executed"):
             ReportService(db, state.bus, state.agent.runtime, actor="system").for_run(payload["id"])
 
     state.bus.subscribe("task_run.finished", _report_on_finish)  # T-11.3

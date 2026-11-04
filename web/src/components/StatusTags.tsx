@@ -36,6 +36,8 @@ const TASK_RUN: Record<string, [string, string]> = {
   failed: ["Has failures", "red"],
   error: ["Error", "volcano"],
   cancelled: ["Cancelled", "default"],
+  // nothing ran: every case lacks an automation script (neither passed nor failed)
+  not_executed: ["Not executed", "gold"],
 };
 const TASK: Record<string, [string, string]> = {
   draft: ["Draft", "default"],

@@ -68,6 +68,10 @@ All notable changes to this project are documented here. The format follows
 - The needs-fix note of AI automation is now the readable one-line failure summary; the raw output is
   kept with the case (`automation_failure.raw`).
 - Accepting a model suggestion inferred by the AI without a source needs a note (`note`, 5+ characters).
+- A task run in which no case was executed because every case lacks an automation script now ends as
+  **Not executed** (`not_executed`, migration `0024_run_not_executed`) instead of passed. Its report has
+  no pass rate and says so; runs with any executed, awaiting-manual or other skipped case keep the
+  previous rule. Runs already recorded that way since `0023` are updated; older runs are unchanged.
 
 ### Fixed
 
