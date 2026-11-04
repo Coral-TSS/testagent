@@ -98,6 +98,30 @@ describe("ReportPage", () => {
   });
 });
 
+describe("ReportPage result trust", () => {
+  it("shows failures by cause, the cause column and cases without script", async () => {
+    const r = {
+      ...report,
+      content: {
+        ...report.content,
+        summary: { ...summary, skipped: 1, skipped_no_script: 1, by_cause: { sut: 1, script: 0, environment: 0, platform: 1, unknown: 0 } },
+        failures: [{ ...report.content.failures[0], suspected_cause: "sut", failure_kind: "assertion", headline: "Expected 400, got 201" }],
+        no_script: [{ case: { id: "c7", code: "TC-007", title: "Export" }, execution_id: "e7" }],
+      },
+    };
+    mockFetch({ "GET /reports/rp1": () => ({ body: r }) });
+    renderPage(<ReportPage />, { path: "/reports/:reportId", route: "/reports/rp1" });
+    expect(await screen.findByText("Expected 400, got 201")).toBeTruthy();
+    const byCause = screen.getByTestId("by-cause");
+    expect(byCause.textContent).toContain("Suspected system issue 1");
+    expect(byCause.textContent).toContain("Platform / configuration issue 1");
+    expect(byCause.textContent).toContain("not defects of the system");
+    expect(byCause.textContent).not.toContain("script issue 0");
+    expect(screen.getByTestId("report-no-script").textContent).toContain("TC-007 Export");
+    expect(screen.getByTestId("pass-rate-note").textContent).toContain("1 without an automation script");
+  });
+});
+
 describe("ReportsPage", () => {
   it("lists task and version reports", async () => {
     mockFetch({

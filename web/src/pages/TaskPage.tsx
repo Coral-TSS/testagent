@@ -2,9 +2,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Card, Col, DatePicker, Form, Input, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import { api } from "../api/client";
+import { ApiError, api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import type { CaseCategory, CaseRow, Environment, TaskCaseRow, TaskDetail, TaskRun, TaskRunRow } from "../api/types";
 import { CaseStatusTag } from "../components/CaseTags";
@@ -12,6 +12,7 @@ import { TaskRunStatusTag, TaskStatusTag } from "../components/StatusTags";
 import { browserTimezone, fmtTime } from "../utils/time";
 import { objLabel } from "../components/ObjLink";
 import { TaskRuleCard } from "../components/TaskRuleCard";
+import { MissingScriptsModal } from "../components/MissingScriptsModal";
 import { CATEGORY_COLOR, CATEGORY_LABEL, KIND_LABEL } from "../utils/categories";
 
 type ScheduleKind = "none" | "once" | "cron";
@@ -75,19 +76,54 @@ export function TaskPage() {
       refresh();
     },
   });
-  const setStatus = useApiMutation((status: string) => api(`/tasks/${taskId}/status`, { method: "POST", body: { status } }), { onSuccess: refresh });
-  const start = useApiMutation(() => api<TaskRun>(`/tasks/${taskId}/run`, { method: "POST" }), {
-    onSuccess: (run) => {
-      refresh();
-      navigate(`/runs/${run.id}`);
+  const [params, setParams] = useSearchParams();
+  const [gapAction, setGapAction] = useState<"run" | "ready" | null>(null);
+  useEffect(() => {
+    const m = params.get("missing");
+    if (m === "run" || m === "ready") {
+      setGapAction(m);
+      const next = new URLSearchParams(params);
+      next.delete("missing");
+      setParams(next, { replace: true });
+    }
+  }, [params, setParams]);
+  /** a MISSING_SCRIPTS 409 opens the three-way choice instead of an error toast (#18) */
+  const missing = (err: unknown) => {
+    if (err instanceof ApiError && err.code === "MISSING_SCRIPTS") {
+      qc.invalidateQueries({ queryKey: ["task", taskId] });
+      return true;
+    }
+    return false;
+  };
+  const setStatus = useApiMutation(
+    (v: { status: string; allow?: boolean }) =>
+      api(`/tasks/${taskId}/status`, { method: "POST", body: { status: v.status, allow_missing_scripts: v.allow || undefined } }),
+    { onSuccess: refresh, onError: (err) => missing(err) && (setGapAction("ready"), true) },
+  );
+  const start = useApiMutation(
+    (allow?: boolean) => api<TaskRun>(`/tasks/${taskId}/run`, { method: "POST", body: allow ? { allow_missing_scripts: true } : {} }),
+    {
+      onSuccess: (run) => {
+        refresh();
+        navigate(`/runs/${run.id}`);
+      },
+      onError: (err) => missing(err) && (setGapAction("run"), true),
     },
-  });
+  );
 
   if (!t) return <Card loading />;
   const selected = caseIds ?? t.cases.map((c) => c.id);
   const editable = !["running", "archived"].includes(t.status);
   return (
     <Row gutter={16}>
+      <MissingScriptsModal
+        open={gapAction !== null}
+        task={t}
+        gaps={t.script_gaps || []}
+        action={gapAction || "run"}
+        onClose={() => setGapAction(null)}
+        onProceed={() => (gapAction === "ready" ? setStatus.mutate({ status: "ready", allow: true }) : start.mutate(true))}
+      />
       <Col span={15}>
         <Card
           title={
@@ -99,8 +135,15 @@ export function TaskPage() {
           extra={
             <Space>
               <Link to={`/versions/${t.version_id}?tab=strategy`}>{t.version_name ? `Test strategy & tasks (version ${t.version_name})` : "Test strategy & tasks"}</Link>
-              {t.status === "draft" && <Button onClick={() => setStatus.mutate("ready")}>Set ready</Button>}
-              <Button type="primary" disabled={!STARTABLE.has(t.status)} loading={start.isPending} onClick={() => start.mutate(undefined)}>
+              {(t.script_gaps?.length || 0) > 0 && (
+                <Tooltip title="Automated task cases with no automation script: they are skipped (not executed) when the task runs">
+                  <Tag color="orange" data-testid="gap-tag" style={{ cursor: "pointer" }} onClick={() => setGapAction("run")}>
+                    {t.script_gaps!.length} without script
+                  </Tag>
+                </Tooltip>
+              )}
+              {t.status === "draft" && <Button onClick={() => setStatus.mutate({ status: "ready" })}>Set ready</Button>}
+              <Button type="primary" disabled={!STARTABLE.has(t.status)} loading={start.isPending} onClick={() => start.mutate(false)}>
                 Run now
               </Button>
             </Space>

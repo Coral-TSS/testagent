@@ -13,6 +13,7 @@ import { EmptyState } from "./EmptyState";
 import { TaskStatusTag } from "./StatusTags";
 import { fmtTime } from "../utils/time";
 import { CorrectionButton } from "./CorrectionButton";
+import { RunTasksModal } from "./RunTasksModal";
 
 const TEST_TYPES = ["Functional", "API", "UI", "Regression", "Smoke"];
 const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "Automated", human: "Manual" };
@@ -51,7 +52,20 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
   });
   const confirm = useApiMutation(() => api(`/strategy/${strategy.data!.id}/confirm`, { method: "POST" }), { invalidate: keys, success: "Strategy confirmed" });
   const createTask = useApiMutation((body: Record<string, unknown>) => api(`/versions/${vid}/tasks`, { method: "POST", body }), { invalidate: keys, success: "Task created" });
-  const taskStatus = useApiMutation(({ id, status }: { id: string; status: string }) => api(`/tasks/${id}/status`, { method: "POST", body: { status } }), { invalidate: keys });
+  const navigate = useNavigate();
+  /** #18: a task with cases lacking scripts opens its page with the three-way choice */
+  const gapError = (id: string, action: "run" | "ready") => (err: unknown) => {
+    if (err instanceof ApiError && err.code === "MISSING_SCRIPTS") {
+      navigate(`/tasks/${id}?missing=${action}`);
+      return true;
+    }
+    return false;
+  };
+  const taskStatus = useApiMutation(
+    ({ id, status }: { id: string; status: string }) => api(`/tasks/${id}/status`, { method: "POST", body: { status } }),
+    { invalidate: keys, onError: (err, v) => gapError(v.id, "ready")(err) },
+  );
+  const [runAll, setRunAll] = useState(false);
   const removeTask = useApiMutation((id: string) => api(`/tasks/${id}`, { method: "DELETE" }), { invalidate: keys });
   const ensure = useApiMutation(() => api<{ created: { name: string }[] }>(`/versions/${vid}/tasks/ensure`, { method: "POST" }), {
     invalidate: keys,
@@ -73,11 +87,14 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
     },
   );
   const [taskForm] = Form.useForm();
-  const navigate = useNavigate();
-  const runTask = useApiMutation((id: string) => api<TaskRun>(`/tasks/${id}/run`, { method: "POST" }), {
-    invalidate: keys,
-    onSuccess: (run) => navigate(`/runs/${run.id}`),
-  });
+  const runTask = useApiMutation(
+    (id: string) => api<TaskRun>(`/tasks/${id}/run`, { method: "POST" }),
+    {
+      invalidate: keys,
+      onSuccess: (run) => navigate(`/runs/${run.id}`),
+      onError: (err, id) => gapError(id, "run")(err),
+    },
+  );
 
   const s = strategy.data;
   return (
@@ -154,14 +171,23 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
       <Card
         size="small"
         title="Test tasks"
+        id="strategy-tasks"
         extra={
-          <Tooltip title="One “requirement validation” task per requirement, one “general quality” task and one “regression/smoke” task; existing ones are not created again">
-            <Button loading={ensure.isPending} onClick={() => ensure.mutate(undefined)}>
-              Complete tasks per category
-            </Button>
-          </Tooltip>
+          <Space>
+            <Tooltip title="One “requirement validation” task per requirement, one “general quality” task and one “regression/smoke” task; existing ones are not created again">
+              <Button loading={ensure.isPending} onClick={() => ensure.mutate(undefined)}>
+                Complete tasks per category
+              </Button>
+            </Tooltip>
+            {version.status !== "planning" && version.status !== "closed" && (
+              <Button type="primary" onClick={() => setRunAll(true)} disabled={!tasks.data?.length}>
+                Run all runnable tasks
+              </Button>
+            )}
+          </Space>
         }
       >
+        <RunTasksModal open={runAll} versionId={vid} startTesting={version.status === "requirements_frozen"} onClose={() => setRunAll(false)} />
         <Alert
           type="info"
           showIcon
@@ -225,7 +251,20 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
               render: (sel: Task["selector"]) => (sel ? <Tag color="cyan">{describeSelector(sel, reqCode).replace("Among ready cases: ", "")}</Tag> : <Tag>Manual</Tag>),
             },
             { title: "Actor", dataIndex: "executor", render: (e) => EXECUTOR[e] || e },
-            { title: "Cases", dataIndex: "case_count" },
+            {
+              title: "Cases",
+              dataIndex: "case_count",
+              render: (n: number, t) => (
+                <Space size={4}>
+                  {n}
+                  {(t.script_gap_count || 0) > 0 && (
+                    <Tooltip title="Cases without an automation script: skipped (not executed) when the task runs">
+                      <Tag color="orange">{t.script_gap_count} without script</Tag>
+                    </Tooltip>
+                  )}
+                </Space>
+              ),
+            },
             { title: "Status", dataIndex: "status", render: (st) => <TaskStatusTag status={st} /> },
             { title: "Next run", dataIndex: "next_run_at", render: (t: string | null, row) => (t ? fmtTime(t, { tz: row.schedule?.tz }) : "-") },
             {

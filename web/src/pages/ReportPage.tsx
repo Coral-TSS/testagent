@@ -5,7 +5,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
-import type { Report, ReportContent } from "../api/types";
+import type { Report, ReportContent, SuspectedCause } from "../api/types";
+import { CAUSE_TAG, CauseTag } from "../components/FailureSummary";
 import { CAUSE_LABEL, DefectStatusTag, ROLE_LABEL, SEVERITY, SeverityTag } from "../components/DefectTags";
 import { ExecutionStatusTag } from "../components/StatusTags";
 import { ByRole, RequirementStatsTable, fmtScore } from "../components/StatsTables";
@@ -65,6 +66,21 @@ export function ReportPage() {
         </Row>
         {(s.skipped > 0 || s.blocked > 0 || s.not_executed > 0) && (
           <Alert type="warning" showIcon style={{ marginBottom: 12 }} data-testid="pass-rate-note" title={passRateNote(s)} />
+        )}
+        {s.by_cause && Object.values(s.by_cause).some((n) => n > 0) && (
+          <Space wrap style={{ marginBottom: 12 }} data-testid="by-cause">
+            <Typography.Text type="secondary">Failures by suspected cause:</Typography.Text>
+            {(Object.entries(s.by_cause) as [SuspectedCause, number][])
+              .filter(([, n]) => n > 0)
+              .map(([cause, n]) => (
+                <Tag key={cause} color={CAUSE_TAG[cause][1]}>
+                  {CAUSE_TAG[cause][0]} {n}
+                </Tag>
+              ))}
+            {(s.by_cause.platform || 0) + (s.by_cause.environment || 0) > 0 && (
+              <Typography.Text type="secondary">Platform and environment failures are not defects of the system.</Typography.Text>
+            )}
+          </Space>
         )}
         <Descriptions size="small" column={3}>
           <Descriptions.Item label="Generated at">{dayjs(r.created_at).format("YYYY-MM-DD HH:mm:ss")}</Descriptions.Item>
@@ -144,12 +160,26 @@ export function ReportPage() {
             { title: "Case", dataIndex: "case", render: (v: FailureRow["case"]) => <Link to={`/cases/${v.id}`}>{v.code} {v.title}</Link> },
             { title: "Requirement", dataIndex: "requirement_codes", render: (v: string[]) => v.map((x) => <Tag key={x}>{x}</Tag>) },
             { title: "Result", dataIndex: "status", width: 80, render: (v: string) => <ExecutionStatusTag status={v} /> },
-            { title: "Failed assertion / error", key: "why", render: (_: unknown, f) => f.failed_assertion || f.error || "-" },
+            { title: "Cause", key: "cause", width: 150, render: (_: unknown, f) => <CauseTag cause={f.suspected_cause} /> },
+            { title: "Failed assertion / error", key: "why", render: (_: unknown, f) => f.headline || f.failed_assertion || f.error || "-" },
             { title: "Execution", dataIndex: "execution_id", width: 70, render: (v: string) => <Link to={`/executions/${v}`}>Detail</Link> },
             { title: "Defect", dataIndex: "defect_ids", width: 70, render: (v: string[]) => v.length || "-" },
           ]}
         />
       </Card>
+
+      {(c.no_script?.length || 0) > 0 && (
+        <Card style={{ marginBottom: 16 }} title={`Not executed: no automation script (${c.no_script!.length})`} data-testid="report-no-script">
+          <Typography.Paragraph type="secondary">These cases are in an automated task but have no script yet; they were skipped and are not counted in the pass rate.</Typography.Paragraph>
+          <Space wrap>
+            {c.no_script!.map((n) => (
+              <Link key={n.execution_id} to={`/cases/${n.case.id}`}>
+                {n.case.code} {n.case.title}
+              </Link>
+            ))}
+          </Space>
+        </Card>
+      )}
 
       <Card style={{ marginBottom: 16 }} title={`Defects (${c.defects.length})`}>
         <Table<DefectRow>

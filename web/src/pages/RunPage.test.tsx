@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 
 import { mockFetch, renderPage } from "../test/utils";
-import { RunPage } from "./RunPage";
+import { RunPage, causeCounts } from "./RunPage";
 import { scheduleBody } from "./TaskPage";
 import dayjs from "dayjs";
 
@@ -60,6 +60,31 @@ describe("RunPage", () => {
   });
 });
 
+describe("RunPage result trust (#15/#18)", () => {
+  it("shows the cause per case, a cause subtotal and the no-script list", async () => {
+    const r = {
+      ...run,
+      executor: "automation",
+      counts: { total: 3, done: 3, passed: 0, failed: 1, error: 1, blocked: 0, skipped: 1 },
+      not_ready: [],
+      no_script: [{ case_id: "c3", code: "TC-003", title: "Refund" }],
+      executions: [
+        { id: "e1", case_id: "c1", case_code: "TC-001", case_title: "Place order", executor: "pytest", status: "failed", failure_kind: "assertion", suspected_cause: "sut", summary: { headline: "Expected 201, got 422" }, created_at: "x" },
+        { id: "e2", case_id: "c2", case_code: "TC-002", case_title: "Sign in", executor: "pytest", status: "error", failure_kind: "platform", suspected_cause: "platform", error: "NO_ENVIRONMENT", created_at: "x" },
+        { id: "e3", case_id: "c3", case_code: "TC-003", case_title: "Refund", executor: "manual", status: "skipped", failure_kind: "no_script", suspected_cause: "platform", created_at: "x" },
+      ],
+    };
+    mockFetch({ "GET /runs/r1": () => ({ body: r }) });
+    renderPage(<RunPage />, { path: "/runs/:runId", route: "/runs/r1" });
+    expect(await screen.findByText("Expected 201, got 422")).toBeTruthy();
+    const counts = screen.getByTestId("cause-counts");
+    expect(counts.textContent).toContain("Suspected system issue 1");
+    expect(counts.textContent).toContain("Platform / configuration issue 1");
+    expect(screen.getByText("No script")).toBeTruthy();
+    expect(screen.getByTestId("no-script").textContent).toContain("Refund (TC-003)");
+  });
+});
+
 describe("scheduleBody", () => {
   it("maps the schedule form", () => {
     expect(scheduleBody({ kind: "none" })).toBeNull();
@@ -68,5 +93,20 @@ describe("scheduleBody", () => {
     expect(scheduleBody({ kind: "once", at })).toEqual({ type: "once", at: "2026-11-01T01:00:00.000Z" });
     expect(scheduleBody({ kind: "cron", expr: "" })).toBeNull();
     expect(scheduleBody({ kind: "cron", expr: "0 9 * * *", tz: "Asia/Shanghai" })).toEqual({ type: "cron", expr: "0 9 * * *", tz: "Asia/Shanghai" });
+  });
+});
+
+describe("causeCounts", () => {
+  it("counts only failed / errored cases, unknown when unclassified", () => {
+    const rows = [
+      { status: "failed", suspected_cause: "sut" },
+      { status: "error" },
+      { status: "passed", suspected_cause: "sut" },
+      { status: "failed", suspected_cause: "sut" },
+    ] as never[];
+    expect(causeCounts(rows)).toEqual([
+      ["sut", 2],
+      ["unknown", 1],
+    ]);
   });
 });

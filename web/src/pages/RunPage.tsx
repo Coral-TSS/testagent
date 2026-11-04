@@ -11,6 +11,19 @@ import { EXECUTOR_LABEL, ExecutionStatusTag, TaskRunStatusTag } from "../compone
 import { fmtTime } from "../utils/time";
 import { CorrectionButton } from "../components/CorrectionButton";
 import { objLabel } from "../components/ObjLink";
+import { CAUSE_TAG, CauseTag } from "../components/FailureSummary";
+import type { SuspectedCause } from "../api/types";
+
+/** Failed / errored cases of a run counted by suspected cause (batch 2). */
+export function causeCounts(executions: RunExecution[]): [SuspectedCause, number][] {
+  const out = new Map<SuspectedCause, number>();
+  for (const e of executions) {
+    if (e.status !== "failed" && e.status !== "error") continue;
+    const cause = e.suspected_cause || "unknown";
+    out.set(cause, (out.get(cause) || 0) + 1);
+  }
+  return [...out.entries()];
+}
 
 const TERMINAL = new Set(["passed", "failed", "error", "cancelled"]);
 
@@ -87,6 +100,16 @@ export function RunPage() {
             </span>
           )}
         </Space>
+        {causeCounts(r.executions).length > 0 && (
+          <Space wrap style={{ marginBottom: 8 }} data-testid="cause-counts">
+            <Typography.Text type="secondary">Failures by suspected cause:</Typography.Text>
+            {causeCounts(r.executions).map(([cause, n]) => (
+              <Tag key={cause} color={CAUSE_TAG[cause][1]}>
+                {CAUSE_TAG[cause][0]} {n}
+              </Tag>
+            ))}
+          </Space>
+        )}
         <Descriptions size="small" column={3}>
           <Descriptions.Item label="Actor">{EXECUTOR_LABEL[r.executor] || r.executor}</Descriptions.Item>
           <Descriptions.Item label="Start">{r.started_at ? fmtTime(r.started_at, { seconds: true }) : "Queued"}</Descriptions.Item>
@@ -99,6 +122,25 @@ export function RunPage() {
             showIcon
             style={{ marginTop: 8 }}
             title={`${r.not_ready.length} case(s) were not set ready and did not run: ${r.not_ready.map((n) => n.code).join(", ")}`}
+          />
+        )}
+        {(r.no_script?.length || 0) > 0 && (
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginTop: 8 }}
+            data-testid="no-script"
+            title={`Not executed (no automation script): ${r.no_script!.length} case(s) — a test-setup gap, not a failure`}
+            description={
+              <Space wrap>
+                {r.no_script!.map((n) => (
+                  <Link key={n.case_id} to={`/cases/${n.case_id}`}>
+                    {objLabel(n.title, n.code)}
+                  </Link>
+                ))}
+                <Typography.Text type="secondary">Generate a script (AI automation) or move these cases to an agent task.</Typography.Text>
+              </Space>
+            }
           />
         )}
       </Card>
@@ -115,10 +157,15 @@ export function RunPage() {
             { title: "Result", dataIndex: "status", render: (v: string) => <ExecutionStatusTag status={v} /> },
             { title: "Executor", dataIndex: "executor", render: (v: string) => EXECUTOR_LABEL[v] || v },
             {
+              title: "Cause",
+              render: (_: unknown, e) =>
+                e.failure_kind === "no_script" ? <Tag>No script</Tag> : e.status === "failed" || e.status === "error" ? <CauseTag cause={e.suspected_cause} /> : null,
+            },
+            {
               title: "description",
               render: (_: unknown, e) => (
                 <Typography.Text ellipsis style={{ maxWidth: 360 }}>
-                  {e.status === "blocked" ? "Waiting for manual execution" : e.failed_assertion || e.error || ""}
+                  {e.status === "blocked" ? "Waiting for manual execution" : e.summary?.headline || e.failed_assertion || e.error || ""}
                 </Typography.Text>
               ),
             },

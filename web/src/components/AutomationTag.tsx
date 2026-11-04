@@ -2,7 +2,7 @@ import { Tag, Tooltip, Typography } from "antd";
 
 import type { AutomationStatus } from "../api/types";
 
-/** A case's automation status: queued / generating / bound / needs fix (reason) / env unavailable (retryable) / not automated */
+/** A case's automation status: queued / generating / bound / suspected SUT issue / needs fix (reason) / env unavailable (retryable) / not automated */
 export function AutomationTag({
   row,
   job,
@@ -12,6 +12,12 @@ export function AutomationTag({
 }) {
   if (job === "queued") return <Tag color="blue">Queued</Tag>;
   if (job === "running") return <Tag color="processing">Generating</Tag>;
+  if (row.automation_status === "sut_mismatch")
+    return (
+      <Tooltip title={`${row.automation_note || "The system behaved differently from the expected result"} — suspected system issue, not a script problem`}>
+        <Tag color="red">Suspected SUT issue</Tag>
+      </Tooltip>
+    );
   if (row.automation_status === "needs_fix")
     return (
       <Tooltip title={row.automation_note || "The last self-check failed"}>

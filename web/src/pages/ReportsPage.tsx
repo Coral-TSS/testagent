@@ -21,8 +21,9 @@ export function SummaryText({ s }: { s: ReportSummary }) {
 /** skipped / blocked / not run never count as passed — say so next to every pass rate. */
 export function passRateNote(s: ReportSummary): string | null {
   const executed = s.executed ?? s.passed + s.failed + s.error;
+  const noScript = s.skipped_no_script || 0;
   const left = [
-    s.skipped ? `${s.skipped} skipped` : "",
+    s.skipped ? (noScript ? `${s.skipped} skipped (${noScript} without an automation script)` : `${s.skipped} skipped`) : "",
     s.blocked ? `${s.blocked} awaiting manual` : "",
     s.not_executed ? `${s.not_executed} not run` : "",
   ].filter(Boolean);

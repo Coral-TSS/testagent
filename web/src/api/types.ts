@@ -30,7 +30,49 @@ export interface EnvironmentCheck {
   started_by_platform: boolean;
   message: string;
 }
-export type AutomationStatus = "ok" | "needs_fix" | "env_unavailable";
+export type AutomationStatus = "ok" | "needs_fix" | "env_unavailable" | "sut_mismatch";
+
+/** batch 2: what happened (deterministic, from the platform) */
+export type FailureKind =
+  | "assertion"
+  | "locator"
+  | "timeout"
+  | "script_error"
+  | "http_error"
+  | "env_unreachable"
+  | "platform"
+  | "agent_error"
+  | "no_script"
+  | "non_functional"
+  | "unknown";
+/** batch 2: whose problem it most likely is (a suggestion, a person confirms) */
+export type SuspectedCause = "sut" | "script" | "environment" | "platform" | "unknown";
+export type NextActionKey =
+  | "create_defect"
+  | "analyse"
+  | "regenerate"
+  | "edit_case"
+  | "check_environment"
+  | "rerun"
+  | "fix_config"
+  | "record_failed"
+  | "bind_draft";
+/** readable failure summary (expected / actual / requirement); raw text stays separate */
+export interface FailureSummary {
+  headline: string;
+  kind: FailureKind;
+  cause?: SuspectedCause | null;
+  expected?: string;
+  actual?: string;
+  subject?: string;
+  check?: string;
+  step?: string;
+  requirement_refs?: { code: string; id?: string | null; title?: string | null; rule?: string }[];
+  agent_note?: string;
+  next_actions?: NextActionKey[];
+  /** raw pytest / executor text (self-check failures) */
+  raw?: string;
+}
 export interface Module {
   id: string;
   sut_id: string;
@@ -413,6 +455,35 @@ export interface Task {
   next_run_at?: string | null;
   case_count?: number;
   source?: string;
+  /** automated tasks: ready cases without a script (#18) */
+  script_gap_count?: number;
+}
+export interface ScriptGap {
+  id: string;
+  code: string;
+  title: string;
+  automation_status?: AutomationStatus | null;
+}
+export interface RunnableTask {
+  id: string;
+  name: string;
+  kind: string;
+  executor: string;
+  status: string;
+  environment_id?: string | null;
+  environment_name?: string | null;
+  ready_cases: number;
+  case_count: number;
+  active_run_id?: string | null;
+  script_gaps: string[];
+  script_gap_ids: string[];
+  runnable: boolean;
+  reason: "running" | "no_cases" | "not_ready" | "no_environment" | "no_ready_cases" | null;
+}
+export interface RunVersionResult {
+  started: { task_id: string; name: string; run_id: string }[];
+  skipped: { task_id: string; name: string | null; code: string; message: string; related?: string[] }[];
+  version_testing: boolean;
 }
 
 export type Scenario = "normal" | "boundary" | "exception";
@@ -510,6 +581,7 @@ export interface TestCase extends Omit<CaseRow, "requirement_codes" | "node_coun
   automation_note?: string | null;
   automation_draft_path?: string | null;
   automation_draft_commit?: string | null;
+  automation_failure?: FailureSummary | null;
   repo_path?: string | null;
   code_abs_path?: string | null;
   draft_abs_path?: string | null;
@@ -646,6 +718,9 @@ export interface ExecutionRow {
   created_at: string;
   ended_at?: string | null;
   environment_name?: string | null;
+  failure_kind?: FailureKind | null;
+  suspected_cause?: SuspectedCause | null;
+  summary?: FailureSummary | null;
 }
 export interface CaseExecution extends ExecutionRow {
   defects?: { id: string; code: string; title: string; status: string; severity: string }[];
@@ -797,6 +872,8 @@ export interface TaskRun extends TaskRunRow {
   environment_id?: string | null;
   executions: RunExecution[];
   not_ready: { id: string; code: string; title: string; status: string }[];
+  /** cases of an automated task that were skipped because they have no script (#18) */
+  no_script?: { case_id: string; code: string; title: string }[];
   report_id?: string | null;
 }
 export interface TaskDetail extends Task {
@@ -807,6 +884,7 @@ export interface TaskDetail extends Task {
   cases: TaskCaseRow[];
   exclusions?: { case_id: string; code: string; title: string; removed_by: string; created_at: string }[];
   rule_stats?: { rule: number; manual: number; excluded: number };
+  script_gaps?: ScriptGap[];
 }
 export interface TaskCaseRow {
   seq: number;
@@ -906,6 +984,11 @@ export interface ReportSummary {
   /** passed + failed + error */
   executed?: number;
   pass_rate: number | null;
+  /** batch 2: skipped split into "no script" and non-functional */
+  skipped_no_script?: number;
+  skipped_non_functional?: number;
+  by_cause?: Record<SuspectedCause, number>;
+  by_kind?: Partial<Record<FailureKind, number>>;
 }
 export interface ReportRow {
   id: string;
@@ -938,9 +1021,14 @@ export interface ReportContent {
     status: string;
     failed_assertion: string | null;
     error: string | null;
+    failure_kind?: FailureKind | null;
+    suspected_cause?: SuspectedCause | null;
+    headline?: string | null;
     execution_id: string;
     defect_ids: string[];
   }[];
+  /** cases skipped because they have no automation script (#18) */
+  no_script?: { case: { id: string; code: string; title: string }; execution_id: string }[];
   by_requirement: RequirementStat[];
   by_person: (Omit<PersonStat, "active" | "requirements"> & { top_requirements: string[] })[];
   defects: {
@@ -993,14 +1081,14 @@ export interface FlowStep {
   status: StepStatus;
   summary: string;
   path: string;
-  action?: { label: string; path: string } | null;
+  action?: { label: string; path: string; kind?: "run_tasks"; version_id?: string } | null;
 }
 export interface SutProgress {
   sut: { id: string; code: string; name: string };
   version?: { id: string; name: string; status: string } | null;
   versions: { id: string; name: string; status: string }[];
   steps: FlowStep[];
-  next?: { key: string; title: string; label: string; path: string } | null;
+  next?: { key: string; title: string; label: string; path: string; kind?: "run_tasks"; version_id?: string } | null;
   repo_path?: string | null;
 }
 export interface ReviewRef {

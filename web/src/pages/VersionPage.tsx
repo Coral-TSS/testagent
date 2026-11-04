@@ -14,6 +14,7 @@ import { EmptyState } from "../components/EmptyState";
 import { RequirementDrawer } from "../components/RequirementDrawer";
 import { RequirementStatusTag, VersionStatusTag } from "../components/StatusTags";
 import { StrategyTab } from "../components/StrategyTab";
+import { RunTasksModal } from "../components/RunTasksModal";
 import { SuggestionList } from "../components/SuggestionList";
 import { fmtTime } from "../utils/time";
 
@@ -89,10 +90,12 @@ export function VersionPage() {
     onSuccess: (r) => navigate(`/reports/${r.id}`),
   });
 
+  const [runTasks, setRunTasks] = useState(false);
   const v = version.data;
   const locked = Boolean(v && v.status !== "planning");
   return (
     <>
+      {v && <RunTasksModal open={runTasks} versionId={v.id} startTesting={v.status === "requirements_frozen"} onClose={() => setRunTasks(false)} onDone={refreshVersion} />}
       <Card style={{ marginBottom: 16 }} loading={version.isLoading}>
         {v && (
           <Descriptions
@@ -124,7 +127,7 @@ export function VersionPage() {
                     <Button icon={<UnlockOutlined />} onClick={() => setUnfreezeReason("")}>
                       Unfreeze
                     </Button>
-                    <Button type="primary" onClick={() => setStatus.mutate("testing")}>
+                    <Button type="primary" onClick={() => setRunTasks(true)}>
                       Start testing
                     </Button>
                   </>

@@ -10,6 +10,7 @@ import type { AutomateResult, CaseCode, CaseExecution, Environment, ExecutionRow
 import { EXECUTOR_LABEL, ExecutionStatusTag } from "./StatusTags";
 import { fmtTime } from "../utils/time";
 import { EnvironmentStatus } from "./EnvironmentStatus";
+import { CauseTag, FailureSummary } from "./FailureSummary";
 
 const EXECUTORS = [
   { value: "auto", label: "Auto (pytest when there is code; HTTP for API cases; otherwise browser)" },
@@ -91,6 +92,22 @@ export async function manualBody(v: ManualValues, files: UploadFile[]): Promise<
   return { body };
 }
 
+/** What to do about a failed self-check, by failure kind (batch 2). */
+export function fixHint(kind?: string | null): string {
+  switch (kind) {
+    case "locator":
+      return "An element was not found: check the page selectors and the case steps, then run “AI automation” again.";
+    case "timeout":
+      return "It timed out: check that the environment responds in time, then run “AI automation” again.";
+    case "script_error":
+      return "The script itself failed: run “AI automation” again (fix the case steps or API schema first if they are unclear).";
+    case "assertion":
+      return "Assertion failed and it is unclear whether the script or the system is wrong: compare with the requirement before regenerating.";
+    default:
+      return "Fix the case steps/API schema and run “AI automation” again.";
+  }
+}
+
 /** Execution area of the P09 case detail: single-case debug run, manual record, automation (written to the test repo), history */
 export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRun: (id: string) => void }) {
   const qc = useQueryClient();
@@ -139,6 +156,11 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
         if (r.status === "succeeded") message.success(`Generated and committed ${r.code_path}@${(r.code_commit || "").slice(0, 8)}`);
         else if (r.status === "env_unavailable")
           modal.warning({ title: "SUT environment unreachable; no script generated", content: `${r.reason || ""} (no self-check attempt used; retry after starting it)` });
+        else if (r.status === "sut_mismatch")
+          modal.warning({
+            title: "Suspected system issue: the system behaved differently from the expected result",
+            content: `${r.reason || ""} The script was not bound. Do not change the assertion to make it pass; review the result below.`,
+          });
         else if (r.status === "needs_fix")
           modal.warning({
             title: "Self-check failed, not bound (needs fix)",
@@ -155,6 +177,21 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
       },
     },
   );
+  const confirmSut = useApiMutation(
+    (body: { action: "bind_and_record" | "record_only"; create_defect: boolean }) =>
+      api<{ execution: CaseExecution; defect?: { id: string } | null }>(`/cases/${tc.id}/automation/confirm-sut-issue`, { method: "POST", body }),
+    {
+      onSuccess: (r) => {
+        refresh();
+        message.success(r.defect ? "Recorded as a failed execution and a defect was created" : "Recorded as a failed execution");
+        if (r.defect) navigate(`/defects/${r.defect.id}`);
+      },
+    },
+  );
+  const markScript = useApiMutation(() => api(`/cases/${tc.id}/automation/mark-script-issue`, { method: "POST" }), {
+    success: "Marked as a script / case issue",
+    onSuccess: refresh,
+  });
   const bind = useApiMutation((body: { code_path: string }) => api(`/cases/${tc.id}/bind-code`, { method: "POST", body }), {
     success: "Bound code",
     onSuccess: () => {
@@ -214,6 +251,50 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
           description={`${tc.automation_note || ""}; start the environment and click “AI automation” again.`}
         />
       )}
+      {tc.automation_status === "sut_mismatch" && (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 12 }}
+          data-testid="sut-mismatch"
+          title="The self-check found the system behaving differently from the expected result (suspected system issue); the script was not bound"
+          description={
+            <Space orientation="vertical" size={6} style={{ width: "100%" }}>
+              {tc.automation_failure ? (
+                <FailureSummary summary={tc.automation_failure} versionId={tc.origin_version_id} />
+              ) : (
+                <span>Reason: {tc.automation_note || "unknown"}</span>
+              )}
+              <Typography.Text type="secondary">
+                Do not change the assertion to make the test pass. If the expectation is right, record it: binding keeps the script so later runs fail until the system is fixed.
+              </Typography.Text>
+              <Space wrap>
+                <Button
+                  type="primary"
+                  loading={confirmSut.isPending}
+                  onClick={() => confirmSut.mutate({ action: "bind_and_record", create_defect: false })}
+                >
+                  Bind script and record failure
+                </Button>
+                <Button loading={confirmSut.isPending} onClick={() => confirmSut.mutate({ action: "bind_and_record", create_defect: true })}>
+                  Bind, record and create defect
+                </Button>
+                <Button loading={confirmSut.isPending} onClick={() => confirmSut.mutate({ action: "record_only", create_defect: false })}>
+                  Only record failure
+                </Button>
+                {tc.draft_abs_path && (
+                  <Button type="link" onClick={() => setViewer("draft")}>
+                    View draft
+                  </Button>
+                )}
+                <Button type="link" danger loading={markScript.isPending} onClick={() => markScript.mutate(undefined)}>
+                  It is a script issue
+                </Button>
+              </Space>
+            </Space>
+          }
+        />
+      )}
       {tc.automation_status === "needs_fix" && (
         <Alert
           type="warning"
@@ -222,7 +303,12 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
           title="Automation needs fix: the last self-check failed and the script was not bound to the case"
           description={
             <Space orientation="vertical" size={2}>
-              <span>Reason: {tc.automation_note || "unknown"}</span>
+              {tc.automation_failure ? (
+                <FailureSummary summary={tc.automation_failure} versionId={tc.origin_version_id} />
+              ) : (
+                <span>Reason: {tc.automation_note || "unknown"}</span>
+              )}
+              <span>{fixHint(tc.automation_failure?.kind)}</span>
               {tc.draft_abs_path && (
                 <span>
                   Draft: 
@@ -234,7 +320,7 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
                   </Button>
                 </span>
               )}
-              <span>Fix the case steps/API schema and run “AI automation” again, or fix the draft by hand and use “Bind existing code”.</span>
+              <span>Or fix the draft by hand and use “Bind existing code”.</span>
             </Space>
           }
         />
@@ -255,9 +341,12 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
           { title: "Executor", dataIndex: "executor", render: (v: string) => EXECUTOR_LABEL[v] || v },
           { title: "Environment", dataIndex: "environment_name", render: (v?: string) => v || "-" },
           { title: "Source", dataIndex: "task_run_id", render: (v?: string) => (v ? "Task" : "Debug/manual") },
+          { title: "Cause", dataIndex: "suspected_cause", render: (v?: ExecutionRow["suspected_cause"]) => <CauseTag cause={v} /> },
           {
             title: "description",
-            render: (_: unknown, r) => <Typography.Text ellipsis style={{ maxWidth: 260 }}>{r.failed_assertion || r.error || ""}</Typography.Text>,
+            render: (_: unknown, r) => (
+              <Typography.Text ellipsis style={{ maxWidth: 260 }}>{r.summary?.headline || r.failed_assertion || r.error || ""}</Typography.Text>
+            ),
           },
         ]}
       />

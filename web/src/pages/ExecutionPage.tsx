@@ -14,6 +14,7 @@ import { fmtTime } from "../utils/time";
 import { CorrectionButton } from "../components/CorrectionButton";
 import { objLabel } from "../components/ObjLink";
 import { RunReport, summarizeRawOutput } from "../components/RunReport";
+import { FailureSummary } from "../components/FailureSummary";
 
 const ACTION_LABEL: Record<string, string> = {
   goto: "Open",
@@ -188,7 +189,7 @@ export function ExecutionPage() {
             <Space>
               {ex.agent_run_id && <Button onClick={() => setRunId(ex.agent_run_id!)}>View AI trace</Button>}
               <CorrectionButton targetType="execution" targetId={ex.id} />
-              {(ex.status === "failed" || ex.status === "error") && <DefectActions executionId={ex.id} onAgentRun={setRunId} />}
+              {(ex.status === "failed" || ex.status === "error") && ex.suspected_cause !== "platform" && <DefectActions executionId={ex.id} onAgentRun={setRunId} />}
             </Space>
           }
         >
@@ -207,10 +208,31 @@ export function ExecutionPage() {
               }
             />
           )}
-          {ex.failed_assertion && !explained && (
-            <Alert type="error" showIcon style={{ marginBottom: 12 }} title="Unmet assertions" description={<span style={{ whiteSpace: "pre-wrap" }}>{ex.failed_assertion}</span>} />
+          {ex.summary && (ex.status === "failed" || ex.status === "error" || ex.status === "skipped") ? (
+            <Alert
+              type={ex.status === "skipped" ? "info" : ex.suspected_cause === "sut" ? "error" : "warning"}
+              showIcon
+              style={{ marginBottom: 12 }}
+              title={ex.status === "skipped" ? "Not executed" : "Why it failed"}
+              description={
+                <>
+                  <FailureSummary summary={ex.summary} raw={[ex.failed_assertion, ex.error].filter(Boolean).join("\n\n") || null} />
+                  {ex.suspected_cause === "platform" && (
+                    <Typography.Paragraph type="secondary" style={{ margin: "6px 0 0" }}>
+                      A platform or configuration problem is not a defect of the system under test: fix the setup (environment, test repo, script, model) and run again.
+                    </Typography.Paragraph>
+                  )}
+                </>
+              }
+            />
+          ) : (
+            <>
+              {ex.failed_assertion && !explained && (
+                <Alert type="error" showIcon style={{ marginBottom: 12 }} title="Unmet assertions" description={<span style={{ whiteSpace: "pre-wrap" }}>{ex.failed_assertion}</span>} />
+              )}
+              {ex.error && !explained && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title="Execution error" description={<pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{ex.error}</pre>} />}
+            </>
           )}
-          {ex.error && !explained && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title="Execution error" description={<pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{ex.error}</pre>} />}
           {ex.status === "blocked" ? (
             <CompleteBlocked executionId={ex.id} onDone={() => q.refetch()} />
           ) : (

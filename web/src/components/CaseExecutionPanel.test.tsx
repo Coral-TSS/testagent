@@ -66,4 +66,35 @@ describe("CaseExecutionPanel", () => {
     expect((await manualBody({ status: "passed", actual_data: "{bad" }, [])).error).toMatch("JSON");
     expect((await manualBody({ status: "passed", actual_data: "[1]" }, [])).error).toMatch("object");
   });
+
+  it("offers the suspected-system-issue choices instead of a fix (#9)", async () => {
+    const mismatch = {
+      ...tc,
+      origin_version_id: "v1",
+      automation_status: "sut_mismatch",
+      automation_note: "Expected 201, got 422",
+      automation_draft_path: "tests/REQ-001/test_TC-001.py",
+      draft_abs_path: "D:/repo/tests/REQ-001/test_TC-001.py",
+      automation_failure: { kind: "assertion", cause: "sut", headline: "Expected 201, got 422", expected: "201", actual: "422", requirement_refs: [], next_actions: [], raw: "assert 422 == 201" },
+    } as unknown as TestCase;
+    const calls = mockFetch({
+      "GET /suts/s1/environments": () => ({ body: [] }),
+      "GET /cases/c1/executions": () => ({
+        body: [{ id: "e9", executor: "pytest", status: "failed", suspected_cause: "sut", summary: { headline: "Expected 201, got 422" }, created_at: "2026-11-04T10:00:00+08:00" }],
+      }),
+      "POST /cases/c1/automation/confirm-sut-issue": () => ({ body: { execution: { id: "e10" }, defect: { id: "d1" } } }),
+      "POST /cases/c1/automation/mark-script-issue": () => ({ body: {} }),
+    });
+    renderPage(<CaseExecutionPanel tc={mismatch} onAgentRun={() => {}} />);
+    const box = screen.getByTestId("sut-mismatch");
+    expect(box.textContent).toContain("Suspected system issue");
+    expect(box.textContent).toContain("Expected 201, got 422");
+    expect(screen.queryByText(/Automation needs fix/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Bind, record and create defect" }));
+    await waitFor(() => expect(calls.some((c) => c.path === "/cases/c1/automation/confirm-sut-issue")).toBe(true));
+    expect(calls.find((c) => c.path === "/cases/c1/automation/confirm-sut-issue")!.body).toEqual({ action: "bind_and_record", create_defect: true });
+    fireEvent.click(screen.getByRole("button", { name: "It is a script issue" }));
+    await waitFor(() => expect(calls.some((c) => c.path === "/cases/c1/automation/mark-script-issue")).toBe(true));
+    expect(await screen.findAllByText("Suspected system issue")).toBeTruthy();
+  });
 });

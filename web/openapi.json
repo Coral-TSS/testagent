@@ -37,6 +37,257 @@
     }
    }
   },
+  "/api/v1/auth/status": {
+   "get": {
+    "summary": "Auth Status",
+    "description": "For the sign-in page: is there any account yet?",
+    "operationId": "auth_status_api_v1_auth_status_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/login": {
+   "post": {
+    "summary": "Login",
+    "operationId": "login_api_v1_auth_login_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/ticket": {
+   "post": {
+    "summary": "Redeem Ticket",
+    "description": "Desktop launcher: exchange the one-time ticket from the URL fragment for a session.",
+    "operationId": "redeem_ticket_api_v1_auth_ticket_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TicketIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/logout": {
+   "post": {
+    "summary": "Logout",
+    "operationId": "logout_api_v1_auth_logout_post",
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     }
+    }
+   }
+  },
+  "/api/v1/auth/me": {
+   "get": {
+    "summary": "Me",
+    "operationId": "me_api_v1_auth_me_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/password": {
+   "post": {
+    "summary": "Change Password",
+    "operationId": "change_password_api_v1_auth_password_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PasswordIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/users": {
+   "get": {
+    "summary": "List Users",
+    "operationId": "list_users_api_v1_users_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "summary": "Create User",
+    "operationId": "create_user_api_v1_users_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UserIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/users/{user_id}": {
+   "patch": {
+    "summary": "Patch User",
+    "operationId": "patch_user_api_v1_users__user_id__patch",
+    "parameters": [
+     {
+      "name": "user_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "User Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UserPatch"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/corrections": {
    "post": {
     "summary": "Create Correction",
@@ -5775,6 +6026,93 @@
     }
    }
   },
+  "/api/v1/cases/{case_id}/automation/confirm-sut-issue": {
+   "post": {
+    "summary": "Confirm Sut Issue",
+    "description": "#9: a person agrees the self-check found a system issue (bind the draft and/or record a\nfailed execution, optionally file a defect).",
+    "operationId": "confirm_sut_issue_api_v1_cases__case_id__automation_confirm_sut_issue_post",
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ConfirmSutIssueIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/cases/{case_id}/automation/mark-script-issue": {
+   "post": {
+    "summary": "Mark Script Issue",
+    "operationId": "mark_script_issue_api_v1_cases__case_id__automation_mark_script_issue_post",
+    "parameters": [
+     {
+      "name": "case_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Case Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/versions/{version_id}/automate": {
    "post": {
     "summary": "Automate Version",
@@ -6088,8 +6426,112 @@
       }
      }
     ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "anyOf": [
+         {
+          "$ref": "#/components/schemas/RunIn"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "title": "Body"
+       }
+      }
+     }
+    },
     "responses": {
      "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/versions/{version_id}/runnable-tasks": {
+   "get": {
+    "summary": "Runnable Tasks",
+    "operationId": "runnable_tasks_api_v1_versions__version_id__runnable_tasks_get",
+    "parameters": [
+     {
+      "name": "version_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Version Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/versions/{version_id}/run-tasks": {
+   "post": {
+    "summary": "Run Version Tasks",
+    "description": "#13: Start testing / Next \"Run tasks\" / \"Run all\": queue the version's tasks.",
+    "operationId": "run_version_tasks_api_v1_versions__version_id__run_tasks_post",
+    "parameters": [
+     {
+      "name": "version_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "format": "uuid",
+       "title": "Version Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RunVersionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
       "description": "Successful Response",
       "content": {
        "application/json": {
@@ -8755,6 +9197,27 @@
     "type": "object",
     "title": "ConfigIn"
    },
+   "ConfirmSutIssueIn": {
+    "properties": {
+     "action": {
+      "type": "string",
+      "enum": [
+       "bind_and_record",
+       "record_only"
+      ],
+      "title": "Action",
+      "default": "bind_and_record"
+     },
+     "create_defect": {
+      "type": "boolean",
+      "title": "Create Defect",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "ConfirmSutIssueIn"
+   },
    "CorrectionIn": {
     "properties": {
      "target_type": {
@@ -10063,6 +10526,27 @@
     "type": "object",
     "title": "LinkPatch"
    },
+   "LoginIn": {
+    "properties": {
+     "username": {
+      "type": "string",
+      "maxLength": 64,
+      "title": "Username"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 256,
+      "title": "Password"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "username",
+     "password"
+    ],
+    "title": "LoginIn"
+   },
    "ManualIn": {
     "properties": {
      "status": {
@@ -10811,6 +11295,27 @@
     "type": "object",
     "title": "OpenApiImportIn"
    },
+   "PasswordIn": {
+    "properties": {
+     "current_password": {
+      "type": "string",
+      "maxLength": 256,
+      "title": "Current Password"
+     },
+     "new_password": {
+      "type": "string",
+      "maxLength": 256,
+      "title": "New Password"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "current_password",
+     "new_password"
+    ],
+    "title": "PasswordIn"
+   },
    "PersonIn": {
     "properties": {
      "name": {
@@ -11110,6 +11615,55 @@
      "role"
     ],
     "title": "ResponsibleIn"
+   },
+   "RunIn": {
+    "properties": {
+     "allow_missing_scripts": {
+      "type": "boolean",
+      "title": "Allow Missing Scripts",
+      "default": false
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "RunIn"
+   },
+   "RunVersionIn": {
+    "properties": {
+     "task_ids": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string",
+         "format": "uuid"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Task Ids"
+     },
+     "allow_missing_scripts": {
+      "type": "boolean",
+      "title": "Allow Missing Scripts",
+      "default": false
+     },
+     "set_ready": {
+      "type": "boolean",
+      "title": "Set Ready",
+      "default": false
+     },
+     "start_testing": {
+      "type": "boolean",
+      "title": "Start Testing",
+      "default": true
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "RunVersionIn"
    },
    "Schedule": {
     "properties": {
@@ -11800,6 +12354,11 @@
        "archived"
       ],
       "title": "Status"
+     },
+     "allow_missing_scripts": {
+      "type": "boolean",
+      "title": "Allow Missing Scripts",
+      "default": false
      }
     },
     "additionalProperties": false,
@@ -11808,6 +12367,21 @@
      "status"
     ],
     "title": "TaskStatusIn"
+   },
+   "TicketIn": {
+    "properties": {
+     "ticket": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Ticket"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "ticket"
+    ],
+    "title": "TicketIn"
    },
    "UnfreezeIn": {
     "properties": {
@@ -11826,6 +12400,106 @@
     "additionalProperties": false,
     "type": "object",
     "title": "UnfreezeIn"
+   },
+   "UserIn": {
+    "properties": {
+     "username": {
+      "type": "string",
+      "maxLength": 64,
+      "title": "Username"
+     },
+     "display_name": {
+      "type": "string",
+      "maxLength": 100,
+      "title": "Display Name",
+      "default": ""
+     },
+     "role": {
+      "type": "string",
+      "pattern": "^(admin|member)$",
+      "title": "Role",
+      "default": "member"
+     },
+     "password": {
+      "type": "string",
+      "maxLength": 256,
+      "title": "Password",
+      "description": "initial password; the user must change it on first sign-in"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "username",
+     "password"
+    ],
+    "title": "UserIn"
+   },
+   "UserPatch": {
+    "properties": {
+     "display_name": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 100
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Display Name"
+     },
+     "role": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(admin|member)$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Role"
+     },
+     "is_active": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Is Active"
+     },
+     "password": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 256
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password",
+      "description": "reset; user must change it"
+     },
+     "unlock": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unlock"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "title": "UserPatch"
    },
    "ValidationError": {
     "properties": {

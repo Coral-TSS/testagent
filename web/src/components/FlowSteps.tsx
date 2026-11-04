@@ -1,20 +1,40 @@
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { Button, Space, Steps, Tooltip, Typography } from "antd";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import type { StepStatus, SutProgress } from "../api/types";
+import { RunTasksModal } from "./RunTasksModal";
 
 const STATUS: Record<StepStatus, "finish" | "process" | "wait"> = { done: "finish", doing: "process", todo: "wait" };
 
 /** The SUT main flow (SUT → model → version/requirements → strategy → tasks → cases → execution → defects/reports), clickable. */
 export function FlowSteps({ progress, compact }: { progress: SutProgress; compact?: boolean }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [runTasks, setRunTasks] = useState<string | null>(null);
+  const next = progress.next;
+  /** "Run tasks" opens the batch-run dialog in place; going to the page you are on scrolls to its target. */
+  const go = () => {
+    if (!next) return;
+    if (next.kind === "run_tasks" && next.version_id) {
+      setRunTasks(next.version_id);
+      return;
+    }
+    if (location.pathname + location.search === next.path) {
+      const el = document.getElementById("strategy-tasks") || document.querySelector("main");
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    navigate(next.path);
+  };
   const current = Math.max(
     0,
     progress.steps.findIndex((s) => s.key === progress.next?.key),
   );
   return (
     <div data-testid="flow-steps" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      {runTasks && <RunTasksModal open versionId={runTasks} onClose={() => setRunTasks(null)} />}
       <Steps
         size="small"
         style={{ flex: 1 }}
@@ -37,7 +57,7 @@ export function FlowSteps({ progress, compact }: { progress: SutProgress; compac
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             Next
           </Typography.Text>
-          <Button type="primary" size="small" icon={<ArrowRightOutlined />} onClick={() => navigate(progress.next!.path)}>
+          <Button type="primary" size="small" icon={<ArrowRightOutlined />} onClick={go}>
             {progress.next.label}
           </Button>
         </Space>
