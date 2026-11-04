@@ -86,7 +86,7 @@ def test_executor_selection_matrix():
     assert select_executor("automated", "tests/R/test_a.py", f, "human") == ("pytest", None)
     assert select_executor("manual", None, f, "agent") == ("agent_browser", None)
     assert select_executor("manual", None, f, "human") == ("manual", "blocked")
-    assert select_executor("manual", None, f, "automation") == ("manual", "error")
+    assert select_executor("manual", None, f, "automation") == ("manual", "no_script")
     assert select_executor("automated", None, f, "agent") == ("agent_browser", None)
     assert select_executor("manual", None, "performance", "agent") == ("manual", "skipped")
     assert select_executor("automated", "t.py", "security", "agent") == ("pytest", "skipped")
@@ -213,7 +213,9 @@ def test_automate_failed_self_check_marks_needs_fix(client, world):
     assert out["status"] == "needs_fix" and out["error_code"] == "SELF_CHECK_FAILED", out
     case = client.get(f"{V1}/cases/{cid}").json()
     assert case["mode"] == "manual" and case["code_path"] is None
-    assert case["automation_status"] == "needs_fix" and "assert" in case["automation_note"]
+    # batch 2: the note is the readable headline, the raw pytest text is kept alongside
+    assert case["automation_status"] == "needs_fix" and "expected 1, got 0" in case["automation_note"]
+    assert "assert" in case["automation_failure"]["raw"]
     assert case["automation_draft_path"] == "tests/REQ-001/test_TC-001.py"
     assert case["draft_abs_path"]
     draft = client.get(f"{V1}/cases/{cid}/code", params={"draft": True}).json()
@@ -320,3 +322,127 @@ def test_manual_execution_recorded(client, world, db):
     agent = ExecutionService(db, client.app.state.bus, actor="agent:x")
     with pytest.raises(AppError):
         agent.record_manual(world["case"]["id"], {"status": "passed"})
+
+
+# ------------------------------------------------------------------ batch 2 (#9/#15): who is wrong?
+SUT_VERDICT = {
+    "verdict": "sut_mismatch",
+    "expected": "Amount must be greater than 0",
+    "actual": "no message",
+    "requirement_code": "REQ-001",
+    "rule": "amount must be positive",
+    "explanation": "The system accepts 0; the assertion follows the case.",
+}
+
+
+def _automate_failing(client, world, verdict):
+    env_id = env(client, world, "http://127.0.0.1:9")
+    result = {"summary": "Generated"}
+    if verdict is not None:
+        result["verdict"] = verdict
+    use_model(
+        client,
+        call("write_test_file", {"content": FAILING_CODE}, "w1"),
+        call("run_pytest", {}, "p1"),
+        call("submit_result", result, "s1"),
+    )
+    return client.post(f"{V1}/cases/{world['case']['id']}/automate", json={"environment_id": env_id}).json()
+
+
+def test_self_check_sut_mismatch(client, world):
+    out = _automate_failing(client, world, SUT_VERDICT)
+    assert out["status"] == "sut_mismatch" and out["error_code"] == "SUT_MISMATCH", out
+    case = client.get(f"{V1}/cases/{world['case']['id']}").json()
+    assert case["automation_status"] == "sut_mismatch" and case["mode"] == "manual"
+    failure = case["automation_failure"]
+    assert failure["kind"] == "assertion" and failure["cause"] == "sut"
+    assert failure["requirement_refs"][0]["code"] == "REQ-001"
+    assert failure["requirement_refs"][0]["rule"] == "amount must be positive"
+    assert failure["agent_note"].startswith("The system accepts 0")
+    assert "assert" in failure["raw"]
+    assert case["automation_note"] == failure["headline"]
+
+
+@pytest.mark.parametrize(
+    ("verdict", "status"),
+    [
+        ({"verdict": "script_issue", "explanation": "wrong field"}, "needs_fix"),
+        ({**SUT_VERDICT, "expected": "made up", "requirement_code": None}, "needs_fix"),  # no evidence
+        (None, "needs_fix"),  # older model output without a verdict
+    ],
+)
+def test_self_check_other_verdicts_stay_needs_fix(client, world, verdict, status):
+    out = _automate_failing(client, world, verdict)
+    assert out["status"] == status, out
+    case = client.get(f"{V1}/cases/{world['case']['id']}").json()
+    assert case["automation_status"] == "needs_fix"
+    expected_cause = "script" if verdict and verdict["verdict"] == "script_issue" else "unknown"
+    assert case["automation_failure"]["cause"] == expected_cause
+
+
+def test_confirm_sut_issue_binds_and_records(client, world):
+    _automate_failing(client, world, SUT_VERDICT)
+    cid = world["case"]["id"]
+    resp = client.post(
+        f"{V1}/cases/{cid}/automation/confirm-sut-issue",
+        json={"action": "bind_and_record", "create_defect": True},
+    )
+    assert resp.status_code == 200, resp.text
+    out = resp.json()
+    case = out["case"]
+    assert case["mode"] == "automated" and case["code_path"] == "tests/REQ-001/test_TC-001.py"
+    assert case["automation_status"] == "ok" and case["automation_failure"] is None
+    ex = out["execution"]
+    assert ex["status"] == "failed" and ex["task_run_id"] is None and ex["executor"] == "pytest"
+    assert ex["suspected_cause"] == "sut" and ex["failure_kind"] == "assertion"
+    assert ex["summary"]["cause"] == "sut" and "assert" in ex["failed_assertion"]
+    defect = out["defect"]
+    assert defect["execution_id"] == ex["id"]
+    assert defect["cause_category"] == "unknown" and defect["suggested_cause"] == "development"  # C01
+    # a second confirmation is refused: the case is no longer a suspected system issue
+    again = client.post(f"{V1}/cases/{cid}/automation/confirm-sut-issue", json={})
+    assert again.status_code == 409
+
+
+def test_confirm_sut_issue_record_only_and_mark_script(client, world):
+    _automate_failing(client, world, SUT_VERDICT)
+    cid = world["case"]["id"]
+    out = client.post(f"{V1}/cases/{cid}/automation/confirm-sut-issue", json={"action": "record_only"}).json()
+    assert out["case"]["mode"] == "manual" and out["case"]["automation_status"] == "sut_mismatch"
+    assert out["execution"]["status"] == "failed" and out["defect"] is None
+    marked = client.post(f"{V1}/cases/{cid}/automation/mark-script-issue")
+    assert marked.status_code == 200
+    assert marked.json()["automation_status"] == "needs_fix"
+    assert marked.json()["automation_failure"]["cause"] == "script"
+    assert client.post(f"{V1}/cases/{cid}/automation/mark-script-issue").status_code == 409
+
+
+def test_execution_errors_are_classified(client, world):
+    """A missing environment-side file / platform configuration is not the system's fault."""
+    repo = repo_of(client)
+    repo.ensure()
+    with world_db(client).tx() as cur:
+        cur.execute(
+            "UPDATE test_case SET mode='automated', code_path='tests/REQ-001/missing.py' WHERE id=%s",
+            (world["case"]["id"],),
+        )
+    out = debug(client, world, env(client, world, "http://127.0.0.1:9"), executor="pytest")
+    assert out["status"] == "error"
+    assert out["failure_kind"] == "platform" and out["suspected_cause"] == "platform"
+    assert out["summary"]["next_actions"] == ["fix_config"]
+
+
+def test_manual_failure_is_classified(client, world):
+    cid = world["case"]["id"]
+    resp = client.post(
+        f"{V1}/cases/{cid}/executions/manual",
+        json={"status": "failed", "failed_assertion": "No error message shown"},
+    )
+    assert resp.status_code == 201, resp.text
+    ex = resp.json()
+    assert ex["failure_kind"] == "assertion" and ex["suspected_cause"] == "sut"
+    assert ex["summary"]["headline"] == "No error message shown"
+
+
+def world_db(client):
+    return client.app.state.db

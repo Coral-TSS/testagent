@@ -15,7 +15,15 @@ from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
 from testagent.services.state import transition
-from testagent.services.task_binding import clean_selector, membership, rows, sync_task, write_rows
+from testagent.services.task_binding import (
+    clean_selector,
+    membership,
+    require_scripts,
+    rows,
+    script_gaps,
+    sync_task,
+    write_rows,
+)
 
 EDITABLE = {"draft", "ready", "done", "cancelled"}
 
@@ -152,6 +160,7 @@ class TaskService:
         )
         task["cases"] = cur.fetchall()
         task.update(membership(cur, task_id))
+        task["script_gaps"] = script_gaps(cur, task_id)
         cur.execute("SELECT name FROM version WHERE id=%s", (task["version_id"],))
         version = cur.fetchone()
         task["version_name"] = version["name"] if version else None
@@ -205,7 +214,10 @@ class TaskService:
                 " AS case_count FROM test_task t WHERE version_id=%s ORDER BY created_at, name",
                 (version_id,),
             )
-            return cur.fetchall()
+            rows = cur.fetchall()
+            for row in rows:
+                row["script_gap_count"] = len(script_gaps(cur, row["id"])) if row["executor"] == "automation" else 0
+            return rows
 
     def get(self, task_id) -> dict:
         with self.db.tx() as cur:
@@ -237,7 +249,7 @@ class TaskService:
     def set_cases(self, task_id, case_ids: list) -> dict:
         return self.update(task_id, {"case_ids": case_ids})
 
-    def set_status(self, task_id, target: str) -> dict:
+    def set_status(self, task_id, target: str, *, allow_missing_scripts: bool = False) -> dict:
         if target not in ("draft", "ready", "archived"):
             raise AppError("VALIDATION", "Only draft / ready / archived can be set manually")
         with self.db.tx() as cur:
@@ -247,6 +259,8 @@ class TaskService:
                 cur.execute("SELECT count(*) AS n FROM task_case WHERE task_id=%s", (task_id,))
                 if cur.fetchone()["n"] == 0:
                     raise AppError("VALIDATION", "The task has no cases and cannot be set ready")
+                if not allow_missing_scripts:
+                    require_scripts(cur, task_id)
             cur.execute("UPDATE test_task SET status=%s WHERE id=%s", (target, task_id))
             log_change(cur, "test_task", task_id, "status", self.actor, {"status": target})
             row = self._detail(cur, task_id)

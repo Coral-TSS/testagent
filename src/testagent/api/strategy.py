@@ -81,6 +81,7 @@ class CasesIn(_In):
 
 class TaskStatusIn(_In):
     status: Literal["draft", "ready", "archived"]
+    allow_missing_scripts: bool = False
 
 
 def _strategy(r: Request) -> StrategyService:
@@ -153,7 +154,7 @@ def set_task_cases(request: Request, task_id: UUID, body: CasesIn):
 
 @router.post("/tasks/{task_id}/status")
 def set_task_status(request: Request, task_id: UUID, body: TaskStatusIn):
-    return _tasks(request).set_status(task_id, body.status)
+    return _tasks(request).set_status(task_id, body.status, allow_missing_scripts=body.allow_missing_scripts)
 
 
 @router.delete("/tasks/{task_id}", status_code=204)

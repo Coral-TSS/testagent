@@ -117,6 +117,13 @@ def test_comment_steps_requests_and_assertions(repo, api_url):
     assert check["actual"] == "'approved'"
     assert test["failure"]["explain"].startswith("expected order['state'] equals")
     assert "got 'approved'" in test["failure"]["explain"]
+    # batch 2: structured expected / actual for the readable summary
+    assert test["failure"]["kind"] == "assertion"
+    assert test["failure"]["subject"] == "order['state']"
+    assert (test["failure"]["expected"], test["failure"]["actual"]) == (
+        "test_data.get('expected_state') (= 'pending')",
+        "'approved'",
+    )
 
 
 STEP_STYLE = """
@@ -155,6 +162,12 @@ def test_step_and_check_helpers(repo, api_url):
     assert (check["expected"], check["actual"]) == ("'approved'", "'pending'")
     assert check["explain"] == "State is approved: expected equals 'approved', got 'pending'"
     assert len([e for e in second["events"] if e["type"] == "check"]) == 1  # not twice
+    # a failed check() is the test's failure (it used to leave the report outcome "passed")
+    assert test["outcome"] == "failed"
+    failure = test["failure"]
+    assert failure["kind"] == "assertion" and failure["check"] == "State is approved"
+    assert (failure["expected"], failure["actual"]) == ("'approved'", "'pending'")
+    assert failure["step"] == "Query and verify the state"
     # outside TestAgent (no plugin) the helpers still assert
     plain = repo.write("tests/R/test_plain.py", "def test_p(check):\n    check('x', 1, 2)\n")
     import subprocess
@@ -168,6 +181,16 @@ def test_step_and_check_helpers(repo, api_url):
         encoding="utf-8",
     )
     assert proc.returncode == 1 and "expected == 2, got 1" in proc.stdout
+
+
+def test_error_kinds():
+    from testagent.integrations.pytest_report import error_kind
+
+    assert error_kind("Error", "connect ECONNREFUSED 127.0.0.1:1") == "env_unreachable"
+    assert error_kind("TimeoutError", 'Timeout 30000ms exceeded. waiting for locator("#ok")') == "locator"
+    assert error_kind("TimeoutError", "Timeout 5000ms exceeded.") == "timeout"
+    assert error_kind("JSONDecodeError", "Expecting value: line 1 (not JSON)") == "http_error"
+    assert error_kind("KeyError", "'state'") == "script_error"
 
 
 def test_error_explanations():

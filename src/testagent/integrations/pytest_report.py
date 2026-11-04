@@ -386,6 +386,33 @@ def explain_assert(event: dict, message: str | None) -> str:
     return text
 
 
+def error_kind(exc_type: str, message: str) -> str:
+    """Failure kind of a non-assertion error (batch 2): env_unreachable, locator, timeout,
+    http_error or script_error. Mirrors the branches of ``explain_error``."""
+    text = message or exc_type
+    if "ECONNREFUSED" in text or "Connection refused" in text or "connect ECONN" in text:
+        return "env_unreachable"
+    if exc_type == "TimeoutError" or "Timeout" in exc_type or "Timeout " in text:
+        return "locator" if re.search(r"locator|waiting for", text) else "timeout"
+    if exc_type in ("JSONDecodeError", "ValueError") and "JSON" in text.upper():
+        return "http_error"
+    return "script_error"
+
+
+def failure_detail(event: dict, test) -> dict:
+    """Structured expected / actual of a failed check or assert event (readable summary)."""
+    out = {"kind": "assertion"}
+    for key in ("subject", "expected", "actual"):
+        if event.get(key) is not None:
+            out[key] = event[key]
+    if event.get("type") == "check" and event.get("name"):
+        out["check"] = event["name"]
+    index = event.get("step")
+    if index is not None and test is not None and index < len(test.explicit):
+        out["step"] = test.explicit[index]["name"]
+    return out
+
+
 def explain_error(exc_type: str, message: str) -> str:
     text = message or exc_type
     if "ECONNREFUSED" in text or "Connection refused" in text or "connect ECONN" in text:
@@ -547,6 +574,15 @@ def pytest_runtest_makereport(item, call):
         return
     exc = call.excinfo.value
     if getattr(exc, "_ta_recorded", False):
+        # check() / expect() already recorded the failed event; keep it as the test's failure
+        failed = next((e for e in reversed(test.events) if e.get("passed") is False), None)
+        if failed is not None and getattr(test, "failure", None) is None:
+            test.failure = {
+                "type": "AssertionError",
+                "message": _short(str(exc), 1500),
+                "explain": failed.get("explain") or _short(str(exc), 800),
+                **failure_detail(failed, test),
+            }
         return
     line = None
     for entry in reversed(call.excinfo.traceback):
@@ -568,6 +604,7 @@ def pytest_runtest_makereport(item, call):
         test.add(event)
         test.failure = {"type": "AssertionError", "message": _short(text, 1500)}
         test.failure["explain"] = event["explain"]
+        test.failure.update(failure_detail(event, test))
     else:
         name = type(exc).__name__
         test.add({"type": "error", "name": name, "message": _short(str(exc), 1500), "line": line})
@@ -575,6 +612,7 @@ def pytest_runtest_makereport(item, call):
             "type": name,
             "message": _short(str(exc), 1500),
             "explain": explain_error(name, str(exc)),
+            "kind": error_kind(name, str(exc)),
         }
 
 

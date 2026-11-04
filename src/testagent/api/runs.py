@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ConfigDict
 
 from testagent.core.jobs import Listener
 from testagent.services.runs import TERMINAL, RunService, run_channel
@@ -19,9 +20,43 @@ def runs(request: Request) -> RunService:
     return request.app.state.runs_factory()
 
 
+class RunIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    allow_missing_scripts: bool = False
+    """Run an automated task although some cases have no script; they are recorded skipped."""
+
+
 @router.post("/tasks/{task_id}/run", status_code=201)
-def start_run(request: Request, task_id: UUID):
-    return runs(request).start(task_id)
+def start_run(request: Request, task_id: UUID, body: RunIn | None = None):
+    return runs(request).start(task_id, allow_missing_scripts=bool(body and body.allow_missing_scripts))
+
+
+class RunVersionIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_ids: list[UUID] | None = None
+    """None = every runnable task of the version."""
+    allow_missing_scripts: bool = False
+    set_ready: bool = False
+    """Also set draft tasks ready first (D7: off by default)."""
+    start_testing: bool = True
+    """Move a frozen version to testing (Start testing)."""
+
+
+@router.get("/versions/{version_id}/runnable-tasks")
+def runnable_tasks(request: Request, version_id: UUID):
+    return runs(request).runnable(version_id)
+
+
+@router.post("/versions/{version_id}/run-tasks")
+def run_version_tasks(request: Request, version_id: UUID, body: RunVersionIn):
+    """#13: Start testing / Next "Run tasks" / "Run all": queue the version's tasks."""
+    return runs(request).run_version(
+        version_id,
+        body.task_ids,
+        allow_missing_scripts=body.allow_missing_scripts,
+        set_ready=body.set_ready,
+        start_testing=body.start_testing,
+    )
 
 
 @router.get("/tasks/{task_id}/runs")

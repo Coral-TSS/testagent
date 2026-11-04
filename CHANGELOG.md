@@ -21,6 +21,28 @@ All notable changes to this project are documented here. The format follows
 - Optional package mirrors for building the image: `PIP_INDEX_URL`, `NPM_REGISTRY`,
   `PLAYWRIGHT_DOWNLOAD_HOST` and `UV_IMAGE` (next to `DEBIAN_MIRROR`), passed from `.env` as build
   arguments. Empty by default (official sources); packages are still checked against the lock-file hashes.
+- Result trustworthiness (batch 2, migration `0023_result_trust`):
+  - Every failed, errored or skipped execution carries a failure kind (assertion, element not found,
+    timeout, script error, error response, system unreachable, platform/config, agent did not finish,
+    no script, non-functional) and a suspected cause (system under test, script/case, environment,
+    platform, unclear), plus a readable summary: one sentence, expected vs actual, the requirement and
+    step, and the raw output folded away. Shown on the execution page, the case history, run pages and
+    reports. History is backfilled for kind and cause only; statuses are unchanged.
+  - AI automation self-check no longer "fixes" a script whose assertion disagrees with the system: when
+    the expectation is backed by the case or requirement, the case is marked **suspected system issue**
+    (`sut_mismatch`) and a person chooses: bind the script and record a failed execution (optionally
+    creating a defect), only record the failure, or mark it a script issue. Batch automation skips these
+    cases unless they are picked.
+  - Automated tasks with ready cases that have no script: "Run now" / "Set ready" ask first (generate
+    scripts, move the cases to an agent task, or run anyway). Such cases are skipped with kind
+    `no_script` instead of counting as errors; scheduled runs skip them without asking. Tasks show how
+    many cases lack a script.
+  - **Run all runnable tasks** for a version (`GET /versions/{id}/runnable-tasks`,
+    `POST /versions/{id}/run-tasks`): one dialog lists every task, ticks the runnable ones and says why
+    the others cannot start; "Start testing" opens it (or only changes the status). The main-flow
+    "Run tasks" step opens the same dialog.
+  - Reports and run pages count failures by suspected cause and list cases skipped for a missing script
+    (`skipped_no_script` in the summary); the pass-rate note says how many skipped cases had no script.
 
 ### Changed
 
@@ -30,6 +52,10 @@ All notable changes to this project are documented here. The format follows
   Playwright's headless Chromium shell is installed (`PLAYWRIGHT_ONLY_SHELL=0` restores the full build).
   The image shrinks from about 1.8 GB to 1.1 GB. Base images are configurable (`PYTHON_IMAGE`,
   `NODE_IMAGE`). Building now requires BuildKit (`docker buildx`).
+- A skipped case in an automated task that has no automation script is recorded as `skipped` (kind
+  `no_script`) instead of `error`, so it no longer lowers the pass rate as an error.
+- The needs-fix note of AI automation is now the readable one-line failure summary; the raw output is
+  kept with the case (`automation_failure.raw`).
 
 ### Fixed
 
@@ -39,6 +65,9 @@ All notable changes to this project are documented here. The format follows
 - `DEBIAN_MIRROR` now also replaces `security.debian.org` and works with the classic `sources.list`
   format; apt retries with 30 s timeouts instead of hanging, and the build log prints the apt sources,
   npm registry and Python index actually used.
+- Test results recorded with `check()` reported the test as passed in the parsed report when an
+  earlier check had failed.
+- `ops/export_openapi.py` failed with an unexpected argument.
 
 ### Removed
 

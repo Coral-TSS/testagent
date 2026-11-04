@@ -39,7 +39,9 @@ def summary_entry() -> Entry:
         instructions=(
             "Summarise the test report in the output language in a few short paragraphs: scope, pass rate "
             "(passed / executed; always state skipped, blocked and not-executed counts "
-            "separately — they are not passes), "
+            "separately — they are not passes; cases skipped because they have no automation "
+            "script are a test-setup gap, not a finding), main failures grouped by suspected "
+            "cause (failures caused by the platform or the environment are not defects of the system), "
             "main failures, requirements with the most/most severe defects. Describe facts "
             "objectively; do not judge or blame people and do not add facts that are not in the "
             "report."
@@ -51,16 +53,33 @@ def _dumps(obj) -> str:
     return json.dumps(obj, ensure_ascii=False, default=str)
 
 
-def _summary(statuses: list[str], total: int) -> dict:
+CAUSE_KEYS = ("sut", "script", "environment", "platform", "unknown")
+
+
+def _summary(statuses: list[str], total: int, executions: list[dict] | None = None) -> dict:
     counts = {k: statuses.count(k) for k in ("passed", "failed", "error", "blocked", "skipped")}
     executed = counts["passed"] + counts["failed"] + counts["error"]
+    rows = executions or []
+    by_cause = {k: 0 for k in CAUSE_KEYS}
+    by_kind: dict[str, int] = {}
+    for e in rows:
+        if e.get("status") in ("failed", "error"):
+            by_cause[e.get("suspected_cause") or "unknown"] += 1
+            kind = e.get("failure_kind") or "unknown"
+            by_kind[kind] = by_kind.get(kind, 0) + 1
+    no_script = sum(1 for e in rows if e.get("status") == "skipped" and e.get("failure_kind") == "no_script")
     return {
         "total": total,
         **counts,
+        "skipped_no_script": no_script,
+        "skipped_non_functional": counts["skipped"] - no_script,
         "not_executed": total - len(statuses),
         "executed": executed,
-        # passed / executed (passed+failed+error); skipped, blocked and not run never count
+        # passed / executed (passed+failed+error); skipped (incl. cases without a script),
+        # blocked and not run never count (D3: platform / environment errors stay in, shown by cause)
         "pass_rate": (counts["passed"] / executed) if executed else None,
+        "by_cause": by_cause,
+        "by_kind": by_kind,
     }
 
 
@@ -122,7 +141,8 @@ class ReportService:
             cases = cur.fetchall()
             cur.execute(
                 "SELECT e.id::text AS id, e.case_id::text AS case_id, e.status,"
-                " e.failed_assertion, e.error FROM case_execution e"
+                " e.failed_assertion, e.error, e.failure_kind, e.suspected_cause, e.summary"
+                " FROM case_execution e"
                 " WHERE e.task_run_id=%s ORDER BY e.created_at, e.id",
                 (run_id,),
             )
@@ -159,7 +179,8 @@ class ReportService:
             cases = cur.fetchall()
             cur.execute(
                 "SELECT DISTINCT ON (e.case_id) e.id::text AS id, e.case_id::text AS case_id,"
-                " e.status, e.failed_assertion, e.error FROM case_execution e"
+                " e.status, e.failed_assertion, e.error, e.failure_kind, e.suspected_cause, e.summary"
+                " FROM case_execution e"
                 " WHERE e.case_id = ANY(%s::uuid[]) AND e.status NOT IN ('queued','running')"
                 " ORDER BY e.case_id, e.created_at DESC, e.id DESC",
                 ([c["id"] for c in cases],),
@@ -216,11 +237,19 @@ class ReportService:
                 "status": e["status"],
                 "failed_assertion": e["failed_assertion"],
                 "error": e["error"],
+                "failure_kind": e.get("failure_kind"),
+                "suspected_cause": e.get("suspected_cause"),
+                "headline": (e.get("summary") or {}).get("headline"),
                 "execution_id": e["id"],
                 "defect_ids": defects_by_execution.get(e["id"], []),
             }
             for e in executions
             if e["status"] in ("failed", "error")
+        ]
+        not_run = [
+            {"case": by_case[e["case_id"]], "execution_id": e["id"]}
+            for e in executions
+            if e["status"] == "skipped" and e.get("failure_kind") == "no_script"
         ]
         people = aggregate_people(cur, defects, weights)
         req_code = {
@@ -233,9 +262,10 @@ class ReportService:
         names = {r["id"]: r["name"] for r in cur.fetchall()}
         return {
             "scope": scope,
-            "summary": _summary([e["status"] for e in executions], len(cases)),
+            "summary": _summary([e["status"] for e in executions], len(cases), executions),
             "by_category": self._by_category(cur, cases, executions),
             "failures": failures,
+            "no_script": not_run,
             "by_requirement": aggregate_requirements(reqs, defects, executed, weights),
             "by_person": [
                 {

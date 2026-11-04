@@ -224,6 +224,36 @@ def sync_task(cur, task: dict, actor: str, prefix: str = "") -> dict:
     return {"added": added, "removed": removed}
 
 
+def script_gaps(cur, task_id) -> list[dict]:
+    """Ready functional cases of an automated task that have no automation script (#18).
+    They would not be executed (recorded skipped, never an error)."""
+    from testagent.services.executions import NON_FUNCTIONAL_TYPES
+
+    cur.execute(
+        "SELECT c.id::text AS id, c.code, c.title, c.automation_status FROM task_case tc"
+        " JOIN test_task t ON t.id=tc.task_id JOIN test_case c ON c.id=tc.case_id"
+        " WHERE tc.task_id=%s AND t.executor='automation' AND c.status='ready'"
+        " AND NOT (c.type_tag = ANY(%s)) AND NOT (c.mode='automated' AND c.code_path IS NOT NULL)"
+        " ORDER BY tc.seq",
+        (task_id, sorted(NON_FUNCTIONAL_TYPES)),
+    )
+    return cur.fetchall()
+
+
+def require_scripts(cur, task_id) -> None:
+    gaps = script_gaps(cur, task_id)
+    if gaps:
+        codes = [g["code"] for g in gaps]
+        raise AppError(
+            "MISSING_SCRIPTS",
+            f"{len(gaps)} case(s) in this automated task have no automation script yet: "
+            + ", ".join(codes[:10])
+            + ("…" if len(codes) > 10 else "")
+            + ". Generate scripts, move them to an agent task, or run anyway (they will be skipped)",
+            related=codes,
+        )
+
+
 def membership(cur, task_id) -> dict:
     cur.execute(
         "SELECT e.case_id::text AS case_id, c.code, c.title, e.removed_by, e.created_at"

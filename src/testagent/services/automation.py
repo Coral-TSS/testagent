@@ -7,6 +7,9 @@ current HEAD."""
 
 from __future__ import annotations
 
+from typing import Literal
+
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from testagent.agent.runtime import AgentRuntime, Entry
@@ -18,13 +21,27 @@ from testagent.integrations.pytest_runner import run_pytest
 from testagent.services import environments as envs
 from testagent.services.cases import CaseService
 from testagent.services.changelog import log_change
+from testagent.services.failure_classify import classify
+from testagent.services.guards import ensure_human
 
 DEFAULT_SELF_CHECKS = 5
 AUTOMATE_JOB = "automate_case"
 
 
+class SelfCheckVerdict(BaseModel):
+    """The agent's reading of the LAST self-check (batch 2, #9); checked by the platform."""
+
+    verdict: Literal["passed", "sut_mismatch", "script_issue", "unclear"]
+    expected: str | None = Field(default=None, max_length=500)
+    actual: str | None = Field(default=None, max_length=500)
+    requirement_code: str | None = Field(default=None, max_length=50)
+    rule: str | None = Field(default=None, max_length=500)
+    explanation: str = Field(default="", max_length=1000)
+
+
 class AutomateOut(BaseModel):
     summary: str = Field(min_length=1, max_length=4000)
+    verdict: SelfCheckVerdict | None = None
 
 
 class WriteArgs(BaseModel):
@@ -76,11 +93,12 @@ def register_automation_tools(registry) -> None:
             test_data=st["test_data"],
             timeout_s=st["timeout_s"],
         )
-        st["last_check"] = {k: res.get(k) for k in ("status", "failed_assertion", "error")}
         keys = ("status", "failed_assertion", "error")
         left = budget - st["checks"]
         tests = (res.get("report") or {}).get("tests") or []
         failure = next((t["failure"] for t in tests if t.get("failure")), None)
+        st["last_check"] = {k: res.get(k) for k in keys}
+        st["last_check"]["report"] = {"tests": [{"failure": failure}]} if failure else None
         return to_text(
             {
                 **{k: res.get(k) for k in keys},
@@ -147,7 +165,12 @@ def automate_entry() -> Entry:
             "write_test_file, run it with run_pytest and fix it until it passes (budget in "
             "`self_check_budget`). The case is bound only if the LAST run passed; if the "
             "system itself behaves differently from the expected result, keep the assertion "
-            "and explain it in the summary. Finish with submit_result."
+            "and explain it in the summary. Never change an assertion just to make it pass. "
+            "When the LAST self-check failed on an assertion, fill `verdict`: sut_mismatch when "
+            "the expected value comes from the case or a requirement and the system returns "
+            "something else (give expected, actual, requirement_code and the rule); "
+            "script_issue when a field name, path, step or data in the script is wrong; "
+            "unclear otherwise. Finish with submit_result."
         ),
     )
 
@@ -275,15 +298,44 @@ class AutomationService:
             reason = last.get("failed_assertion") or last.get("error") or "Self-check failed"
         if run["status"] != "succeeded":
             reason = f"The agent did not finish ({run['error_code']}); {reason}"
-        sha = repo.commit_files([target], f"testagent: draft (needs fix) {case['code']}")
-        row = self._needs_fix(case_id, target, sha, reason, actor=f"agent:{run['id']}")
+        verdict = None
+        if run["status"] == "succeeded" and isinstance(run.get("result"), dict):
+            verdict = (run["result"] or {}).get("verdict")
+        failure = None
+        if last:
+            failure = classify(
+                last.get("status") or "error",
+                error=last.get("error"),
+                failed_assertion=last.get("failed_assertion"),
+                report=last.get("report"),
+                executor="pytest",
+                phase="self_check",
+                verdict=verdict,
+                case=case,
+                requirements=case["requirements"],
+            )
+        sut = bool(failure and failure["suspected_cause"] == "sut")
+        sha = repo.commit_files([target], f"testagent: draft ({'sut mismatch' if sut else 'needs fix'}) {case['code']}")
+        detail = None
+        if failure and failure["summary"]:
+            detail = {**failure["summary"], "raw": reason[:4000]}
+        row = self._needs_fix(
+            case_id,
+            target,
+            sha,
+            reason,
+            actor=f"agent:{run['id']}",
+            status="sut_mismatch" if sut else "needs_fix",
+            failure=detail,
+        )
         return {
             **summary,
-            "status": "needs_fix",
-            "error_code": "SELF_CHECK_FAILED",
+            "status": "sut_mismatch" if sut else "needs_fix",
+            "error_code": "SUT_MISMATCH" if sut else "SELF_CHECK_FAILED",
             "draft_path": target,
             "draft_commit": sha,
             "reason": reason,
+            "failure": detail,
             "case": row,
         }
 
@@ -315,23 +367,93 @@ class AutomationService:
             "case": CaseService(self.db, self.bus).get(case_id),
         }
 
-    def _needs_fix(self, case_id, path: str | None, sha: str | None, reason: str, *, actor: str) -> dict:
+    def _needs_fix(
+        self,
+        case_id,
+        path: str | None,
+        sha: str | None,
+        reason: str,
+        *,
+        actor: str,
+        status: str = "needs_fix",
+        failure: dict | None = None,
+    ) -> dict:
+        note = (failure or {}).get("headline") or reason
         with self.db.tx() as cur:
             cur.execute(
-                "UPDATE test_case SET automation_status='needs_fix', automation_note=%s,"
+                "UPDATE test_case SET automation_status=%s, automation_note=%s, automation_failure=%s,"
                 " automation_draft_path=coalesce(%s, automation_draft_path),"
                 " automation_draft_commit=coalesce(%s, automation_draft_commit) WHERE id=%s",
-                (reason[:4000], path, sha, case_id),
+                (status, note[:4000], Jsonb(failure) if failure else None, path, sha, case_id),
             )
             log_change(
                 cur,
                 "test_case",
                 case_id,
-                "automation_needs_fix",
+                f"automation_{status}",
                 actor,
                 {"path": path, "commit": sha, "reason": reason[:500]},
             )
-        self.bus.publish("case.automation_needs_fix", {"id": str(case_id)})
+        self.bus.publish(f"case.automation_{status}", {"id": str(case_id)})
+        return CaseService(self.db, self.bus).get(case_id)
+
+    # ------------------------------------------------------------ batch 2 (#9): a person decides
+    def confirm_sut_issue(self, case_id, action: str = "bind_and_record", create_defect: bool = False) -> dict:
+        """The self-check found the system behaving differently from the expected result and a
+        person agrees. bind_and_record binds the draft (later runs keep failing until the
+        system is fixed) and records a failed execution; record_only only records it."""
+        actor = current_actor()
+        ensure_human(actor, "Confirm a suspected system issue")
+        case, repo = self._load(case_id)
+        if case["automation_status"] != "sut_mismatch":
+            raise AppError("CONFLICT", "The case has no suspected system issue from a self-check")
+        path, sha = case["automation_draft_path"], case["automation_draft_commit"]
+        failure = dict(case.get("automation_failure") or {})
+        if action == "bind_and_record":
+            if not path or not sha:
+                raise AppError("CONFLICT", "There is no draft script to bind")
+            repo.ensure()
+            self._bind(case_id, path, sha, actor=actor)
+        from testagent.services.executions import ExecutionService
+
+        execution = ExecutionService(self.db, self.bus, actor=actor).record_self_check(
+            case_id, failure, code_commit=sha
+        )
+        defect = None
+        if create_defect:
+            from testagent.services.defects import DefectService
+
+            defect = DefectService(self.db, self.bus, actor=actor).create_from_execution(
+                execution["id"], {"suggested_cause": "development", "severity": "major"}
+            )
+        if action == "record_only":
+            with self.db.tx() as cur:
+                log_change(
+                    cur, "test_case", case_id, "sut_issue_recorded", actor, {"execution_id": str(execution["id"])}
+                )
+        return {
+            "case": CaseService(self.db, self.bus).get(case_id),
+            "execution": execution,
+            "defect": defect,
+        }
+
+    def mark_script_issue(self, case_id) -> dict:
+        """A person says the self-check failure is the script's fault after all."""
+        actor = current_actor()
+        ensure_human(actor, "Mark as a script issue")
+        case = CaseService(self.db, self.bus).get(case_id)
+        if case["automation_status"] != "sut_mismatch":
+            raise AppError("CONFLICT", "The case has no suspected system issue from a self-check")
+        failure = dict(case.get("automation_failure") or {})
+        if failure:
+            failure["cause"] = "script"
+            failure["next_actions"] = ["regenerate", "edit_case"]
+        with self.db.tx() as cur:
+            cur.execute(
+                "UPDATE test_case SET automation_status='needs_fix', automation_failure=%s WHERE id=%s",
+                (Jsonb(failure) if failure else None, case_id),
+            )
+            log_change(cur, "test_case", case_id, "automation_needs_fix", actor, {"by": "person"})
         return CaseService(self.db, self.bus).get(case_id)
 
     def bind_existing(self, case_id, code_path: str) -> dict:
@@ -351,7 +473,8 @@ class AutomationService:
         with self.db.tx() as cur:
             cur.execute(
                 "UPDATE test_case SET code_commit=%s, automation_status='ok', automation_note=NULL,"
-                " automation_draft_path=NULL, automation_draft_commit=NULL WHERE id=%s",
+                " automation_failure=NULL, automation_draft_path=NULL, automation_draft_commit=NULL"
+                " WHERE id=%s",
                 (sha, case_id),
             )
             log_change(

@@ -22,6 +22,7 @@ from testagent.integrations.git_repo import TestRepo
 from testagent.integrations.pytest_runner import run_pytest
 from testagent.services import environments as envs
 from testagent.services.changelog import log_change
+from testagent.services.failure_classify import classify
 from testagent.services.guards import ensure_human
 from testagent.services.state import transition
 
@@ -71,7 +72,8 @@ def select_executor(
         return ("agent_api" if api or type_tag in API_TYPES else "agent_browser"), None
     if task_executor == "human":
         return "manual", "blocked"
-    return "manual", "error"  # automation task but the case has no code yet
+    # automation task but the case has no script yet: not executed, never counted as an error (#18)
+    return "manual", "no_script"
 
 
 # ---------------------------------------------------------------- execute_case_browser entry
@@ -197,6 +199,7 @@ class ExecutionService:
             cur.execute(
                 "SELECT e.id, e.task_run_id, e.executor, e.status, e.failed_assertion, e.error,"
                 " e.duration_ms, e.executed_by, e.created_at, e.ended_at,"
+                " e.failure_kind, e.suspected_cause, e.summary,"
                 " env.name AS environment_name"
                 " FROM case_execution e LEFT JOIN environment env ON env.id=e.environment_id"
                 " WHERE e.case_id=%s ORDER BY e.created_at DESC LIMIT 100",
@@ -228,7 +231,8 @@ class ExecutionService:
             values: list = [target]
             for key, value in fields.items():
                 sets.append(f"{key}=%s")
-                values.append(Jsonb(value, dumps=_dumps) if key in ("steps_recorded", "artifacts", "report") else value)
+                jsonb = ("steps_recorded", "artifacts", "report", "summary")
+                values.append(Jsonb(value, dumps=_dumps) if key in jsonb and value is not None else value)
             if target == "running":
                 sets.append("started_at=now()")
             elif target != "blocked":
@@ -279,15 +283,86 @@ class ExecutionService:
         except Exception as exc:  # executor crash must still close the record (C04)
             fields = {"status": "error", "error": f"{type(exc).__name__}: {exc}"[:2000]}
         status = fields.pop("status")
+        unchanged = fields.pop("_script_unchanged", None)
+        fields.update(
+            classify(
+                status,
+                error=fields.get("error"),
+                failed_assertion=fields.get("failed_assertion"),
+                report=fields.get("report"),
+                executor=executor,
+                code_commit="bound" if unchanged else None,
+                bound_commit="bound",
+                requirements=self.requirements_of(case["id"]),
+            )
+        )
         self._set_status(row["id"], status, **fields)
         self.bus.publish("case_execution.finished", {"id": str(row["id"]), "status": status})
         return self.get(row["id"])
 
-    def record_forced(self, case: dict, env_id, executor: str, status: str, *, task_run_id=None, reason=None) -> dict:
-        """A task-run case that is not executed: skipped, blocked (awaiting human) or error."""
+    def record_self_check(self, case_id, failure: dict, *, code_commit=None) -> dict:
+        """A failed execution from an AI-automation self-check a person confirmed as a system
+        issue (batch 2, #9). No task run: it shows in the case history and the version report."""
+        ensure_human(self.actor, "Record a self-check failure")
+        with self.db.tx() as cur:
+            case = self._case(cur, case_id)
+            row = self._create(cur, case, "pytest", None)
+        raw = failure.get("raw") or failure.get("headline") or "Self-check failed"
+        summary = {k: v for k, v in failure.items() if k != "raw"} or None
+        self._set_status(row["id"], "running")
+        self._set_status(
+            row["id"],
+            "failed",
+            failed_assertion=raw[:4000],
+            result="Recorded from the AI automation self-check (confirmed by a person)",
+            code_commit=code_commit,
+            failure_kind=failure.get("kind") or "assertion",
+            suspected_cause="sut",
+            summary={**summary, "cause": "sut"} if summary else None,
+        )
+        self.bus.publish("case_execution.finished", {"id": str(row["id"]), "status": "failed"})
+        return self.get(row["id"])
+
+    def _manual_class(self, case_id, data: dict) -> dict:
+        """A person recorded the result: a failure is what they saw the system do."""
+        if data["status"] not in ("failed", "error"):
+            return {}
+        return classify(
+            data["status"],
+            failed_assertion=data.get("failed_assertion"),
+            error=data.get("failed_assertion") if data["status"] == "error" else None,
+            executor="manual",
+            requirements=self.requirements_of(case_id),
+            reason=data.get("failed_assertion"),
+        )
+
+    def requirements_of(self, case_id) -> list[dict]:
+        with self.db.tx() as cur:
+            cur.execute(
+                "SELECT r.id, r.code, r.title, r.raw_text FROM case_requirement_link l"
+                " JOIN requirement r ON r.id=l.requirement_id WHERE l.case_id=%s ORDER BY r.code",
+                (case_id,),
+            )
+            return cur.fetchall()
+
+    def record_forced(
+        self, case: dict, env_id, executor: str, status: str, *, task_run_id=None, reason=None, kind=None
+    ) -> dict:
+        """A task-run case that is not executed: skipped (non-functional or no script),
+        blocked (awaiting human) or error."""
         with self.db.tx() as cur:
             row = self._create(cur, case, executor, env_id, task_run_id)
         fields: dict = {}
+        if status != "blocked":
+            fields.update(
+                classify(
+                    status,
+                    error=reason if status == "error" else None,
+                    forced=kind,
+                    reason=reason,
+                    requirements=self.requirements_of(case["id"]),
+                )
+            )
         if status == "blocked":
             fields["blocked_reason"] = reason or "awaiting_human"
         elif status == "error":
@@ -326,6 +401,10 @@ class ExecutionService:
         }
         if data.get("actual_data") is not None:
             fields["test_data"] = Jsonb(data["actual_data"], dumps=_dumps)
+        with self.db.tx() as cur:
+            cur.execute("SELECT case_id FROM case_execution WHERE id=%s", (execution_id,))
+            case_id = cur.fetchone()["case_id"]
+        fields.update(self._manual_class(case_id, data))
         self._set_status(execution_id, data["status"], **fields)
         self.bus.publish("case_execution.finished", {"id": str(execution_id), "status": data["status"]})
         return self.get(execution_id)
@@ -445,6 +524,10 @@ class ExecutionService:
         error = res.get("error") if status == "error" else None
         if error and failure and failure.get("explain") and failure["type"] != "AssertionError":
             error = f"{failure['explain']}\n\n{error}"
+        unchanged = False
+        if case.get("code_commit"):  # the file is still what was verified when it was bound
+            diff = repo.git("diff", "--quiet", case["code_commit"], "--", case["code_path"], check=False)
+            unchanged = diff.returncode == 0
         return {
             "status": status,
             "report": report,
@@ -454,6 +537,7 @@ class ExecutionService:
             "artifacts": res.get("artifacts", []),
             "duration_ms": res.get("duration_ms"),
             "code_commit": repo.head(),
+            "_script_unchanged": unchanged,
         }
 
     # ------------------------------------------------------------ manual (US-14)
@@ -481,6 +565,7 @@ class ExecutionService:
         }
         if actual is not None:  # actual data entered by the tester replaces the planned data
             fields["test_data"] = Jsonb(actual, dumps=_dumps)
+        fields.update(self._manual_class(case_id, data))
         self._set_status(row["id"], data["status"], **fields)
         self.bus.publish("case_execution.finished", {"id": str(row["id"]), "status": data["status"]})
         return self.get(row["id"])

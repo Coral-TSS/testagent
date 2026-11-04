@@ -203,11 +203,18 @@ def test_report_metrics_match_executions(client, db):
         "error": 1,
         "blocked": 0,
         "skipped": 1,
+        "skipped_no_script": 0,
+        "skipped_non_functional": 1,
         "not_executed": 1,
         "executed": 3,
         "pass_rate": pytest.approx(1 / 3),
+        # batch 2: failures by suspected cause - the fake runner's failure is a failed
+        # assertion receipt (system), the crash is the executor's own error (platform)
+        "by_cause": {"sut": 1, "script": 0, "environment": 0, "platform": 1, "unknown": 0},
+        "by_kind": {"assertion": 1, "agent_error": 1},
     }
     failures = report["content"]["failures"]
+    assert [f["suspected_cause"] for f in failures] == ["sut", "platform"]
     assert [(f["case"]["title"], f["status"]) for f in failures] == [
         ("failed", "failed"),
         ("Crash", "error"),

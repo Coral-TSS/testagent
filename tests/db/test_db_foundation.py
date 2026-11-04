@@ -239,3 +239,72 @@ def test_db_unavailable_is_clear(test_dsn):
         Database(bad)
     assert exc.value.code == "DB_UNAVAILABLE"
     assert "@" not in exc.value.message and "postgres" not in exc.value.message.lower()
+
+
+def test_result_trust_migration_backfills_history(test_dsn, fresh_schema, tmp_path):
+    """0023 (batch 2, D6): old executions keep their status, only kind / cause are filled in;
+    suggestion sources are derived from where they came from."""
+    from testagent.core.migrations import MIGRATIONS_DIR
+
+    for f in sorted(MIGRATIONS_DIR.glob("*.sql")):
+        if f.name < "0023":
+            shutil.copy(f, tmp_path / f.name)
+    db = Database(test_dsn, schema=fresh_schema)
+    try:
+        migrate(db, tmp_path)
+        with db.tx() as cur:
+            cur.execute("INSERT INTO sut(code, name) VALUES ('S', 'S') RETURNING id")
+            sut = cur.fetchone()["id"]
+            cur.execute("INSERT INTO version(sut_id, name) VALUES (%s, 'v1') RETURNING id", (sut,))
+            version = cur.fetchone()["id"]
+            cur.execute(
+                "INSERT INTO requirement(version_id, code, title) VALUES (%s, 'REQ-001', 'R') RETURNING id",
+                (version,),
+            )
+            req = cur.fetchone()["id"]
+            cur.execute("INSERT INTO test_case(sut_id, code, title) VALUES (%s, 'TC-1', 'T') RETURNING id", (sut,))
+            case = cur.fetchone()["id"]
+            rows = [
+                ("error", "A case in the automated task has no automation code yet (code_path)"),
+                ("error", "ENV_UNREACHABLE: down"),
+                ("error", "NO_ENVIRONMENT: the task has no execution environment"),
+                ("error", "RuntimeError: boom"),
+                ("failed", None),
+                ("skipped", None),
+                ("passed", None),
+            ]
+            for status, error in rows:
+                cur.execute(
+                    "INSERT INTO case_execution(case_id, executor, status, error) VALUES (%s,'manual',%s,%s)",
+                    (case, status, error),
+                )
+            for kind, req_id, key in (
+                ("field", None, "f"),
+                ("link", None, "l"),
+                ("node", None, "n"),
+                ("node", req, "r"),
+            ):
+                cur.execute(
+                    "INSERT INTO model_suggestion(sut_id, requirement_id, payload, kind, dedup_key)"
+                    " VALUES (%s,%s,'{}'::jsonb,%s,%s)",
+                    (sut, req_id, kind, key),
+                )
+        shutil.copy(MIGRATIONS_DIR / "0023_result_trust.sql", tmp_path)
+        assert migrate(db, tmp_path) == ["0023_result_trust.sql"]
+        with db.tx() as cur:
+            cur.execute(
+                "SELECT status, error, failure_kind, suspected_cause FROM case_execution ORDER BY created_at, id"
+            )
+            got = {(r["status"], r["error"]): (r["failure_kind"], r["suspected_cause"]) for r in cur.fetchall()}
+            cur.execute("SELECT dedup_key, source FROM model_suggestion")
+            sources = {r["dedup_key"]: r["source"] for r in cur.fetchall()}
+        assert got[rows[0]] == ("no_script", "platform")  # status stays 'error' (history unchanged)
+        assert got[rows[1]] == ("env_unreachable", "environment")
+        assert got[rows[2]] == ("platform", "platform")
+        assert got[rows[3]] == (None, None)
+        assert got[rows[4]] == ("assertion", "unknown")
+        assert got[rows[5]] == ("non_functional", None)
+        assert got[rows[6]] == (None, None)
+        assert sources == {"f": "openapi", "l": "model_rule", "n": "ai_inferred", "r": "requirement"}
+    finally:
+        db.close()

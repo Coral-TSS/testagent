@@ -341,7 +341,14 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
                     f"/runs/{last['id']}",
                 )
             else:
-                step("runs", "todo", "Not run yet", spath, {"label": "Run task", "path": spath})
+                # #13: the button runs the tasks (the UI opens the "Run tasks" dialog), it does
+                # not just jump to the page; with nothing ready it says what is missing
+                action = (
+                    {"label": "Run tasks", "path": spath, "kind": "run_tasks", "version_id": str(vid)}
+                    if tasks["ready"]
+                    else {"label": "Set tasks ready" if tasks["n"] else "New task", "path": spath}
+                )
+                step("runs", "todo", "Not run yet", spath, action)
 
             cur.execute(
                 "SELECT count(*) AS n, count(*) FILTER (WHERE status IN ('open','in_progress'))"
@@ -384,6 +391,7 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
                 "title": nxt["title"],
                 "label": (nxt["action"] or {}).get("label") or f"Next: {nxt['title']}",
                 "path": (nxt["action"] or {}).get("path") or nxt["path"],
+                **{k: v for k, v in (nxt["action"] or {}).items() if k in ("kind", "version_id")},
             }
             if nxt
             else None,

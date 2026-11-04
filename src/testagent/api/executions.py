@@ -54,6 +54,11 @@ class AutomateIn(_In):
     environment_id: UUID | None = None
 
 
+class ConfirmSutIssueIn(_In):
+    action: Literal["bind_and_record", "record_only"] = "bind_and_record"
+    create_defect: bool = False
+
+
 class BatchAutomateIn(_In):
     environment_id: UUID | None = None
     case_ids: list[UUID] | None = None
@@ -123,6 +128,18 @@ def automate_case(request: Request, case_id: UUID, body: AutomateIn):
     return _automation(request).automate(case_id, body.environment_id)
 
 
+@router.post("/cases/{case_id}/automation/confirm-sut-issue")
+def confirm_sut_issue(request: Request, case_id: UUID, body: ConfirmSutIssueIn):
+    """#9: a person agrees the self-check found a system issue (bind the draft and/or record a
+    failed execution, optionally file a defect)."""
+    return _automation(request).confirm_sut_issue(case_id, body.action, body.create_defect)
+
+
+@router.post("/cases/{case_id}/automation/mark-script-issue")
+def mark_script_issue(request: Request, case_id: UUID):
+    return _automation(request).mark_script_issue(case_id)
+
+
 @router.post("/versions/{version_id}/automate")
 def automate_version(request: Request, version_id: UUID, body: BatchAutomateIn):
     """Batch AI automation as background jobs: ready (optionally draft) manual cases of the
@@ -139,6 +156,8 @@ def automate_version(request: Request, version_id: UUID, body: BatchAutomateIn):
             " AND (c.mode='manual' OR c.automation_status IN ('needs_fix', 'env_unavailable')"
             " OR c.code_path IS NULL)"
             " AND (%(ids)s::uuid[] IS NULL OR c.id = ANY(%(ids)s::uuid[]))"
+            # a suspected system issue is not retried by a blanket batch (only when picked)
+            " AND (%(ids)s::uuid[] IS NOT NULL OR c.automation_status IS DISTINCT FROM 'sut_mismatch')"
             " AND (c.origin_version_id=%(v)s OR EXISTS (SELECT 1 FROM case_requirement_link l"
             "  JOIN requirement r ON r.id=l.requirement_id WHERE l.case_id=c.id"
             "  AND r.version_id=%(v)s)) ORDER BY c.code",

@@ -95,6 +95,12 @@ class FailureAnalysisService:
                 "status": ex["status"],
                 "failed_assertion": ex["failed_assertion"],
                 "error": ex["error"],
+                # batch 2: the platform's own first reading (kind / suspected cause / summary)
+                "platform_reading": {
+                    "failure_kind": ex.get("failure_kind"),
+                    "suspected_cause": ex.get("suspected_cause"),
+                    "summary": ex.get("summary"),
+                },
                 "result": (ex["result"] or "")[-2000:],
                 "test_data": ex["test_data"],
                 "steps_recorded": _brief_steps(ex["steps_recorded"] or []),

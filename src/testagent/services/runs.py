@@ -19,6 +19,7 @@ from testagent.services import environments as envs
 from testagent.services.changelog import log_change
 from testagent.services.executions import ExecutionService, is_api_case, select_executor
 from testagent.services.state import transition
+from testagent.services.task_binding import require_scripts, script_gaps
 
 log = logging.getLogger("testagent.runs")
 JOB_KIND = "task_run"
@@ -30,8 +31,13 @@ FORCED_REASON = {
         "and are marked skipped (never counted as passed)"
     ),
     "blocked": "awaiting_human",
-    "error": "A case in the automated task has no automation code yet (code_path)",
+    "no_script": (
+        "The case is in an automated task but has no automation script yet (code_path); "
+        "not executed and not counted as an error. Generate a script or move it to an agent task"
+    ),
 }
+FORCED_STATUS = {"skipped": "skipped", "blocked": "blocked", "no_script": "skipped"}
+FORCED_KIND = {"skipped": "non_functional", "no_script": "no_script"}
 COUNT_KEYS = ("passed", "failed", "error", "blocked", "skipped")
 
 
@@ -101,10 +107,10 @@ class RunService:
         cur.execute("UPDATE test_task SET status=%s WHERE id=%s", (target, task_id))
 
     # ------------------------------------------------------------ start / cancel
-    def start(self, task_id, trigger: str = "manual", *, cur=None) -> dict:
+    def start(self, task_id, trigger: str = "manual", *, cur=None, allow_missing_scripts: bool = False) -> dict:
         if cur is None:
             with self.db.tx() as c:
-                run = self.start(task_id, trigger, cur=c)
+                run = self.start(task_id, trigger, cur=c, allow_missing_scripts=allow_missing_scripts)
             self.bus.publish("task_run.queued", {"id": str(run["id"]), "task_id": str(task_id)})
             return self.get(run["id"])
         cur.execute("SELECT * FROM test_task WHERE id=%s FOR UPDATE", (task_id,))
@@ -124,6 +130,8 @@ class RunService:
             raise AppError(
                 "VALIDATION", "The task has no execution environment", field_errors=[{"field": "environment_id"}]
             )
+        if trigger == "manual" and not allow_missing_scripts:
+            require_scripts(cur, task_id)  # #18: ask first; scheduled runs skip them without asking
         if task["executor"] != "human" and trigger == "manual":
             cur.execute("SELECT * FROM environment WHERE id=%s", (task["environment_id"],))
             env = cur.fetchone()
@@ -146,6 +154,95 @@ class RunService:
         self._set_task_status(cur, task_id, "running")
         log_change(cur, "task_run", run["id"], "start", self.actor, {"trigger": trigger})
         return run
+
+    # ------------------------------------------------------------ version-wide (#13)
+    def runnable(self, version_id) -> list[dict]:
+        """Every live task of the version and whether "Run tasks" can start it now."""
+        with self.db.tx() as cur:
+            cur.execute("SELECT id FROM version WHERE id=%s", (version_id,))
+            if cur.fetchone() is None:
+                raise AppError("NOT_FOUND", "Version not found")
+            cur.execute(
+                "SELECT t.id, t.name, t.kind, t.executor, t.status, t.environment_id, e.name AS environment_name,"
+                " (SELECT count(*) FROM task_case tc JOIN test_case c ON c.id=tc.case_id"
+                "   WHERE tc.task_id=t.id AND c.status='ready') AS ready_cases,"
+                " (SELECT count(*) FROM task_case tc WHERE tc.task_id=t.id) AS case_count,"
+                " (SELECT r.id FROM task_run r WHERE r.task_id=t.id AND r.status IN ('queued','running')"
+                "   LIMIT 1) AS active_run_id"
+                " FROM test_task t LEFT JOIN environment e ON e.id=t.environment_id"
+                " WHERE t.version_id=%s AND t.status <> 'archived' ORDER BY t.created_at, t.name",
+                (version_id,),
+            )
+            rows = cur.fetchall()
+            for row in rows:
+                gaps = script_gaps(cur, row["id"]) if row["executor"] == "automation" else []
+                row["script_gaps"] = [g["code"] for g in gaps]
+                row["script_gap_ids"] = [g["id"] for g in gaps]
+                reason = None
+                if row["active_run_id"]:
+                    reason = "running"
+                elif row["case_count"] == 0:
+                    reason = "no_cases"
+                elif row["status"] == "draft":
+                    reason = "not_ready"
+                elif row["status"] not in STARTABLE:
+                    reason = "running" if row["status"] == "running" else "not_ready"
+                elif row["executor"] != "human" and row["environment_id"] is None:
+                    reason = "no_environment"
+                elif row["ready_cases"] == 0:
+                    reason = "no_ready_cases"
+                row["reason"] = reason
+                row["runnable"] = reason is None
+        return rows
+
+    def run_version(
+        self,
+        version_id,
+        task_ids: list | None = None,
+        *,
+        allow_missing_scripts: bool = False,
+        set_ready: bool = False,
+        start_testing: bool = True,
+    ) -> dict:
+        """Start the chosen (default: every runnable) task of a version; each task in its own
+        transaction so one refusal does not stop the others."""
+        from testagent.services.tasks import TaskService
+        from testagent.services.versions import VersionService
+
+        rows = {str(r["id"]): r for r in self.runnable(version_id)}
+        wanted = [str(t) for t in task_ids] if task_ids is not None else [k for k, r in rows.items() if r["runnable"]]
+        started, skipped = [], []
+        version_moved = False
+        if start_testing:
+            with self.db.tx() as cur:
+                cur.execute("SELECT status FROM version WHERE id=%s", (version_id,))
+                status = cur.fetchone()["status"]
+            if status == "requirements_frozen":
+                VersionService(self.db, self.bus, actor=self.actor).set_status(version_id, "testing")
+                version_moved = True
+        for task_id in wanted:
+            row = rows.get(task_id)
+            if row is None:
+                skipped.append({"task_id": task_id, "name": None, "code": "NOT_FOUND", "message": "Task not found"})
+                continue
+            try:
+                if set_ready and row["status"] == "draft":
+                    TaskService(self.db, self.bus, actor=self.actor).set_status(
+                        task_id, "ready", allow_missing_scripts=allow_missing_scripts
+                    )
+                run = self.start(task_id, allow_missing_scripts=allow_missing_scripts)
+                started.append({"task_id": task_id, "name": row["name"], "run_id": str(run["id"])})
+            except AppError as exc:
+                skipped.append(
+                    {
+                        "task_id": task_id,
+                        "name": row["name"],
+                        "code": exc.code,
+                        "message": exc.message,
+                        "related": exc.related,
+                    }
+                )
+        return {"started": started, "skipped": skipped, "version_testing": version_moved}
 
     def cancel(self, run_id) -> dict:
         with self.db.tx() as cur:
@@ -178,6 +275,7 @@ class RunService:
             cur.execute(
                 "SELECT e.id, e.task_run_id, e.case_id, e.executor, e.status, e.failed_assertion,"
                 " e.error, e.blocked_reason, e.duration_ms, e.executed_by, e.created_at,"
+                " e.failure_kind, e.suspected_cause, e.summary, e.result,"
                 " e.ended_at, c.code AS case_code, c.title AS case_title"
                 " FROM case_execution e JOIN test_case c ON c.id=e.case_id"
                 " WHERE e.task_run_id=%s ORDER BY e.created_at, e.id",
@@ -197,6 +295,11 @@ class RunService:
             )
             report = cur.fetchone()
         run["report_id"] = report["id"] if report else None
+        run["no_script"] = [
+            {"case_id": str(e["case_id"]), "code": e["case_code"], "title": e["case_title"]}
+            for e in run["executions"]
+            if e.get("failure_kind") == "no_script"
+        ]
         run["counts"] = _counts(run["executions"], run["total_cases"])
         return run
 
@@ -307,9 +410,10 @@ class RunService:
                     case,
                     env_id,
                     executor,
-                    forced,
+                    FORCED_STATUS[forced],
                     task_run_id=run["id"],
                     reason=FORCED_REASON[forced],
+                    kind=FORCED_KIND.get(forced),
                 )
             elif env is None:
                 ex = svc.record_forced(
@@ -319,6 +423,7 @@ class RunService:
                     "error",
                     task_run_id=run["id"],
                     reason="NO_ENVIRONMENT: the task has no execution environment",
+                    kind="platform",
                 )
             else:
                 ex = svc.execute_case(case, env, executor, task_run_id=run["id"])

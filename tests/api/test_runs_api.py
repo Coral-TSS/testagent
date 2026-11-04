@@ -345,3 +345,147 @@ def test_restart_marks_running_run_interrupted(client, db):
     assert client.get(f"{V1}/runs/{run_id}").json()["status"] == "error"
     assert client.get(f"{V1}/tasks/{task}").json()["status"] == "ready"
     assert client.post(f"{V1}/tasks/{task}/run").status_code == 201
+
+
+# ------------------------------------------------------------------ batch 2 (#18): cases without a script
+def _automate(db, case_id, path="tests/R/test_x.py"):
+    with db.tx() as cur:
+        cur.execute("UPDATE test_case SET mode='automated', code_path=%s WHERE id=%s", (path, case_id))
+
+
+def test_missing_script_is_skipped_not_error(client, db):
+    w = build_world(client, db)
+    scripted = make_case(client, w, "Scripted")
+    _automate(db, scripted)
+    bare = make_case(client, w, "No script")
+    install_runner(client, FakeRunner())
+    # Set ready asks first: the automated task has a case without a script
+    task = make_task(client, w, [scripted, bare], executor="automation", ready=False)
+    resp = client.post(f"{V1}/tasks/{task}/status", json={"status": "ready"})
+    assert resp.status_code == 409 and resp.json()["code"] == "MISSING_SCRIPTS"
+    code = client.get(f"{V1}/cases/{bare}").json()["code"]
+    assert resp.json()["related"] == [code]
+    ok = client.post(f"{V1}/tasks/{task}/status", json={"status": "ready", "allow_missing_scripts": True})
+    assert ok.status_code == 200
+    detail = client.get(f"{V1}/tasks/{task}").json()
+    assert [g["code"] for g in detail["script_gaps"]] == [code]
+    listed = client.get(f"{V1}/versions/{w['version']}/tasks").json()
+    assert listed[0]["script_gap_count"] == 1
+    # Run now asks too
+    blocked = client.post(f"{V1}/tasks/{task}/run")
+    assert blocked.status_code == 409 and blocked.json()["code"] == "MISSING_SCRIPTS"
+    resp = client.post(f"{V1}/tasks/{task}/run", json={"allow_missing_scripts": True})
+    assert resp.status_code == 201, resp.text
+    assert client.app.state.worker.run_once() is True
+    run = client.get(f"{V1}/runs/{resp.json()['id']}").json()
+    assert statuses(run) == [("Scripted", "passed"), ("No script", "skipped")]
+    assert run["status"] == "passed"  # a missing script is a setup gap, not a failure
+    skipped = run["executions"][1]
+    assert skipped["failure_kind"] == "no_script" and skipped["suspected_cause"] == "platform"
+    assert "no automation script" in skipped["result"]
+    assert run["no_script"] == [{"case_id": bare, "code": code, "title": "No script"}]
+    report = client.get(f"{V1}/reports/{run['report_id']}").json()["content"]
+    summary = report["summary"]
+    assert summary["skipped"] == 1 and summary["skipped_no_script"] == 1 and summary["error"] == 0
+    assert summary["executed"] == 1 and summary["pass_rate"] == 1
+    assert [n["case"]["code"] for n in report["no_script"]] == [code]
+
+
+def test_scheduled_run_does_not_ask_about_missing_scripts(client, db):
+    w = build_world(client, db)
+    bare = make_case(client, w, "No script")
+    install_runner(client, FakeRunner())
+    task = make_task(client, w, [bare], executor="automation", ready=False)
+    client.post(f"{V1}/tasks/{task}/status", json={"status": "ready", "allow_missing_scripts": True})
+    run = client.app.state.runs_factory("scheduler").start(task, "schedule")
+    assert run["status"] == "queued"
+
+
+def test_agent_and_human_tasks_have_no_script_gaps(client, db):
+    w = build_world(client, db)
+    bare = make_case(client, w, "Manual")
+    task = make_task(client, w, [bare], executor="agent")
+    assert client.get(f"{V1}/tasks/{task}").json()["script_gaps"] == []
+
+
+# ------------------------------------------------------------------ batch 2 (#13): run a version's tasks
+def test_runnable_tasks_reasons(client, db):
+    w = build_world(client, db)
+    a = make_case(client, w, "A")
+    draft_case = make_case(client, w, "Draft", status="draft")
+    ready = make_task(client, w, [a], name="Ready")
+    make_task(client, w, [a], name="Draft task", ready=False)
+    make_task(client, w, [draft_case], name="Only drafts", ready=False)
+    empty = client.post(f"{V1}/versions/{w['version']}/tasks", json={"name": "Empty", "executor": "agent"}).json()
+    rows = {r["name"]: r for r in client.get(f"{V1}/versions/{w['version']}/runnable-tasks").json()}
+    assert rows["Ready"]["runnable"] is True and rows["Ready"]["reason"] is None
+    assert rows["Ready"]["ready_cases"] == 1
+    assert rows["Draft task"]["reason"] == "not_ready"
+    assert rows["Empty"]["reason"] == "no_cases" and rows["Empty"]["id"] == empty["id"]
+    install_runner(client, FakeRunner())
+    client.post(f"{V1}/tasks/{ready}/run")
+    rows = {r["name"]: r for r in client.get(f"{V1}/versions/{w['version']}/runnable-tasks").json()}
+    assert rows["Ready"]["reason"] == "running" and rows["Ready"]["active_run_id"]
+
+
+def test_run_version_starts_every_runnable_task(client, db):
+    w = build_world(client, db)
+    a = make_case(client, w, "A")
+    b = make_case(client, w, "B")
+    t1 = make_task(client, w, [a], name="T1")
+    t2 = make_task(client, w, [b], name="T2")
+    draft = make_task(client, w, [b], name="Draft", ready=False)
+    install_runner(client, FakeRunner())
+    version = client.get(f"{V1}/versions/{w['version']}").json()
+    assert version["status"] == "requirements_frozen"
+    out = client.post(f"{V1}/versions/{w['version']}/run-tasks", json={}).json()
+    assert sorted(s["name"] for s in out["started"]) == ["T1", "T2"]
+    assert out["skipped"] == [] and out["version_testing"] is True
+    assert client.get(f"{V1}/versions/{w['version']}").json()["status"] == "testing"
+    while client.app.state.worker.run_once():
+        pass
+    for task in (t1, t2):
+        assert client.get(f"{V1}/tasks/{task}").json()["status"] == "done"
+    # asking for a draft task without set_ready is refused for that task only
+    again = client.post(f"{V1}/versions/{w['version']}/run-tasks", json={"task_ids": [draft, t1]}).json()
+    assert [s["name"] for s in again["started"]] == ["T1"]
+    assert again["skipped"][0]["name"] == "Draft" and again["skipped"][0]["code"] == "CONFLICT"
+    while client.app.state.worker.run_once():
+        pass
+    # with set_ready the draft task is set ready and started
+    third = client.post(f"{V1}/versions/{w['version']}/run-tasks", json={"task_ids": [draft], "set_ready": True}).json()
+    assert [s["name"] for s in third["started"]] == ["Draft"]
+
+
+def test_run_version_reports_missing_scripts_per_task(client, db):
+    w = build_world(client, db)
+    bare = make_case(client, w, "No script")
+    task = make_task(client, w, [bare], executor="automation", ready=False)
+    client.post(f"{V1}/tasks/{task}/status", json={"status": "ready", "allow_missing_scripts": True})
+    install_runner(client, FakeRunner())
+    out = client.post(f"{V1}/versions/{w['version']}/run-tasks", json={"start_testing": False}).json()
+    assert out["started"] == [] and out["skipped"][0]["code"] == "MISSING_SCRIPTS"
+    assert out["version_testing"] is False
+    ok = client.post(f"{V1}/versions/{w['version']}/run-tasks", json={"allow_missing_scripts": True}).json()
+    assert len(ok["started"]) == 1
+
+
+def test_next_step_runs_tasks(client, db):
+    w = build_world(client, db)
+
+    def runs_action():
+        p = client.get(f"{V1}/suts/{w['sut']}/progress", params={"version_id": w["version"]}).json()
+        return next(s for s in p["steps"] if s["key"] == "runs")["action"]
+
+    # nothing to run yet: the button says what is missing instead of pretending to run
+    assert runs_action()["label"] == "New task"
+    a = make_case(client, w, "A")
+    task = make_task(client, w, [a], name="T1", ready=False)
+    assert runs_action()["label"] == "Set tasks ready"
+    client.post(f"{V1}/tasks/{task}/status", json={"status": "ready"})
+    assert runs_action() == {
+        "label": "Run tasks",
+        "path": f"/versions/{w['version']}?tab=strategy",
+        "kind": "run_tasks",
+        "version_id": w["version"],
+    }
