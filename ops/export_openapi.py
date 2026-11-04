@@ -19,7 +19,7 @@ class _NoDb:
 
 
 def main() -> int:
-    app = create_app(_NoDb(), "unused", secrets=SecretStore(ROOT / "runtime" / "unused.json"))
+    app = create_app(_NoDb(), secrets=SecretStore(ROOT / "runtime" / "unused.json"))
     target = ROOT / "web" / "openapi.json"
     target.write_text(json.dumps(app.openapi(), ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"wrote {target.relative_to(ROOT)}")
