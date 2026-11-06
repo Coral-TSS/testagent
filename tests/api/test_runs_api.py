@@ -100,7 +100,11 @@ def test_human_case_not_blocking(client, db):
     ids = [make_case(client, w, t) for t in ("One", "Two")]
     run = run_task(client, make_task(client, w, ids, executor="human"))
     assert statuses(run) == [("One", "blocked"), ("Two", "blocked")]
-    assert run["status"] == "passed" and run["counts"]["blocked"] == 2
+    assert run["status"] == "not_executed" and run["counts"]["blocked"] == 2
+    report = client.get(f"{V1}/reports/{run['report_id']}").json()["content"]
+    assert report["scope"]["status"] == "not_executed"
+    assert report["summary"]["executed"] == 0
+    assert report["summary"]["pass_rate"] is None
     blocked = run["executions"][0]
     assert blocked["blocked_reason"] == "awaiting_human"
     done = client.post(

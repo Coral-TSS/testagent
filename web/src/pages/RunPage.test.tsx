@@ -86,6 +86,18 @@ describe("RunPage result trust (#15/#18)", () => {
 });
 
 describe("RunPage not executed", () => {
+  it("does not blame missing scripts when cases are waiting for manual execution", async () => {
+    mockFetch({ "GET /runs/r1": () => ({ body: {
+      ...run, status: "not_executed", executor: "human", not_ready: [], no_script: [],
+      counts: { total: 1, done: 1, passed: 0, failed: 0, error: 0, blocked: 1, skipped: 0 },
+      executions: [run.executions[2]],
+    } }) });
+    renderPage(<RunPage />, { path: "/runs/:runId", route: "/runs/r1" });
+    expect(await screen.findByText("Waiting for manual execution")).toBeTruthy();
+    expect(screen.getByTestId("not-executed").textContent).not.toContain("none has an automation script");
+    expect(screen.getByRole("link", { name: "Record result" })).toBeTruthy();
+  });
+
   it("labels a run where nothing ran as not executed", async () => {
     const r = {
       ...run,

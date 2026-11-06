@@ -75,6 +75,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Runs with no executed cases (including empty batches, only skipped cases or only cases waiting
+  for a person) now end as `not_executed` rather than passed. Reports show no pass rate, and the run
+  page no longer describes every unexecuted batch as missing scripts. Existing snapshots are kept.
+
 - Public HTTPS (`TESTAGENT_TLS=acme`): the Caddy issuer uses Let's Encrypt production explicitly, also
   for retries. Before, a failed first attempt was retried against the staging CA, which is often
   unreachable from mainland China, so the certificate was never issued.

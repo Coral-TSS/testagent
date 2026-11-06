@@ -154,7 +154,22 @@ def test_run_outcome():
     assert run_outcome([no_script, ex("passed")]) == "passed"
     assert run_outcome([no_script, ex("failed", "assertion")]) == "failed"
     assert run_outcome([no_script, ex("error", "platform")]) == "failed"
-    # other skips / awaiting manual keep the old behaviour
-    assert run_outcome([no_script, ex("skipped", "non_functional")]) == "passed"
-    assert run_outcome([no_script, ex("blocked")]) == "passed"
-    assert run_outcome([]) == "passed"
+    assert run_outcome([no_script, ex("skipped", "non_functional")]) == "not_executed"
+    assert run_outcome([no_script, ex("blocked")]) == "not_executed"
+    assert run_outcome([]) == "not_executed"
+
+
+@pytest.mark.parametrize(
+    "executions",
+    [
+        [],
+        [{"status": "blocked"}],
+        [{"status": "skipped", "failure_kind": "non_functional"}],
+        [{"status": "blocked"}, {"status": "skipped", "failure_kind": "no_script"}],
+        [{"status": "skipped", "failure_kind": "non_functional"}, {"status": "skipped", "failure_kind": "no_script"}],
+    ],
+)
+def test_no_execution_never_passes(executions):
+    from testagent.services.runs import run_outcome
+
+    assert run_outcome(executions) == "not_executed"

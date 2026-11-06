@@ -123,7 +123,7 @@ export function RunPage() {
             type="warning"
             showIcon
             data-testid="not-executed"
-            title="Not executed: no case ran because none has an automation script yet. This is neither a pass nor a failure; there is no pass rate."
+            title="Not executed: no case ran when this batch finished. Cases may be skipped or waiting for manual execution; see the details below. This is neither a pass nor a failure; there is no pass rate."
           />
         )}
         {r.not_ready.length > 0 && (

@@ -17,9 +17,22 @@ describe("pass rate note", () => {
     expect(nothingExecuted(s)).toBe(true);
     expect(passRateText(s)).toBe("Not executed");
     expect(passRateNote(s)).toBe("Not executed: no case ran (2 without an automation script), so there is no pass rate");
-    // one non-functional skip among them: the old wording
+    // Adding a different skip reason still leaves no execution.
     const mixed = { ...s, skipped: 3, total: 3 };
-    expect(nothingExecuted(mixed)).toBe(false);
-    expect(passRateText(mixed)).toBe("-");
+    expect(nothingExecuted(mixed)).toBe(true);
+    expect(passRateText(mixed)).toBe("Not executed");
+  });
+
+  it.each([
+    { total: 0, blocked: 0, skipped: 0, not_executed: 0 },
+    { total: 2, blocked: 2, skipped: 0, not_executed: 0 },
+    { total: 2, blocked: 0, skipped: 2, not_executed: 0 },
+    { total: 2, blocked: 0, skipped: 0, not_executed: 2 },
+  ])("never offers a pass rate without executed cases: %j", (counts) => {
+    const s = { ...counts, passed: 0, failed: 0, error: 0, executed: 0, pass_rate: null };
+    expect(nothingExecuted(s)).toBe(true);
+    expect(passRateText(s)).toBe("Not executed");
+    expect(passRateNote(s)).toContain("Not executed: no case ran");
+    expect(passRateNote(s)).toContain("no pass rate");
   });
 });

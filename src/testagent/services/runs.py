@@ -28,12 +28,14 @@ TERMINAL = {"passed", "failed", "error", "cancelled", "not_executed"}
 
 
 def run_outcome(executions: list[dict]) -> str:
-    """Final status of a run from its executions: failed when any failed or errored;
-    not_executed when nothing ran because every case lacks an automation script; else passed
-    (skipped / awaiting-manual cases never count as passed in the pass rate)."""
+    """Final quality outcome at run completion, based on actual execution receipts.
+
+    Failed/error receipts take precedence. Skipped and awaiting-manual cases cannot
+    establish a pass; a batch without any executed case is not_executed, even if empty.
+    """
     if any(e["status"] in ("failed", "error") for e in executions):
         return "failed"
-    if executions and all(e["status"] == "skipped" and e.get("failure_kind") == "no_script" for e in executions):
+    if not any(e["status"] == "passed" for e in executions):
         return "not_executed"
     return "passed"
 

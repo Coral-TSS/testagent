@@ -18,11 +18,10 @@ export function SummaryText({ s }: { s: ReportSummary }) {
   );
 }
 
-/** Nothing ran because every case lacks an automation script (run status not_executed). */
+/** A zero denominator has no test conclusion, regardless of why cases did not run. */
 export function nothingExecuted(s: ReportSummary): boolean {
   const executed = s.executed ?? s.passed + s.failed + s.error;
-  const noScript = s.skipped_no_script || 0;
-  return executed === 0 && s.total > 0 && noScript > 0 && noScript === s.skipped && !s.blocked;
+  return executed === 0;
 }
 
 /** Pass-rate cell: "Not executed" instead of "-" when nothing could run. */
@@ -32,8 +31,15 @@ export const passRateText = (s: ReportSummary) => (nothingExecuted(s) ? "Not exe
 export function passRateNote(s: ReportSummary): string | null {
   const executed = s.executed ?? s.passed + s.failed + s.error;
   const noScript = s.skipped_no_script || 0;
-  if (nothingExecuted(s))
-    return `Not executed: no case ran (${noScript} without an automation script), so there is no pass rate`;
+  if (nothingExecuted(s)) {
+    const reasons = [
+      noScript ? `${noScript} without an automation script` : "",
+      s.skipped > noScript ? `${s.skipped - noScript} skipped` : "",
+      s.blocked ? `${s.blocked} awaiting manual` : "",
+      s.not_executed ? `${s.not_executed} not run` : "",
+    ].filter(Boolean);
+    return `Not executed: no case ran${reasons.length ? ` (${reasons.join(", ")})` : ""}, so there is no pass rate`;
+  }
   const left = [
     s.skipped ? (noScript ? `${s.skipped} skipped (${noScript} without an automation script)` : `${s.skipped} skipped`) : "",
     s.blocked ? `${s.blocked} awaiting manual` : "",

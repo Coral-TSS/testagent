@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-06",
+  "task": "DEMO-FIX-001",
+  "title": "No-execution batches must not pass",
+  "status": "verified_locally",
+  "base_commit": "0486144e09091588dcf74c99487aef4aaf2b3910",
+  "backend": {
+    "total": 454,
+    "passed": 453,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skip_reason": "POSIX permissions check is not applicable on Windows",
+    "skipped_test": "tests.unit.test_core_units::test_secret_store_file_mode_600",
+    "platform_passed": 411,
+    "demo_sut_passed": 42,
+    "browser_e2e_passed": 3,
+    "seconds": 575.50,
+    "raw_local_junit": "runtime/demo-fix-001-backend.xml"
+  },
+  "frontend": {
+    "files_passed": 34,
+    "tests_passed": 116,
+    "failed": 0,
+    "lint": "passed",
+    "typecheck_and_build": "passed"
+  },
+  "ruff": "passed",
+  "changed_python_format_check": "passed",
+  "diff_whitespace_check": "passed",
+  "tdd_red": {"backend_failures": 6, "frontend_failures": 6},
+  "test_database": "existing *_test database with temporary per-session schema",
+  "production_database_used": false,
+  "real_model_called": false,
+  "historical_records_rewritten": false,
+  "applied_migrations_changed": false,
+  "deployed": false,
+  "next_task": "DEMO-FIX-002: bind actual execution content to its recorded code version"
+}
