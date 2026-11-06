@@ -56,6 +56,7 @@ describe("CaseExecutionPanel", () => {
     mockFetch({ "GET /suts/s1/environments": () => ({ body: [] }), "GET /cases/c1/executions": () => ({ body: [] }) });
     renderPage(<CaseExecutionPanel tc={auto} onAgentRun={() => {}} />);
     expect(screen.getByText("D:/abs/test_TC-002.py")).toBeTruthy();
+    expect(screen.getByText(/Runs the bound Git version/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "View code" })).toBeTruthy();
   });
 

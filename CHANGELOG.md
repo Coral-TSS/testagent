@@ -75,6 +75,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Pytest execution now runs an independent checkout of the case's bound commit, including fixtures
+  and helpers, and records that exact SHA. Local edits or newer commits cannot silently change the
+  run. Legacy unbound cases pin starting HEAD; unavailable bindings fail explicitly in execution
+  and the code viewer. The original working tree is preserved and temporary checkouts are cleaned.
+
 - Runs with no executed cases (including empty batches, only skipped cases or only cases waiting
   for a person) now end as `not_executed` rather than passed. Reports show no pass rate, and the run
   page no longer describes every unexecuted batch as missing scripts. Existing snapshots are kept.

@@ -9,6 +9,9 @@ import json
 import os
 import re
 import subprocess
+import tempfile
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from testagent.core.errors import AppError
@@ -129,6 +132,29 @@ def _safe(part: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]", "_", part)
 
 
+def _test_path(root: Path, rel: str) -> str:
+    candidate = PurePosixPath(str(rel).replace("\\", "/"))
+    resolved = (root / candidate).resolve()
+    tests = (root / "tests").resolve()
+    if (
+        candidate.is_absolute()
+        or ".." in candidate.parts
+        or not resolved.is_relative_to(tests)
+        or resolved.suffix != ".py"
+    ):
+        raise AppError("VALIDATION", f"Only .py files under tests/ in the test repo can be used: {rel}")
+    return resolved.relative_to(root.resolve()).as_posix()
+
+
+@dataclass(frozen=True)
+class ExecutionSnapshot:
+    path: Path
+    commit: str
+
+    def resolve_test_path(self, rel: str) -> str:
+        return _test_path(self.path, rel)
+
+
 class TestRepo:
     __test__ = False  # not a pytest test class
 
@@ -231,6 +257,39 @@ class TestRepo:
     def head(self) -> str:
         return self.git("rev-parse", "HEAD").stdout.strip()
 
+    @contextmanager
+    def execution_snapshot(self, commit: str | None = None):
+        """An independent local checkout: no network, shared working tree or hardlinked objects.
+
+        Resolve the full commit once before cloning. Legacy unbound cases use starting HEAD;
+        an unavailable binding is an error, never an implicit request to execute newer code.
+        """
+        if commit is not None and not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
+            raise AppError("VALIDATION", "The bound test version must be a full Git commit hash")
+        resolved = self.git("rev-parse", "--verify", "--end-of-options", f"{commit or 'HEAD'}^{{commit}}", check=False)
+        if resolved.returncode:
+            raise AppError("NOT_FOUND", "The bound test commit is unavailable; restore or explicitly rebind it")
+        fixed = resolved.stdout.strip()
+        temporary_root = Path(tempfile.gettempdir()).resolve()
+        with tempfile.TemporaryDirectory(prefix="ta-execution-", dir=temporary_root) as directory:
+            owner = Path(directory).resolve()
+            # TemporaryDirectory recursively removes only this newly allocated, checked target.
+            if owner.parent != temporary_root or not owner.name.startswith("ta-execution-"):
+                raise AppError("VALIDATION", "Execution snapshot directory escaped its temporary root")
+            checkout = TestRepo(owner, "checkout")
+            self.git(
+                "clone",
+                "--local",
+                "--no-hardlinks",
+                "--dissociate",
+                "--no-checkout",
+                "--",
+                str(self.path.resolve()),
+                str(checkout.path),
+            )
+            checkout.git("checkout", "--detach", "--force", fixed)
+            yield ExecutionSnapshot(checkout.path, fixed)
+
     def dirty_files(self) -> list[str]:
         out = self.git("status", "--porcelain=v1", "-uall").stdout
         return sorted({line[3:].strip().strip('"') for line in out.splitlines() if line.strip()})
@@ -257,17 +316,7 @@ class TestRepo:
     # ------------------------------------------------------------ files
     def resolve_test_path(self, rel: str) -> str:
         """Only `tests/**.py` inside the repo may be written by the platform."""
-        candidate = PurePosixPath(str(rel).replace("\\", "/"))
-        resolved = (self.path / candidate).resolve()
-        tests = (self.path / "tests").resolve()
-        if (
-            candidate.is_absolute()
-            or ".." in candidate.parts
-            or not resolved.is_relative_to(tests)
-            or resolved.suffix != ".py"
-        ):
-            raise AppError("VALIDATION", f"Only .py files under tests/ in the test repo can be written: {rel}")
-        return resolved.relative_to(self.path.resolve()).as_posix()
+        return _test_path(self.path, rel)
 
     def write(self, rel: str, content: str) -> str:
         rel = self.resolve_test_path(rel)

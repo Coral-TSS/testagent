@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-06",
+  "task": "DEMO-FIX-002",
+  "status": "verified_locally",
+  "base_commit": "9c04707378d61293035f678e8159341ad376e293",
+  "backend": {
+    "total": 465,
+    "passed": 464,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skipped_tests": [
+      "tests.unit.test_core_units::test_secret_store_file_mode_600"
+    ],
+    "platform_passed": 422,
+    "demo_sut_passed": 42,
+    "browser_e2e_passed": 3,
+    "seconds": 597.63,
+    "raw_local_junit": "runtime/demo-fix-002-backend.xml"
+  },
+  "frontend": {
+    "files_passed": 34,
+    "tests_passed": 116,
+    "lint": "passed",
+    "typecheck_and_build": "passed"
+  },
+  "targeted_backend_passed": 41,
+  "cleanup_and_exception_propagation_passed": 2,
+  "ruff": "passed",
+  "diff_check": "passed",
+  "tdd_red": {
+    "initial_backend_failures": 10,
+    "missing_bound_version_viewer_failure": 1,
+    "frontend_failure": 1
+  },
+  "production_database_used": false,
+  "real_model_called": false,
+  "applied_migrations_changed": false,
+  "remote_push_authorized": true,
+  "deployed": false
+}

@@ -229,7 +229,7 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
           Bind existing code
         </Button>
       </Space>
-      {tc.code_path && (
+      {tc.code_path && (<>
         <Typography.Paragraph>
           <Typography.Text type="secondary">Automation code: </Typography.Text>
           <Typography.Text code copyable={{ text: tc.code_abs_path || tc.code_path }}>
@@ -240,7 +240,12 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
             View code
           </Button>
         </Typography.Paragraph>
-      )}
+        <Typography.Paragraph type="secondary">
+          {tc.code_commit
+            ? "Runs the bound Git version, including its fixtures and helpers. Commit local changes and bind the code again to run a newer version."
+            : "No Git version is bound yet. Runs use the repository's committed version at the start; commit and bind changes before rerunning."}
+        </Typography.Paragraph>
+      </>)}
       <EnvironmentStatus env={envs.data?.find((e) => e.id === environment)} />
       {tc.automation_status === "env_unavailable" && (
         <Alert

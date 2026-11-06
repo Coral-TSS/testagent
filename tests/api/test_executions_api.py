@@ -299,6 +299,38 @@ def test_debug_execution_has_no_run(client, world, db):
     assert [e["id"] for e in listed] == [out["id"]]
 
 
+def test_execution_history_records_the_bound_version_not_local_edits(client, world):
+    repo = repo_of(client)
+    repo.ensure()
+    rel = repo.write("tests/REQ-001/test_TC-001.py", "def test_bound():\n    assert False\n")
+    bound = repo.commit_files([rel], "bind failure for provenance test")
+    response = client.post(f"{V1}/cases/{world['case']['id']}/bind-code", json={"code_path": rel})
+    assert response.status_code == 200
+    repo.write(rel, "def test_bound():\n    assert True\n")
+    result = debug(client, world, env(client, world, "http://127.0.0.1:9"), executor="pytest")
+    assert result["status"] == "failed"
+    assert result["code_commit"] == bound
+    history = client.get(f"{V1}/cases/{world['case']['id']}/executions").json()
+    assert history[0]["status"] == "failed" and history[0]["id"] == result["id"]
+    persisted = client.get(f"{V1}/executions/{result['id']}").json()
+    assert persisted["status"] == "failed" and persisted["code_commit"] == bound
+    assert (repo.path / rel).read_text().endswith("assert True\n")
+
+
+def test_missing_bound_commit_is_not_displayed_as_working_file(client, world, db):
+    repo = repo_of(client)
+    repo.ensure()
+    rel = repo.write("tests/REQ-001/test_TC-001.py", "def test_current():\n    assert True\n")
+    repo.commit_files([rel], "current test")
+    response = client.post(f"{V1}/cases/{world['case']['id']}/bind-code", json={"code_path": rel})
+    assert response.status_code == 200
+    with db.tx() as cur:
+        cur.execute("UPDATE test_case SET code_commit=%s WHERE id=%s", ("1" * 40, world["case"]["id"]))
+    view = client.get(f"{V1}/cases/{world['case']['id']}/code")
+    assert view.status_code == 404
+    assert view.json()["code"] == "NOT_FOUND"
+
+
 # ------------------------------------------------------------------ manual (T-08.7)
 def test_manual_execution_recorded(client, world, db):
     photo = base64.b64encode(b"\x89PNG fake screenshot").decode()

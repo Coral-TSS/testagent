@@ -203,10 +203,13 @@ def case_code(request: Request, case_id: UUID, draft: bool = False):
     repo = TestRepo(request.app.state.repos_root, case["sut_code"], str(case["sut_id"]))
     rel = repo.resolve_test_path(path)
     content = None
-    if commit and repo.initialized:
+    if commit:
+        if not repo.initialized:
+            raise AppError("NOT_FOUND", "The bound test repository is unavailable")
         proc = repo.git("show", f"{commit}:{rel}", check=False)
-        if proc.returncode == 0:
-            content = proc.stdout
+        if proc.returncode:
+            raise AppError("NOT_FOUND", "The bound test file or commit is unavailable; restore or explicitly rebind it")
+        content = proc.stdout
     if content is None and repo.exists(rel):
         content = (repo.path / rel).read_text(encoding="utf-8")
     if content is None:

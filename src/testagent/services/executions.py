@@ -505,16 +505,19 @@ class ExecutionService:
     def _pytest(self, case: dict, env: dict) -> dict:
         repo = self.repo_for(case["sut_code"], case["sut_id"])
         repo.ensure()
-        if not repo.exists(case["code_path"]):
-            raise AppError("NOT_FOUND", f"does not exist in the test repo {case['code_path']}")
-        res = run_pytest(
-            repo.path,
-            repo.resolve_test_path(case["code_path"]),
-            base_url=env["base_url"].rstrip("/") + "/",
-            test_data=case["test_data"],
-            timeout_s=self.pytest_timeout_s,
-            artifacts=self.artifacts,
-        )
+        with repo.execution_snapshot(case.get("code_commit")) as snapshot:
+            rel = snapshot.resolve_test_path(case["code_path"])
+            if not (snapshot.path / rel).is_file():
+                raise AppError("NOT_FOUND", f"does not exist in the bound test version: {rel}")
+            execution_commit = snapshot.commit
+            res = run_pytest(
+                snapshot.path,
+                rel,
+                base_url=env["base_url"].rstrip("/") + "/",
+                test_data=case["test_data"],
+                timeout_s=self.pytest_timeout_s,
+                artifacts=self.artifacts,
+            )
         status = res["status"] if res["status"] in ("passed", "failed", "skipped") else "error"
         report = res.get("report")
         failure = next((t["failure"] for t in (report or {}).get("tests", []) if t.get("failure")), None)
@@ -524,10 +527,7 @@ class ExecutionService:
         error = res.get("error") if status == "error" else None
         if error and failure and failure.get("explain") and failure["type"] != "AssertionError":
             error = f"{failure['explain']}\n\n{error}"
-        unchanged = False
-        if case.get("code_commit"):  # the file is still what was verified when it was bound
-            diff = repo.git("diff", "--quiet", case["code_commit"], "--", case["code_path"], check=False)
-            unchanged = diff.returncode == 0
+        unchanged = bool(case.get("code_commit") and execution_commit == case["code_commit"])
         return {
             "status": status,
             "report": report,
@@ -536,7 +536,7 @@ class ExecutionService:
             "result": res.get("output", "")[-4000:],
             "artifacts": res.get("artifacts", []),
             "duration_ms": res.get("duration_ms"),
-            "code_commit": repo.head(),
+            "code_commit": execution_commit,
             "_script_unchanged": unchanged,
         }
 
