@@ -16,6 +16,7 @@ from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
 from testagent.services.guards import ensure_human
 from testagent.services.state import transition
+from testagent.services.task_binding import ready_task_feedback
 
 CONTENT_FIELDS = (
     "title",
@@ -306,7 +307,10 @@ class CaseService:
 
     def get(self, case_id) -> dict:
         with self.db.tx() as cur:
-            return self._detail(cur, case_id)
+            row = self._detail(cur, case_id)
+            if row["status"] == "ready":
+                row["task_binding"] = ready_task_feedback(cur, row)
+            return row
 
     def list(
         self,
@@ -414,8 +418,10 @@ class CaseService:
             transition("case", case["status"], target)
             cur.execute("UPDATE test_case SET status=%s, updated_at=now() WHERE id=%s", (target, case_id))
             log_change(cur, "test_case", case_id, "status", self.actor, {"status": target})
-            row = self._detail(cur, case_id)
-        self.bus.publish(f"case.{target}", {"id": str(case_id)})
+        errors = self.bus.publish(f"case.{target}", {"id": str(case_id)})
+        row = self.get(case_id)
+        if target == "ready" and errors:
+            row["task_binding"]["sync_warning"] = True
         return row
 
     def revisions(self, case_id) -> list[dict]:

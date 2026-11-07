@@ -5,10 +5,10 @@ import enUS from "antd/locale/en_US";
 import type { ReactElement } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
-export function renderPage(element: ReactElement, { path = "/", route = "/" } = {}) {
+export function renderPage(element: ReactElement, { path = "/", route = "/", motion = true } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <ConfigProvider locale={enUS}>
+    <ConfigProvider locale={enUS} theme={motion ? undefined : { token: { motion: false } }}>
       <AntApp>
         <QueryClientProvider client={qc}>
           <MemoryRouter initialEntries={[route]}>

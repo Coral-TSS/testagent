@@ -577,10 +577,29 @@ export interface AiProposal {
   };
   labels: Record<string, string>;
 }
+export interface TaskBindingInfo {
+  id: string;
+  name: string;
+  version_id: string;
+  version_name: string;
+  status: string;
+  source?: "rule" | "manual";
+  reason: string;
+  seq?: number;
+}
+export interface TaskBindingFeedback {
+  case_id: string;
+  code: string;
+  sut_id: string;
+  version_id?: string | null;
+  linked: TaskBindingInfo[];
+  not_added: TaskBindingInfo[];
+  sync_warning: boolean;
+}
 export interface BatchResult {
   action: string;
-  ok: { id: string; code: string }[];
-  skipped: { id: string; code: string; reason: string }[];
+  ok: { id: string; code: string; task_binding?: TaskBindingFeedback }[];
+  skipped: { id: string; code: string; reason: string; task_binding?: TaskBindingFeedback }[];
   failed: { id: string; code: string | null; error: string }[];
   queued: number;
 }
@@ -610,6 +629,7 @@ export interface TestCase extends Omit<CaseRow, "requirement_codes" | "node_coun
   fields?: { id: string; name: string; display_name?: string | null; node_id: string; node_name: string }[];
   nodes: { id: string; kind: NodeKind; name: string; deleted: boolean }[];
   tasks: { id: string; name: string; version_id: string; seq: number }[];
+  task_binding?: TaskBindingFeedback;
   updated_at: string;
 }
 export interface CaseRevision {

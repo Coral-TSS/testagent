@@ -557,6 +557,51 @@ def candidates_by_id(cur, case_id) -> list[dict]:
     return found
 
 
+def ready_task_feedback(cur, case: dict) -> dict:
+    """Describe observed links without changing membership or undoing manual exclusions."""
+    (candidate,) = candidates_by_id(cur, case["id"])
+    cur.execute(
+        "SELECT t.id, t.name, t.version_id, v.name AS version_name, v.status AS version_status,"
+        " t.status, t.kind, t.selector, tc.seq, tc.source, tc.reason,"
+        " (ex.case_id IS NOT NULL) AS excluded FROM test_task t"
+        " JOIN version v ON v.id=t.version_id"
+        " LEFT JOIN task_case tc ON tc.task_id=t.id AND tc.case_id=%s"
+        " LEFT JOIN task_case_exclusion ex ON ex.task_id=t.id AND ex.case_id=%s"
+        " WHERE v.sut_id=%s ORDER BY v.created_at, t.created_at, t.id",
+        (case["id"], case["id"], case["sut_id"]),
+    )
+    linked, not_added = [], []
+    for task in cur.fetchall():
+        info = {k: task[k] for k in ("id", "name", "version_id", "version_name", "status")}
+        if task["seq"] is not None:
+            linked.append({**info, "source": task["source"], "reason": task["reason"], "seq": task["seq"]})
+            continue
+        if task["version_status"] == "closed":
+            reason = "version_closed"
+        elif task["status"] == "running":
+            reason = "task_running"
+        elif task["status"] == "archived":
+            reason = "task_archived"
+        elif task["excluded"]:
+            reason = "manually_excluded"
+        elif task["selector"] is None:
+            reason = "no_rule"
+        elif match(task["selector"], task["kind"], candidate) is None:
+            reason = "rule_mismatch"
+        else:
+            reason = "sync_unconfirmed"
+        not_added.append({**info, "reason": reason})
+    return {
+        "case_id": case["id"],
+        "code": case["code"],
+        "sut_id": case["sut_id"],
+        "version_id": case.get("origin_version_id") or next((r["version_id"] for r in case["requirements"]), None),
+        "linked": linked,
+        "not_added": not_added,
+        "sync_warning": any(t["reason"] == "sync_unconfirmed" for t in not_added),
+    }
+
+
 def version_gaps(cur, version_id) -> list[dict]:
     cur.execute(
         "SELECT r.id::text AS requirement_id, r.code, r.title,"

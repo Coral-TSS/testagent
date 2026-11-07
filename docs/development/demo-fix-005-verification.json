@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-07",
+  "task": "DEMO-FIX-005",
+  "demo_issue": "11 (Ready task feedback only)",
+  "status": "verified_locally",
+  "base_commit": "796432a532e1a16093ed73bb639e79d27b8d84e1",
+  "backend": {
+    "total": 475,
+    "passed": 474,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skipped_tests": ["tests.unit.test_core_units::test_secret_store_file_mode_600"],
+    "platform_passed": 432,
+    "demo_sut_passed": 42,
+    "browser_e2e_passed": 3,
+    "seconds": 738.86,
+    "frontend_build_unchanged_during_regression": true,
+    "raw_local_junit": "runtime/demo-fix-005-backend.xml"
+  },
+  "targeted_backend_passed": 33,
+  "frontend": {
+    "files_passed": 37,
+    "tests_passed": 132,
+    "targeted_tests_passed": 13,
+    "lint": "passed",
+    "typecheck_and_build": "passed",
+    "raw_local_log": "runtime/demo-fix-005-frontend.log"
+  },
+  "frontend_first_attempt": {
+    "passed": 131,
+    "failed": 1,
+    "failed_test": "ReadyTaskFeedback.integration.test.tsx::shows per-case feedback in a successful batch and opens the task from the dialog",
+    "reason": "DOM test environment does not finish CSS exit animation",
+    "resolution": "test-only motion=false; production animation and closing verified separately in real Chromium",
+    "raw_local_log": "runtime/demo-fix-005-frontend-first.log"
+  },
+  "browser_preview": {
+    "browser": "Chromium",
+    "bundle": "production build",
+    "api_data": "synthetic",
+    "single_ready_and_reload": "verified",
+    "mixed_batch_feedback": "verified",
+    "manual_exclusion_expansion": "verified",
+    "task_navigation_and_animated_dialog_close": "verified",
+    "page_errors": [],
+    "local_artifacts": "output/playwright/demo-fix-005-*.png"
+  },
+  "tdd_red": {
+    "backend_failures": 6,
+    "frontend_failures": 5,
+    "raw_local_backend_junit": "runtime/demo-fix-005-backend-red.xml",
+    "raw_local_frontend_log": "runtime/demo-fix-005-frontend-red.log"
+  },
+  "ruff": "passed",
+  "diff_check": "passed",
+  "production_database_used": false,
+  "real_model_called": false,
+  "applied_migrations_changed": false,
+  "remote_push_authorized": true,
+  "deployed": false,
+  "remaining_issue_11_scope": "demo ordering and walkthrough rewrite"
+}

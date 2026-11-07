@@ -184,11 +184,13 @@ def batch_cases(request: Request, body: BatchIn):
         svc = _cases(request)
         for c in cases:
             if c["status"] == body.action:
-                skipped.append({**brief(c), "reason": "Already in the target state"})
+                feedback = {"task_binding": svc.get(c["id"])["task_binding"]} if body.action == "ready" else {}
+                skipped.append({**brief(c), "reason": "Already in the target state", **feedback})
                 continue
             try:
-                svc.set_status(c["id"], body.action)
-                ok.append(brief(c))
+                updated = svc.set_status(c["id"], body.action)
+                feedback = {"task_binding": updated["task_binding"]} if body.action == "ready" else {}
+                ok.append({**brief(c), **feedback})
             except AppError as exc:
                 failed.append({**brief(c), "error": exc.message})
     elif body.action == "automate":

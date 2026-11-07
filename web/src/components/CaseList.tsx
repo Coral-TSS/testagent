@@ -16,6 +16,7 @@ import { CaseStatusTag, ScenarioTag } from "./CaseTags";
 import { CoverageView } from "./CoverageView";
 import { CaseCoverageTags, coverageSummary } from "./CoverageDetail";
 import { CATEGORY_COLOR, CATEGORY_LABEL } from "../utils/categories";
+import { ReadyTaskFeedback } from "./ReadyTaskFeedback";
 
 /** P09 case list: filters, manual create, AI generation (in a version), export, coverage report */
 export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versionId?: string; onOpenRun?: (id: string) => void }) {
@@ -141,11 +142,17 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
         setPicking(false);
         const label = BATCH_LABEL[r.action] || r.action;
         const head = `${label}: succeeded ${r.ok.length} ${r.queued ? ` (queued ${r.queued} background job(s))` : ""}${r.skipped.length ? `, skipped ${r.skipped.length} ` : ""}${r.failed.length ? `, failed ${r.failed.length} ` : ""}`;
-        if (r.failed.length || r.skipped.length)
-          modal.info({
+        if (r.failed.length || r.skipped.length || r.action === "ready") {
+          const resultDialog = modal.info({
             title: head,
-            width: 560,
+            width: r.action === "ready" ? 760 : 560,
             content: (
+              <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+              {r.action === "ready" && [...r.ok, ...r.skipped].map((row) => (
+                <div key={row.id} style={{ marginBottom: 12 }}>
+                  {row.task_binding ? <ReadyTaskFeedback feedback={row.task_binding} onNavigate={(path) => { resultDialog.destroy(); navigate(path); }} /> : `${row.code}: task association details unavailable; open the case to check its links.`}
+                </div>
+              ))}
               <ul style={{ paddingInlineStart: 18 }}>
                 {r.failed.map((f) => (
                   <li key={f.id}>
@@ -160,9 +167,10 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
                   </li>
                 ))}
               </ul>
+              </div>
             ),
           });
-        else message.success(head);
+        } else message.success(head);
         if (!r.failed.length) setSelected([]);
       },
     },

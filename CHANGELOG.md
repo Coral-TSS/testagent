@@ -75,6 +75,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Marking a case Ready now reports its actual task associations after rule reconciliation, with
+  task/version links, rule vs manual membership, and reasons other tasks were not joined. Case
+  details retain this explanation after reload; batch results include successful and already-ready
+  cases. Unconfirmed reconciliation warns while preserving the saved Ready status and manual exclusions.
+
 - Version task lists now show each task's latest run, result and processed-case count, with direct
   links back to run details. A live banner lists running/queued tasks; polling discovers scheduled
   starts and completion. Refresh failures retain the last loaded data and offer retry.

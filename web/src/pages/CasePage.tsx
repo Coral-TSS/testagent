@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RobotOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Card, Col, Descriptions, Form, Popconfirm, Row, Space, Tag, Timeline, Tooltip, Typography } from "antd";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
@@ -18,11 +18,13 @@ import { CaseCoverageTags } from "../components/CoverageDetail";
 import { fmtTime } from "../utils/time";
 import { objLabel, PathText } from "../components/ObjLink";
 import { CATEGORY_LABEL, QUALITY_TAGS } from "../utils/categories";
+import { ReadyTaskFeedback } from "../components/ReadyTaskFeedback";
 
 /** P09 test case detail: edit (creates revisions automatically), review status, revision history, correction */
 export function CasePage() {
   const { caseId = "" } = useParams();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { message } = App.useApp();
   const [form] = Form.useForm<CaseFormValues>();
   const [runId, setRunId] = useState<string | null>(null);
@@ -63,8 +65,12 @@ export function CasePage() {
     onSuccess: refresh,
     success: "Category handled",
   });
-  const setStatus = useApiMutation((status: string) => api(`/cases/${caseId}/status`, { method: "POST", body: { status } }), {
-    onSuccess: refresh,
+  const setStatus = useApiMutation((status: string) => api<TestCase>(`/cases/${caseId}/status`, { method: "POST", body: { status } }), {
+    onSuccess: (updated) => {
+      qc.setQueryData(["case", caseId], updated);
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      refresh();
+    },
     success: "Status updated",
   });
 
@@ -109,6 +115,9 @@ export function CasePage() {
             </Space>
           }
         >
+          {c.status === "ready" && c.task_binding && (
+            <div style={{ marginBottom: 12 }}><ReadyTaskFeedback feedback={c.task_binding} onNavigate={navigate} /></div>
+          )}
           {c.status === "draft" && c.source === "agent" && (
             <Alert type="info" showIcon style={{ marginBottom: 12 }} title="Case drafted by the AI: review, edit and set it ready; if you see a recurring problem click “Correct” and the agent will improve later generations." />
           )}
