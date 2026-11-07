@@ -1,6 +1,7 @@
+import { ReadingDrawer } from "./ReadingDrawer";
 import { ListSection } from "./ListView";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Collapse, Descriptions, Drawer, Empty, Space, Tag, Timeline, Typography } from "antd";
+import { Alert, Button, Collapse, Descriptions, Empty, Space, Tag, Timeline, Typography } from "antd";
 
 import { Link } from "react-router-dom";
 
@@ -134,7 +135,7 @@ export function AgentRunDrawer({ runId, onClose }: { runId: string | null; onClo
   });
   const r = run.data;
   return (
-    <Drawer open={Boolean(runId)} onClose={onClose} size={640} title="Agent run trace">
+    <ReadingDrawer kind="agent" open={Boolean(runId)} onClose={onClose} title="Agent run trace">
       {r && (
         <>
           <Descriptions column={2} size="small" style={{ marginBottom: 16 }}>
@@ -175,6 +176,6 @@ export function AgentRunDrawer({ runId, onClose }: { runId: string | null; onClo
       <ListSection label="Agent trace steps" count={r?.steps.length} error={run.isError} onRetry={() => run.refetch()}>
         {r?.steps.length ? <Timeline items={r.steps.map((s, i) => ({ key: i, content: <StepItem step={s} labels={r.labels} /> }))} /> : <Empty description="No steps yet" />}
       </ListSection>
-    </Drawer>
+    </ReadingDrawer>
   );
 }

@@ -1,3 +1,4 @@
+import { ReadingDrawer } from "./ReadingDrawer";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListSection } from "./ListView";
 import {
@@ -5,7 +6,6 @@ import {
   Button,
   Descriptions,
   Divider,
-  Drawer,
   Form,
   Input,
   List,
@@ -199,10 +199,9 @@ export function NodeDrawer(props: {
   const others = props.allNodes.filter((x) => x.id !== nodeId);
 
   return (
-    <Drawer
+    <ReadingDrawer kind="node"
       open={Boolean(nodeId)}
       onClose={props.onClose}
-      size={860}
       title={
         n ? (
           <Space>
@@ -226,7 +225,7 @@ export function NodeDrawer(props: {
     >
       {n && (
         <>
-          <Form form={form} layout="vertical" onFinish={onFinish}>
+          <Form name="node-detail" form={form} layout="vertical" onFinish={onFinish}>
             <Form.Item name="name" label="Name" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
@@ -237,7 +236,7 @@ export function NodeDrawer(props: {
               name="description"
               label={n.kind === "action" ? "Purpose (what this action does)" : "description"}
             >
-              <Input.TextArea rows={2} placeholder={n.kind === "action" ? "e.g. The requester submits a purchase order and the system decides by amount whether approval is needed" : undefined} />
+              <Input.TextArea autoSize={{ minRows: 2 }} placeholder={n.kind === "action" ? "e.g. The requester submits a purchase order and the system decides by amount whether approval is needed" : undefined} />
             </Form.Item>
             <Form.Item name="code_ref" label="Code location (link)">
               <Input placeholder="e.g. https://git.example/repo/blob/main/src/order.py#L10" />
@@ -421,6 +420,6 @@ export function NodeDrawer(props: {
           refresh();
         }}
       />
-    </Drawer>
+    </ReadingDrawer>
   );
 }

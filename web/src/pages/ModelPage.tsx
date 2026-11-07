@@ -1,3 +1,4 @@
+import { ExpandableDescription } from "../components/ExpandableDescription";
 import { ListTable, listTitle } from "../components/ListView";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -145,6 +146,7 @@ export function ModelPage() {
                   <Input.Search placeholder="Search by name" allowClear onChange={(e) => setSearch(e.target.value)} />
                 </Space>
                 <ListTable<ModelNode>
+                  className="model-nodes-table"
                   total={fullGraph.data?.nodes.length}
                   filtered={Boolean(moduleId || kindFilter || search)}
                   label="Model nodes"
@@ -191,7 +193,7 @@ export function ModelPage() {
                       render: (_, n) =>
                         `conditions ${n.attributes.conditions?.length || 0} / states ${n.attributes.states?.length || 0} / constraints ${n.attributes.constraints?.length || 0}`,
                     },
-                    { title: "Description / purpose", dataIndex: "description", ellipsis: true },
+                    { title: "Description / purpose", dataIndex: "description", width: 320, render: (text: string | null, n) => <ExpandableDescription text={text} name={n.name} /> },
                   ]}
                 />
               </>

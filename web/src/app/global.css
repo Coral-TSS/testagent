@@ -33,3 +33,43 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* Reading drawers keep controls reachable while their content gets more space. */
+.drawer-width-handle {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 12px;
+  z-index: 1;
+  pointer-events: auto;
+  cursor: col-resize;
+  touch-action: none;
+}
+.drawer-width-handle::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: calc(50% - 28px);
+  width: 5px;
+  height: 56px;
+  border-radius: 3px;
+  background: #bfbfbf;
+}
+.drawer-width-handle:hover::after,
+.drawer-width-handle:focus-visible::after { background: #1677ff; }
+.drawer-width-handle:focus-visible { outline: 2px solid #1677ff; outline-offset: -2px; }
+.reading-drawer-resizing .ant-drawer-content-wrapper { transition: none; }
+.reading-drawer-resizing .ant-drawer-section { user-select: none; cursor: col-resize; }
+.reading-drawer .ant-drawer-header { flex-wrap: wrap; gap: 12px; }
+.reading-drawer .ant-drawer-header-title { min-width: 0; }
+.reading-drawer .ant-drawer-title { overflow-wrap: anywhere; }
+.reading-drawer .ant-drawer-extra { max-width: 100%; margin-inline-start: 0; }
+.reading-drawer .ant-drawer-header .ant-space { flex-wrap: wrap; }
+.model-nodes-table td { vertical-align: top; }
+.expandable-description { width: 280px; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  .reading-drawer .ant-drawer-header { align-items: stretch; flex-direction: column; }
+}
+@media print {
+  .drawer-width-handle { display: none; }
+}

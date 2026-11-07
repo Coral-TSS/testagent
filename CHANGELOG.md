@@ -75,6 +75,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Requirement, model node and agent trace drawers now adapt to the viewport, support pointer and
+  keyboard resizing, and remember widths separately in the browser. Small windows use full width;
+  blocked storage does not prevent use. Requirement and node text areas grow to show their content.
+- Model descriptions now offer full-text hover previews and expand/collapse controls without opening
+  the row's drawer. Requirement detail labels no longer target fields in the hidden create form.
+
 - Remaining resource, model, history, statistics and registry lists now share counts, bounded scroll
   areas and retry feedback. Resource tables default to 50 rows per page; report snapshots and model
   review fields retain all rows for printing. Capped history endpoints explicitly label loaded recent

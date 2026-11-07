@@ -1,0 +1,121 @@
+{
+  "date": "2026-11-07",
+  "task": "DEMO-FIX-008",
+  "demo_issues": [
+    3,
+    5
+  ],
+  "status": "verified_locally",
+  "base_commit": "c470b4f490ccfeddc7efd23dd9b27bf19ea6859e",
+  "scope": [
+    "responsive requirement, model node and Agent detail drawers",
+    "per-drawer browser width preferences",
+    "pointer and keyboard resizing",
+    "expandable model descriptions",
+    "auto-growing original text areas",
+    "detail form label association"
+  ],
+  "frontend": {
+    "files_passed": 40,
+    "tests_passed": 167,
+    "new_tests": 13,
+    "targeted_passed": 13,
+    "seconds": 49.43,
+    "lint": "passed",
+    "typecheck_and_build": "passed",
+    "raw_local_log": "runtime/demo-fix-008-frontend-final.log"
+  },
+  "backend": {
+    "raw_local_junit": "runtime/demo-fix-008-backend.xml",
+    "total": 479,
+    "passed": 478,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skipped_tests": [
+      "tests.unit.test_core_units::test_secret_store_file_mode_600"
+    ],
+    "platform_passed": 436,
+    "demo_sut_passed": 42,
+    "browser_e2e_passed": 3,
+    "seconds": 722.85,
+    "frontend_build_unchanged_during_regression": true
+  },
+  "browser_preview": {
+    "default_width": 864,
+    "dragged_width": 1064,
+    "remembered_after_reload": true,
+    "mobile_width": 360,
+    "mobile_overflow": {
+      "width": 360,
+      "content": 360
+    },
+    "mobile_full_text": {
+      "height": 909,
+      "content": 910
+    },
+    "restored_width": 1064,
+    "escape_from_handle": true,
+    "independent_agent_width": 832,
+    "description_expand_and_tooltip": true,
+    "node_full_text": {
+      "height": 470,
+      "content": 470
+    },
+    "pointer_cancel": true,
+    "storage_blocked": true,
+    "implicit_writes": [],
+    "page_errors": [],
+    "browser": "Chromium",
+    "bundle": "production build",
+    "api_data": "synthetic",
+    "viewport_sizes": [
+      [
+        1440,
+        1100
+      ],
+      [
+        360,
+        800
+      ]
+    ],
+    "local_artifacts": "output/playwright/demo-fix-008-*.png",
+    "drag_feedback": {
+      "cursor": "col-resize",
+      "selection": "none"
+    }
+  },
+  "tdd_red": {
+    "initial_tests_failed": 8,
+    "label_association_failed": 1,
+    "raw_local_logs": [
+      "runtime/demo-fix-008-red.log",
+      "runtime/demo-fix-008-label-red.log"
+    ]
+  },
+  "browser_found_issues": [
+    "resize handle inherited pointer-events:none; explicitly enable pointer events",
+    "detail labels targeted a hidden create-form field with duplicate id; scope detail form names"
+  ],
+  "preview_harness_corrections": [
+    "use visible textbox role after fixing duplicate ids",
+    "wait for automatic text-area height after viewport change",
+    "wait for tooltip close animation before screenshot",
+    "use valid action node kind instead of actor and rerun checks"
+  ],
+  "ruff": "passed",
+  "diff_check": "passed",
+  "production_database_used": false,
+  "real_model_called": false,
+  "backend_api_changed": false,
+  "applied_migrations_changed": false,
+  "remote_push_authorized": true,
+  "deployed": false,
+  "remaining_scope": "entity display names, other long titles and other original demo issues; no platform-wide mobile navigation redesign",
+  "final_bundle_e2e": {
+    "passed": 3,
+    "seconds": 29.876,
+    "raw_local_junit": "runtime/demo-fix-008-final-e2e.xml",
+    "reason": "Corrected the drag cursor/no-selection CSS selector while the full backend used its frozen bundle; rebuilt after completion and reran all E2E tests against the final bundle."
+  }
+}

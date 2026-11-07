@@ -1,6 +1,7 @@
+import { ReadingDrawer } from "./ReadingDrawer";
 import { RobotOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Divider, Drawer, Form, Input, Popconfirm, Select, Space, Tag, Typography } from "antd";
+import { Alert, Button, Divider, Form, Input, Popconfirm, Select, Space, Tag, Typography } from "antd";
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 
@@ -67,10 +68,9 @@ export function RequirementDrawer(props: {
   const editable = !locked;
 
   return (
-    <Drawer
+    <ReadingDrawer kind="requirement"
       open={Boolean(reqId)}
       onClose={props.onClose}
-      size={720}
       title={
         r ? (
           <Space>
@@ -99,7 +99,7 @@ export function RequirementDrawer(props: {
       {r && (
         <>
           {locked && <Alert type="info" showIcon style={{ marginBottom: 12 }} title="The version's requirements are frozen and read-only. To change them, unfreeze the version first (a reason is required)." />}
-          <Form form={form} layout="vertical" disabled={!editable} onFinish={(v) => update.mutate(v)}>
+          <Form name="requirement-detail" form={form} layout="vertical" disabled={!editable} onFinish={(v) => update.mutate(v)}>
             <Form.Item name="title" label="Title" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
@@ -107,7 +107,7 @@ export function RequirementDrawer(props: {
               <Select style={{ width: 120 }} options={["P0", "P1", "P2"].map((p) => ({ value: p, label: p }))} />
             </Form.Item>
             <Form.Item name="raw_text" label="Requirement text">
-              <Input.TextArea rows={4} />
+              <Input.TextArea autoSize={{ minRows: 4 }} />
             </Form.Item>
             {editable && (
               <Button size="small" htmlType="submit" loading={update.isPending}>
@@ -176,6 +176,6 @@ export function RequirementDrawer(props: {
           </Typography.Paragraph>
         </>
       )}
-    </Drawer>
+    </ReadingDrawer>
   );
 }
