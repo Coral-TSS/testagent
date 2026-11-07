@@ -1,6 +1,7 @@
+import { ListSection, ListTable } from "../components/ListView";
 import { DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Card, Checkbox, Descriptions, Input, List, Progress, Segmented, Space, Statistic, Table, Tag, Typography } from "antd";
+import { Alert, App, Button, Card, Checkbox, Descriptions, Input, List, Progress, Segmented, Space, Statistic, Tag, Typography } from "antd";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -154,6 +155,7 @@ export function ModelReviewPage() {
       </Card>
 
       <Card title={`Entities (${r.entities.length})`}>
+        <ListSection label="Review entities" count={r.entities.filter(show).length} total={r.entities.length} filtered={filter !== "all"}>
         {r.entities.length === 0 && <Typography.Text type="secondary">No entities yet; build the model on the model page first.</Typography.Text>}
         {r.entities.filter(show).map((e) => (
           <Card
@@ -170,10 +172,13 @@ export function ModelReviewPage() {
             extra={markBox("entity", e.id, e.mark)}
           >
             {e.description && <Typography.Paragraph>{e.description}</Typography.Paragraph>}
-            <Table<ReviewField>
+            <ListTable<ReviewField>
+              pagination={false}
+              scroll={{ y: "min(32vh, 320px)" }}
+              label={`Fields of ${e.name}`}
               size="small"
               rowKey="id"
-              pagination={false}
+
               dataSource={e.fields}
               locale={{ emptyText: "No fields registered" }}
               rowClassName={(f) => (f.uncovered ? "review-uncovered" : "")}
@@ -206,9 +211,11 @@ export function ModelReviewPage() {
             {noteBox("entity", e.id, e.mark)}
           </Card>
         ))}
+        </ListSection>
       </Card>
 
       <Card title={`Links (${r.links.length})`}>
+        <ListSection label="Review links" count={r.links.filter(show).length} total={r.links.length} filtered={filter !== "all"}>
         <List
           size="small"
           dataSource={r.links.filter(show)}
@@ -230,9 +237,11 @@ export function ModelReviewPage() {
             </List.Item>
           )}
         />
+        </ListSection>
       </Card>
 
       <Card title={`Actions (${r.actions.length})`}>
+        <ListSection label="Review actions" count={r.actions.filter(show).length} total={r.actions.length} filtered={filter !== "all"}>
         {r.actions.length === 0 && <Typography.Text type="secondary">No actions yet; build the model on the model page first.</Typography.Text>}
         {r.actions.filter(show).map((a) => (
           <Card
@@ -264,6 +273,7 @@ export function ModelReviewPage() {
             {noteBox("action", a.id, a.mark)}
           </Card>
         ))}
+        </ListSection>
       </Card>
     </Space>
   );

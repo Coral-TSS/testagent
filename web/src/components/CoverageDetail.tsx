@@ -1,4 +1,5 @@
-import { Collapse, Space, Table, Tag, Typography } from "antd";
+import { ListTable } from "./ListView";
+import { Collapse, Space, Tag, Typography } from "antd";
 import { Link } from "react-router-dom";
 
 import type { CaseBrief, CaseCoverage, Coverage, CoverageBlock, CoveredItem, NamedRef } from "../api/types";
@@ -66,10 +67,11 @@ export function coverageSummary(c?: CaseCoverage): string {
 
 function ItemsTable({ block, kind, sutId, versionId }: { block: CoverageBlock; kind: string; sutId?: string; versionId: string }) {
   return (
-    <Table
+    <ListTable
+      label="Coverage items"
       size="small"
       rowKey="id"
-      pagination={false}
+
       dataSource={block.items}
       columns={[
         {
@@ -117,10 +119,11 @@ export function RequirementCoverage({ coverage, sutId }: { coverage: Record<stri
   if (!kinds.length) return <Typography.Text type="secondary">The requirements have not been structured onto model elements yet; structure and confirm them to see per-item coverage.</Typography.Text>;
   const rows = kinds.flatMap((k) => coverage[k].map((i) => ({ ...i, kind: k })));
   return (
-    <Table
+    <ListTable
+      label="Coverage requirements"
       size="small"
       rowKey={(r) => `${r.kind}:${r.id}`}
-      pagination={false}
+
       dataSource={rows}
       columns={[
         { title: "Kind", dataIndex: "kind", width: 60, render: (k: string) => KIND_LABEL[k] },

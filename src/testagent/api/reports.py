@@ -76,8 +76,9 @@ def list_reports(
     scope_type: Literal["task_run", "version"] | None = None,
     scope_id: UUID | None = None,
     version_id: UUID | None = None,
+    sut_id: UUID | None = None,
 ):
-    return reports(request).list(scope_type, scope_id, version_id)
+    return reports(request).list(scope_type, scope_id, version_id, sut_id=sut_id)
 
 
 @router.get("/reports/{report_id}")

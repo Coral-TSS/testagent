@@ -309,7 +309,7 @@ class RunService:
         run["counts"] = run_counts(run["executions"], run["total_cases"])
         return run
 
-    def list_recent(self, version_id=None, limit: int = 50) -> list[dict]:
+    def list_recent(self, version_id=None, limit: int = 50, *, sut_id=None) -> list[dict]:
         with self.db.tx() as cur:
             cur.execute(
                 "SELECT r.*, t.name AS task_name, t.version_id, v.name AS version_name,"
@@ -318,8 +318,9 @@ class RunService:
                 " FROM task_run r JOIN test_task t ON t.id=r.task_id"
                 " JOIN version v ON v.id=t.version_id JOIN sut s ON s.id=v.sut_id"
                 " WHERE (%s::uuid IS NULL OR t.version_id=%s::uuid)"
+                " AND (%s::uuid IS NULL OR v.sut_id=%s::uuid)"
                 " ORDER BY r.created_at DESC LIMIT %s",
-                (version_id, version_id, limit),
+                (version_id, version_id, sut_id, sut_id, limit),
             )
             rows = cur.fetchall()
         for row in rows:

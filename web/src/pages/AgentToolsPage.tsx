@@ -1,6 +1,7 @@
+import { ListTable, listTitle } from "../components/ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Switch, Table, Tabs, Tag, Typography } from "antd";
-import { useState } from "react";
+import { Alert, App, Button, Card, Col, Form, Input, Modal, Row, Select, Space, Switch, Tabs, Tag, Typography } from "antd";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client";
@@ -30,14 +31,20 @@ const TARGET_LINK: Record<string, (id: string) => string> = {
   version: (id) => `/versions/${id}`,
 };
 
+type CountSink = (count: number | undefined) => void;
+function useTabCount(count: number | undefined, onCount?: CountSink) {
+  useEffect(() => onCount?.(count), [count, onCount]);
+}
+
 // ------------------------------------------------------------------ prompts
-function PromptsTab({ onOpenRun }: { onOpenRun: (id: string) => void }) {
+function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; onCount?: CountSink }) {
   const qc = useQueryClient();
   const { modal } = App.useApp();
   const [selected, setSelected] = useState("system");
   const [editing, setEditing] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const list = useQuery({ queryKey: ["prompts"], queryFn: () => api<PromptSummary[]>("/agent/prompts") });
+  useTabCount(list.data?.length, onCount);
   const versions = useQuery({ queryKey: ["prompt", selected], queryFn: () => api<PromptVersion[]>(`/agent/prompts/${selected}`) });
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["prompts"] });
@@ -56,12 +63,15 @@ function PromptsTab({ onOpenRun }: { onOpenRun: (id: string) => void }) {
   return (
     <Row gutter={16}>
       <Col span={8}>
-        <Table<PromptSummary>
+        <ListTable<PromptSummary>
+          label="Prompts"
+          error={list.isError}
+          onRetry={() => list.refetch()}
           size="small"
           rowKey="name"
-          pagination={false}
+
           loading={list.isLoading}
-          dataSource={list.data || []}
+          dataSource={list.data}
           onRow={(p) => ({ onClick: () => setSelected(p.name), style: { cursor: "pointer", background: p.name === selected ? "#e6f4ff" : undefined } })}
           columns={[
             { title: "Prompt", dataIndex: "name", render: (v: string) => promptLabel(v) },
@@ -82,11 +92,14 @@ function PromptsTab({ onOpenRun }: { onOpenRun: (id: string) => void }) {
           <Typography.Paragraph type="secondary">
             Assembly order: system prompt → entry description → extra guidance for this entry → enabled memories → context. Patches from corrections create a new version that takes effect immediately; you can switch back to any older version at any time (roll back).
           </Typography.Paragraph>
-          <Table<PromptVersion>
+          <ListTable<PromptVersion>
+            label="Prompt versions"
+            error={versions.isError}
+            onRetry={() => versions.refetch()}
             size="small"
             rowKey="id"
             loading={versions.isLoading}
-            dataSource={versions.data || []}
+            dataSource={versions.data}
             locale={{ emptyText: "No versions yet: using the built-in default" }}
             expandable={{ expandedRowRender: (v) => <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{v.content || "(empty: no extra guidance)"}</pre> }}
             columns={[
@@ -125,9 +138,10 @@ function PromptsTab({ onOpenRun }: { onOpenRun: (id: string) => void }) {
 }
 
 // ------------------------------------------------------------------ memories
-function MemoriesTab({ onOpenRun }: { onOpenRun: (id: string) => void }) {
+function MemoriesTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; onCount?: CountSink }) {
   const [enabled, setEnabled] = useState<string>();
   const q = useQuery({ queryKey: ["memories", enabled], queryFn: () => api<AgentMemory[]>("/agent/memories", { params: { enabled } }) });
+  useTabCount(q.data?.length, onCount);
   const toggle = useApiMutation((v: { id: string; enabled: boolean }) => api(`/agent/memories/${v.id}`, { method: "PATCH", body: { enabled: v.enabled } }), {
     invalidate: [["memories"]],
     success: "Updated",
@@ -138,11 +152,15 @@ function MemoriesTab({ onOpenRun }: { onOpenRun: (id: string) => void }) {
         <Select allowClear placeholder="All states" style={{ width: 120 }} value={enabled} onChange={setEnabled} options={[{ value: "true", label: "Enable" }, { value: "false", label: "Disabled" }]} />
         <Typography.Text type="secondary">Enabled memories are injected into later agent runs for the matching entries (global + current system, at most 20); disabled ones are no longer injected.</Typography.Text>
       </Space>
-      <Table<AgentMemory>
+      <ListTable<AgentMemory>
+        label="Memories"
+        error={q.isError}
+        onRetry={() => q.refetch()}
+        recordLimit={500}
         size="small"
         rowKey="id"
         loading={q.isLoading}
-        dataSource={q.data || []}
+        dataSource={q.data}
         locale={{ emptyText: "No memories yet: the agent creates them automatically after you submit corrections" }}
         columns={[
           { title: "Content", dataIndex: "content", render: (v: string) => <Typography.Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{v}</Typography.Paragraph> },
@@ -174,7 +192,7 @@ function MemoriesTab({ onOpenRun }: { onOpenRun: (id: string) => void }) {
 }
 
 // ------------------------------------------------------------------ corrections
-function CorrectionsTab({ onOpenRun, highlight }: { onOpenRun: (id: string) => void; highlight?: string | null }) {
+function CorrectionsTab({ onOpenRun, highlight, onCount }: { onOpenRun: (id: string) => void; highlight?: string | null; onCount?: CountSink }) {
   const [status, setStatus] = useState<string>();
   const [kind, setKind] = useState<string>();
   const q = useQuery({
@@ -182,6 +200,7 @@ function CorrectionsTab({ onOpenRun, highlight }: { onOpenRun: (id: string) => v
     queryFn: () => api<Correction[]>("/corrections", { params: { status, kind } }),
     refetchInterval: (query) => (query.state.data?.some((c) => c.status === "pending" || c.status === "processing") ? 3000 : false),
   });
+  useTabCount(q.data?.length, onCount);
   const reprocess = useApiMutation((id: string) => api(`/corrections/${id}/reprocess`, { method: "POST" }), { invalidate: [["corrections"]], success: "Resubmitted for processing" });
   return (
     <>
@@ -189,11 +208,15 @@ function CorrectionsTab({ onOpenRun, highlight }: { onOpenRun: (id: string) => v
         <Select allowClear placeholder="All states" style={{ width: 120 }} value={status} onChange={setStatus} options={["pending", "processing", "processed", "failed"].map((v) => ({ value: v, label: <CorrectionStatusTag status={v} /> }))} />
         <Select allowClear placeholder="All types" style={{ width: 120 }} value={kind} onChange={setKind} options={[{ value: "correction", label: "Correct" }, { value: "omission", label: "Missed test" }]} />
       </Space>
-      <Table<Correction>
+      <ListTable<Correction>
+        label="Corrections"
+        error={q.isError}
+        onRetry={() => q.refetch()}
+        recordLimit={200}
         size="small"
         rowKey="id"
         loading={q.isLoading}
-        dataSource={q.data || []}
+        dataSource={q.data}
         rowClassName={(c) => (c.id === highlight ? "ant-table-row-selected" : "")}
         locale={{ emptyText: "No corrections yet: click “Correct” on a case, strategy, execution or report page, or “Report missed test” on a run page" }}
         columns={[
@@ -259,11 +282,12 @@ function CorrectionsTab({ onOpenRun, highlight }: { onOpenRun: (id: string) => v
 }
 
 // ------------------------------------------------------------------ skills / MCP
-function RegistryTab<T extends SkillItem | McpServer>({ path, kind }: { path: string; kind: "skill" | "mcp" }) {
+function RegistryTab<T extends SkillItem | McpServer>({ path, kind, onCount }: { path: string; kind: "skill" | "mcp"; onCount?: CountSink }) {
   const [form] = Form.useForm();
   const [open, setOpen] = useState(false);
   const key = ["registry", path];
   const q = useQuery({ queryKey: key, queryFn: () => api<T[]>(path) });
+  useTabCount(q.data?.length, onCount);
   const create = useApiMutation((body: Record<string, unknown>) => api(path, { method: "POST", body }), {
     invalidate: [key],
     success: "Registered",
@@ -279,11 +303,14 @@ function RegistryTab<T extends SkillItem | McpServer>({ path, kind }: { path: st
       <Button type="primary" style={{ marginBottom: 12 }} onClick={() => setOpen(true)}>
         {kind === "skill" ? "Register skill" : "Register MCP server"}
       </Button>
-      <Table<T>
+      <ListTable<T>
+        label={kind === "skill" ? "Skills" : "MCP servers"}
+        error={q.isError}
+        onRetry={() => q.refetch()}
         size="small"
         rowKey="id"
         loading={q.isLoading}
-        dataSource={q.data || []}
+        dataSource={q.data}
         locale={{ emptyText: "Nothing registered" }}
         columns={[
           { title: "Name", dataIndex: "name" },
@@ -332,6 +359,8 @@ function RegistryTab<T extends SkillItem | McpServer>({ path, kind }: { path: st
 export function AgentToolsPage() {
   const [params, setParams] = useSearchParams();
   const [runId, setRunId] = useState<string | null>(null);
+  const [counts, setCounts] = useState<Record<string, number | undefined>>({});
+  const countSinks = useMemo(() => Object.fromEntries(["prompts", "memories", "corrections", "skills", "mcp"].map((key) => [key, (count: number | undefined) => setCounts((old) => old[key] === count ? old : { ...old, [key]: count })])) as Record<string, CountSink>, []);
   const tab = params.get("tab") || "prompts";
   return (
     <Card title="Agent tools" extra={<Link to="/agent/runs">All run traces</Link>}>
@@ -339,11 +368,11 @@ export function AgentToolsPage() {
         activeKey={tab}
         onChange={(k) => setParams(k === "prompts" ? {} : { tab: k }, { replace: true })}
         items={[
-          { key: "prompts", label: "Prompt", children: <PromptsTab onOpenRun={setRunId} /> },
-          { key: "memories", label: "Memories", children: <MemoriesTab onOpenRun={setRunId} /> },
-          { key: "corrections", label: "Corrections", children: <CorrectionsTab onOpenRun={setRunId} highlight={params.get("id")} /> },
-          { key: "skills", label: "Skills (registry)", children: <RegistryTab<SkillItem> path="/agent/skills" kind="skill" /> },
-          { key: "mcp", label: "MCP (registry)", children: <RegistryTab<McpServer> path="/agent/mcp-servers" kind="mcp" /> },
+          { key: "prompts", label: listTitle("Prompt", counts.prompts), children: <PromptsTab onOpenRun={setRunId} onCount={countSinks.prompts} /> },
+          { key: "memories", label: listTitle("Memories", counts.memories), children: <MemoriesTab onOpenRun={setRunId} onCount={countSinks.memories} /> },
+          { key: "corrections", label: listTitle("Corrections", counts.corrections), children: <CorrectionsTab onOpenRun={setRunId} highlight={params.get("id")} onCount={countSinks.corrections} /> },
+          { key: "skills", label: listTitle("Skills (registry)", counts.skills), children: <RegistryTab<SkillItem> path="/agent/skills" kind="skill" onCount={countSinks.skills} /> },
+          { key: "mcp", label: listTitle("MCP (registry)", counts.mcp), children: <RegistryTab<McpServer> path="/agent/mcp-servers" kind="mcp" onCount={countSinks.mcp} /> },
         ]}
       />
       <AgentRunDrawer runId={runId} onClose={() => setRunId(null)} />

@@ -1,6 +1,7 @@
+import { ListTable, listTitle } from "../components/ListView";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Form, Input, Modal, Select, Space, Table, Tabs, Tag, Typography } from "antd";
+import { Button, Form, Input, Modal, Select, Space, Tabs, Tag, Typography } from "antd";
 import { useMemo, useState } from "react";
 import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
 
@@ -54,7 +55,7 @@ export function ModelPage() {
   }, [fields.data]);
   const moduleName = useMemo(() => new Map((modules.data || []).map((m) => [m.id, m.name])), [modules.data]);
 
-  const rows = (graph.data?.nodes || []).filter(
+  const rows = graph.data?.nodes.filter(
     (n) => (!kindFilter || n.kind === kindFilter) && (!search || n.name.includes(search)),
   );
   const links = useQuery({ queryKey: ["links", sutId], queryFn: () => api<Link[]>(`/suts/${sutId}/links`) });
@@ -129,7 +130,7 @@ export function ModelPage() {
           },
           {
             key: "list",
-            label: "List",
+            label: listTitle("List", graph.data?.nodes.length),
             children: (
               <>
                 <Space style={{ marginBottom: 12 }}>
@@ -143,7 +144,12 @@ export function ModelPage() {
                   />
                   <Input.Search placeholder="Search by name" allowClear onChange={(e) => setSearch(e.target.value)} />
                 </Space>
-                <Table<ModelNode>
+                <ListTable<ModelNode>
+                  total={fullGraph.data?.nodes.length}
+                  filtered={Boolean(moduleId || kindFilter || search)}
+                  label="Model nodes"
+                  error={graph.isError}
+                  onRetry={() => graph.refetch()}
                   size="small"
                   rowKey="id"
                   loading={graph.isLoading}
@@ -193,14 +199,14 @@ export function ModelPage() {
           },
           {
             key: "links",
-            label: `Links${links.data ? ` (${links.data.length})` : ""}`,
+            label: listTitle("Links", links.data?.length),
             children: (
               <>
                 <Typography.Paragraph type="secondary">
                   A link is an edge between entities with a reading in each direction (e.g. PurchaseOrder belongs to Supplier / Supplier supplies PurchaseOrder), plus cardinality and foreign-key field.
                   Foreign-key field names match the API/code fields (e.g. supplier_id, order_id).
                 </Typography.Paragraph>
-                <LinksTable links={links.data || []} loading={links.isLoading} onOpen={(l) => setLinkEdit({ link: l })} />
+                <LinksTable links={links.data} loading={links.isLoading} error={links.isError} onRetry={() => links.refetch()} onOpen={(l) => setLinkEdit({ link: l })} />
                 <Space style={{ margin: "16px 0 8px" }}>
                   <Typography.Text strong>Link suggestions to review ({pendingLinks.length})</Typography.Text>
                   <Button size="small" loading={suggest.isPending} onClick={() => suggest.mutate()}>

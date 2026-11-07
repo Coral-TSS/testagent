@@ -1,3 +1,4 @@
+import { ListSection } from "./ListView";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Button, Collapse, Descriptions, Drawer, Empty, Space, Tag, Timeline, Typography } from "antd";
 
@@ -169,13 +170,11 @@ export function AgentRunDrawer({ runId, onClose }: { runId: string | null; onClo
             </Descriptions.Item>
           </Descriptions>
           {r.error_code && <Alert type="error" showIcon style={{ marginBottom: 16 }} title={r.error_code} description={r.error} />}
-          {r.steps.length ? (
-            <Timeline items={r.steps.map((s, i) => ({ key: i, content: <StepItem step={s} labels={r.labels} /> }))} />
-          ) : (
-            <Empty description="No steps yet" />
-          )}
         </>
       )}
+      <ListSection label="Agent trace steps" count={r?.steps.length} error={run.isError} onRetry={() => run.refetch()}>
+        {r?.steps.length ? <Timeline items={r.steps.map((s, i) => ({ key: i, content: <StepItem step={s} labels={r.labels} /> }))} /> : <Empty description="No steps yet" />}
+      </ListSection>
     </Drawer>
   );
 }

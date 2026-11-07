@@ -1,5 +1,6 @@
+import { ListTable } from "../components/ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, Col, DatePicker, Form, Input, Radio, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Col, DatePicker, Form, Input, Radio, Row, Select, Space, Tag, Tooltip, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -187,10 +188,11 @@ export function TaskPage() {
               Save order
             </Button>
           </Space.Compact>
-          <Table
+          <ListTable
+            label="Task cases"
             size="small"
             rowKey="id"
-            pagination={false}
+
             dataSource={t.cases}
             columns={[
               { title: "#", dataIndex: "seq", width: 50 },
@@ -252,11 +254,15 @@ export function TaskPage() {
           </Typography.Paragraph>
         </Card>
         <Card size="small" title="Run history">
-          <Table<TaskRunRow>
+          <ListTable<TaskRunRow>
+            label="Task run history"
+            error={runs.isError}
+            onRetry={() => runs.refetch()}
+            recordLimit={100}
             size="small"
             rowKey="id"
             loading={runs.isLoading}
-            dataSource={runs.data || []}
+            dataSource={runs.data}
             pagination={{ pageSize: 10, hideOnSinglePage: true }}
             locale={{ emptyText: "Never run yet" }}
             columns={[

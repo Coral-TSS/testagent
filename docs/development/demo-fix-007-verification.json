@@ -1,0 +1,171 @@
+{
+  "date": "2026-11-07",
+  "task": "DEMO-FIX-007",
+  "demo_issues": [
+    1,
+    2
+  ],
+  "status": "verified_locally",
+  "base_commit": "bccf2e2cb21c5da26fdf4c1a2cf0339f1b75ef7f",
+  "scope": [
+    "remaining resource tables",
+    "model tables and review",
+    "history and recent records",
+    "statistics",
+    "registry tables",
+    "data card lists",
+    "loaded tab counts",
+    "version change timeline",
+    "Agent step timeline",
+    "report no-script and code-link lists"
+  ],
+  "backend": {
+    "targeted_passed": 47,
+    "raw_local_targeted_junit": "runtime/demo-fix-007-targeted-backend.xml",
+    "raw_local_junit": "runtime/demo-fix-007-backend.xml",
+    "total": 479,
+    "passed": 478,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skipped_tests": [
+      "tests.unit.test_core_units::test_secret_store_file_mode_600"
+    ],
+    "platform_passed": 436,
+    "demo_sut_passed": 42,
+    "browser_e2e_passed": 3,
+    "seconds": 801.77,
+    "frontend_build_unchanged_during_regression": true
+  },
+  "frontend": {
+    "files_passed": 39,
+    "tests_passed": 154,
+    "new_tests": 16,
+    "seconds": 68.68,
+    "lint": "passed",
+    "typecheck_and_build": "passed",
+    "raw_local_log": "runtime/demo-fix-007-frontend-final.log"
+  },
+  "browser_preview": {
+    "regions": {
+      "Defects": {
+        "height": 560,
+        "content": 3050
+      },
+      "Reports": {
+        "height": 560,
+        "content": 3050
+      },
+      "Recent task runs": {
+        "height": 560,
+        "content": 1950
+      },
+      "Agent traces": {
+        "height": 560,
+        "content": 1950
+      },
+      "Memories": {
+        "height": 560,
+        "content": 1950
+      },
+      "Version changes": {
+        "height": 560,
+        "content": 3120
+      },
+      "Agent trace steps": {
+        "height": 560,
+        "content": 3953
+      }
+    },
+    "scope_requests": "verified",
+    "tab_counts": "verified",
+    "model_filter": "verified",
+    "error_retry": "verified",
+    "review_print": {
+      "screen": {
+        "height": 320,
+        "content": 2600
+      },
+      "print": {
+        "height": 2600,
+        "content": 2600
+      }
+    },
+    "report_last_person": "verified",
+    "page_errors": [],
+    "browser": "Chromium",
+    "bundle": "production build",
+    "api_data": "synthetic",
+    "viewport_sizes": [
+      [
+        1440,
+        1100
+      ]
+    ],
+    "local_artifacts": "output/playwright/demo-fix-007-*.png"
+  },
+  "tdd_red": {
+    "backend_failures": 4,
+    "initial_frontend_failures": 9,
+    "initial_model_fixture_error": "missing attributes; corrected fixture, separately observed count assertion failure",
+    "tab_count_failure": 1,
+    "print_row_failure": 1,
+    "raw_local_logs": [
+      "runtime/demo-fix-007-backend-red.xml",
+      "runtime/demo-fix-007-frontend-red.log",
+      "runtime/demo-fix-007-model-red.log",
+      "runtime/demo-fix-007-tab-red.log",
+      "runtime/demo-fix-007-print-red.log",
+      "runtime/demo-fix-007-boundary-red.log",
+      "runtime/demo-fix-007-responsibility-red.log",
+      "runtime/demo-fix-007-timelines-red.log"
+    ],
+    "boundary_failures": 3,
+    "responsibility_reproduced_after_locator_correction": true,
+    "timeline_failures": 2
+  },
+  "first_full_frontend": {
+    "passed": 147,
+    "failed": 2,
+    "failures": [
+      "UsersPage.test.tsx: ambiguous Users (2) text; query by heading role",
+      "taskBinding.test.tsx: original preview title was replaced; preserve title/footer"
+    ],
+    "raw_local_log": "runtime/demo-fix-007-frontend-first.log"
+  },
+  "ruff": "passed",
+  "python_format": "passed",
+  "diff_check": "passed",
+  "production_database_used": false,
+  "real_model_called": false,
+  "applied_migrations_changed": false,
+  "backend_api_changed": true,
+  "remote_push_authorized": true,
+  "deployed": false,
+  "record_caps": {
+    "defects": 500,
+    "reports": 200,
+    "recent_task_runs": 50,
+    "agent_traces": 100,
+    "case_history": 100,
+    "task_history": 100,
+    "corrections": 200,
+    "memories": 500
+  },
+  "print_all_rows": [
+    "model review fields",
+    "report snapshot tables"
+  ],
+  "remaining_scope": "drawer sizing, descriptions and other original demo issues remain separate",
+  "test_harness_corrections": [
+    "locate the confirmation popup OK separately from the edit modal OK",
+    "remove unsupported exact option from three ByRole queries",
+    "locate the standalone review display-name cell in browser preview"
+  ],
+  "final_bundle_e2e": {
+    "passed": 3,
+    "seconds": 30.28,
+    "raw_local_junit": "runtime/demo-fix-007-final-e2e.xml",
+    "reason": "Frontend-only pagination and timeline fixes were added while the full backend ran with its frozen bundle; rebuilt once it finished and reran all E2E tests against the final bundle."
+  }
+}

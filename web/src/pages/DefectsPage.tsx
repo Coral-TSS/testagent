@@ -1,6 +1,7 @@
+import { ListTable } from "../components/ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Card, Input, Select, Space, Table, Tag } from "antd";
+import { Card, Input, Select, Space, Tag } from "antd";
 import dayjs from "dayjs";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -67,12 +68,16 @@ export function DefectsPage() {
           { key: "open", label: "Reopen", run: toStatus("open") },
         ]}
       />
-      <Table<DefectRow>
+      <ListTable<DefectRow>
+        label="Defects"
+        error={rows.isError}
+        onRetry={() => rows.refetch()}
+        recordLimit={500}
         size="small"
         rowKey="id"
         rowSelection={{ selectedRowKeys: sel, onChange: (k) => setSel(k as string[]) }}
         loading={rows.isLoading}
-        dataSource={rows.data || []}
+        dataSource={rows.data}
         locale={{
           emptyText: (
             <EmptyState

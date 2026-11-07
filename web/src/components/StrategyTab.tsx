@@ -1,6 +1,6 @@
 import { RobotOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Card, Form, Input, Popconfirm, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Form, Input, Popconfirm, Select, Space, Tag, Tooltip, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -181,10 +181,11 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
           <Typography.Paragraph type="secondary">
             Tasks only reference existing cases. The requirements below have no ready cases yet: click “Generate draft cases” to let the AI draft some (drafts only); after review set them ready and they join the matching tasks automatically.
           </Typography.Paragraph>
-          <Table<RequirementGap>
+          <ListTable<RequirementGap>
+            label="Requirement gaps"
             size="small"
             rowKey="requirement_id"
-            pagination={false}
+
             dataSource={gaps.data}
             columns={[
               { title: "Requirement", render: (_, g) => `${g.title} (${g.code})` },

@@ -1,5 +1,6 @@
+import { ListSection, ListTable } from "../components/ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Card, Descriptions, Popconfirm, Progress, Space, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Descriptions, Popconfirm, Progress, Space, Tag, Typography } from "antd";
 import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -142,6 +143,7 @@ export function RunPage() {
             data-testid="no-script"
             title={`Not executed (no automation script): ${r.no_script!.length} case(s) — a test-setup gap, not a failure`}
             description={
+              <ListSection label="Run cases without scripts" count={r.no_script!.length}>
               <Space wrap>
                 {r.no_script!.map((n) => (
                   <Link key={n.case_id} to={`/cases/${n.case_id}`}>
@@ -150,19 +152,21 @@ export function RunPage() {
                 ))}
                 <Typography.Text type="secondary">Generate a script (AI automation) or move these cases to an agent task.</Typography.Text>
               </Space>
+              </ListSection>
             }
           />
         )}
       </Card>
       <Card size="small" title="Case results">
-        <Table<RunExecution>
+        <ListTable<RunExecution>
+          label="Run executions"
           size="small"
           rowKey="id"
           dataSource={r.executions}
-          pagination={false}
+
           locale={{ emptyText: r.status === "queued" ? "Waiting for the worker to start" : "No executions" }}
           columns={[
-            { title: "#", render: (_: unknown, __: RunExecution, i: number) => i + 1, width: 50 },
+            { title: "#", render: (_: unknown, e: RunExecution) => r.executions.indexOf(e) + 1, width: 50 },
             { title: "Case", render: (_: unknown, e) => <Link to={`/cases/${e.case_id}`}>{objLabel(e.case_title, e.case_code)}</Link> },
             { title: "Result", dataIndex: "status", render: (v: string) => <ExecutionStatusTag status={v} /> },
             { title: "Executor", dataIndex: "executor", render: (v: string) => EXECUTOR_LABEL[v] || v },

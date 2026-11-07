@@ -23,7 +23,7 @@ describe("UsersPage", () => {
       "PATCH /users/u2": () => ({ body: { ...ROWS[1], locked: false } }),
     });
     renderPage(<UsersPage />);
-    expect(await screen.findByText("Users (2)")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Users (2)" })).toBeTruthy();
     expect(screen.getByText("locked")).toBeTruthy();
     expect(screen.getByText("must change password")).toBeTruthy();
     expect(screen.getByText("you")).toBeTruthy();

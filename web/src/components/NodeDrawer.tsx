@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ListSection } from "./ListView";
 import {
   App,
   Button,
@@ -275,6 +276,7 @@ export function NodeDrawer(props: {
                 </Form.Item>
                 <Form.Item name="inputs" label="Type">
                   <IoParamsTable
+                    label="Input parameters"
                     showLocation
                     locations={["body", "path", "query", "header", "form", "ui"]}
                     fieldOptions={fieldOptions}
@@ -287,6 +289,7 @@ export function NodeDrawer(props: {
                 </Form.Item>
                 <Form.Item name="outputs" label="Outputs">
                   <IoParamsTable
+                    label="Output parameters"
                     fieldOptions={fieldOptions}
                     emptyText="No outputs yet (can be filled from the bound API)"
                     addLabel="Add output"
@@ -301,6 +304,7 @@ export function NodeDrawer(props: {
                 <Divider titlePlacement="start">Fields (name · type · required · format)</Divider>
                 <EntityFields nodeId={n.id} sutId={sutId} entities={props.allNodes} />
                 <Divider titlePlacement="start">Links (both readings · cardinality · foreign key)</Divider>
+                <ListSection label="Entity links" count={n.links?.length ?? 0}>
                 <List
                   size="small"
                   dataSource={n.links || []}
@@ -325,6 +329,7 @@ export function NodeDrawer(props: {
                     );
                   }}
                 />
+                </ListSection>
                 <Button size="small" style={{ marginTop: 8 }} onClick={() => setLinkEdit({ from: n.id })}>
                   New link
                 </Button>
@@ -342,6 +347,7 @@ export function NodeDrawer(props: {
           </Form>
 
           <Divider titlePlacement="start">Edges</Divider>
+          <ListSection label="Related edges" count={n.edges.filter((e) => e.role !== "source" && e.role !== "target").length}>
           <List
             size="small"
             dataSource={n.edges.filter((e) => e.role !== "source" && e.role !== "target")}
@@ -368,6 +374,7 @@ export function NodeDrawer(props: {
               );
             }}
           />
+          </ListSection>
           <Space style={{ marginTop: 8 }}>
             <Select value={edgeRole} onChange={setEdgeRole} options={EDGE_ROLES} style={{ width: 100 }} />
             <Select

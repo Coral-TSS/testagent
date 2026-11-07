@@ -1,5 +1,6 @@
+import { ListTable } from "../components/ListView";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography } from "antd";
 import { useState } from "react";
 
 import { api } from "../api/client";
@@ -54,11 +55,14 @@ export function UsersPage() {
           New user
         </Button>
       </Space>
-      <Table<UserRow>
+      <ListTable<UserRow>
+        label="Users"
+        error={users.isError}
+        onRetry={() => users.refetch()}
         rowKey="id"
         loading={users.isLoading}
-        dataSource={users.data || []}
-        pagination={false}
+        dataSource={users.data}
+
         columns={[
           {
             title: "User name",

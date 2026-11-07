@@ -14,4 +14,22 @@
   .ant-layout-content {
     padding: 0 !important;
   }
+  .list-region,
+  .list-table .ant-table-body,
+  .list-table .ant-table-content {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .list-table table {
+    width: 100% !important;
+    table-layout: auto !important;
+  }
+  .list-table col {
+    width: auto !important;
+  }
+  .list-table td,
+  .list-table th {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
 }

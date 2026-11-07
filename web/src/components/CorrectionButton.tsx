@@ -6,6 +6,7 @@ import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import type { Correction } from "../api/types";
 import { fmtTime } from "../utils/time";
+import { ListSection } from "./ListView";
 
 export const CORRECTION_STATUS: Record<string, [string, string]> = {
   pending: ["Pending", "default"],
@@ -69,6 +70,7 @@ export function CorrectionButton({ targetType, targetId, kind, label, placeholde
         <Typography.Title level={5} style={{ marginTop: 16 }}>
           History
         </Typography.Title>
+        <ListSection label="Correction history" count={list.data?.length} error={list.isError} onRetry={() => list.refetch()} recordLimit={200}>
         <List
           size="small"
           dataSource={list.data || []}
@@ -87,6 +89,7 @@ export function CorrectionButton({ targetType, targetId, kind, label, placeholde
             </List.Item>
           )}
         />
+        </ListSection>
       </Modal>
     </>
   );

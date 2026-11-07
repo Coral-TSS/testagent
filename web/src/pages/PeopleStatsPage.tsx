@@ -1,5 +1,6 @@
+import { ListTable, listTitle } from "../components/ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Card, DatePicker, Form, InputNumber, Select, Space, Table, Tabs, Tag, Typography } from "antd";
+import { Button, Card, DatePicker, Form, InputNumber, Select, Space, Tabs, Tag, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -118,14 +119,17 @@ export function PeopleStatsPage() {
           items={[
             {
               key: "people",
-              label: "People ranking",
+              label: listTitle("People ranking", people.data?.length),
               children: (
-                <Table<PersonStat>
+                <ListTable<PersonStat>
+                  label="People ranking"
+                  error={people.isError}
+                  onRetry={() => people.refetch()}
                   size="small"
                   rowKey="person_id"
                   loading={people.isLoading}
-                  dataSource={people.data || []}
-                  pagination={false}
+                  dataSource={people.data}
+
                   locale={{ emptyText: "No attributed or related defects in scope" }}
                   expandable={{
                     rowExpandable: (p) => p.requirements.length > 0,
@@ -161,8 +165,8 @@ export function PeopleStatsPage() {
             },
             {
               key: "requirements",
-              label: "Defect density per requirement",
-              children: <RequirementStatsTable rows={reqs.data || []} loading={reqs.isLoading} />,
+              label: listTitle("Defect density per requirement", reqs.data?.length),
+              children: <RequirementStatsTable rows={reqs.data} loading={reqs.isLoading} error={reqs.isError} onRetry={() => reqs.refetch()} />,
             },
           ]}
         />

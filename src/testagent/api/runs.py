@@ -65,8 +65,10 @@ def list_runs(request: Request, task_id: UUID):
 
 
 @router.get("/runs")
-def recent_runs(request: Request, version_id: UUID | None = None, limit: int = Query(50, le=200)):
-    return runs(request).list_recent(version_id, limit)
+def recent_runs(
+    request: Request, version_id: UUID | None = None, limit: int = Query(50, ge=1, le=200), sut_id: UUID | None = None
+):
+    return runs(request).list_recent(version_id, limit, sut_id=sut_id)
 
 
 @router.get("/runs/{run_id}")

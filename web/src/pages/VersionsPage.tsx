@@ -1,6 +1,7 @@
+import { ListTable } from "../components/ListView";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Form, Input, Modal, Space, Table, Typography } from "antd";
+import { Button, Card, Form, Input, Modal, Space, Typography } from "antd";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
@@ -36,11 +37,14 @@ export function VersionsPage() {
           New version
         </Button>
       </Space>
-      <Table<Version>
+      <ListTable<Version>
+        label="Versions"
+        error={versions.isError}
+        onRetry={() => versions.refetch()}
         rowKey="id"
         loading={versions.isLoading}
         dataSource={versions.data}
-        pagination={false}
+
         locale={{
           emptyText: (
             <EmptyState

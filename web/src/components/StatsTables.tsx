@@ -1,4 +1,5 @@
-import { Table, Tag } from "antd";
+import { ListTable } from "./ListView";
+import { Tag } from "antd";
 import { Link } from "react-router-dom";
 
 import type { RequirementStat, RoleStat } from "../api/types";
@@ -36,14 +37,18 @@ export function ByRole({ value }: { value: Record<string, RoleStat> }) {
 }
 
 /** Defects / weighted score / density per requirement (defects ÷ executed cases) */
-export function RequirementStatsTable({ rows, loading }: { rows: RequirementStat[]; loading?: boolean }) {
+export function RequirementStatsTable({ rows, loading, error, onRetry, paginate = true }: { rows?: RequirementStat[]; loading?: boolean; error?: boolean; onRetry?: () => void; paginate?: boolean }) {
   return (
-    <Table<RequirementStat>
+    <ListTable<RequirementStat>
+      pagination={paginate ? undefined : false}
+      error={error}
+      onRetry={onRetry}
+      label="Requirement statistics"
       size="small"
       rowKey="requirement_id"
       loading={loading}
       dataSource={rows}
-      pagination={false}
+
       locale={{ emptyText: "No requirements" }}
       columns={[
         {

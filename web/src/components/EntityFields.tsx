@@ -1,5 +1,6 @@
+import { ListTable } from "./ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from "antd";
+import { App, Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Switch, Tag, Typography } from "antd";
 import { useState } from "react";
 
 import { ApiError, api, describeError } from "../api/client";
@@ -126,12 +127,15 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
 
   return (
     <>
-      <Table<EntityField>
+      <ListTable<EntityField>
+        label="Entity fields"
+        error={fields.isError}
+        onRetry={() => fields.refetch()}
         size="small"
         rowKey="id"
-        pagination={false}
+
         loading={fields.isLoading}
-        dataSource={fields.data || []}
+        dataSource={fields.data}
         locale={{ emptyText: "No fields yet (e.g. amount amount_minor)" }}
         columns={[
           {

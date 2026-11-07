@@ -1,5 +1,6 @@
+import { ListTable } from "./ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Table, Tooltip, Typography, Upload } from "antd";
+import { Alert, App, Button, Card, Form, Input, InputNumber, Modal, Select, Space, Tooltip, Typography, Upload } from "antd";
 import type { UploadFile } from "antd";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -333,11 +334,15 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
       {(debug.isPending || automate.isPending) && (
         <Typography.Paragraph type="secondary">Running; browser actions may take a minute or two…</Typography.Paragraph>
       )}
-      <Table<ExecutionRow>
+      <ListTable<ExecutionRow>
+        label="Case execution history"
+        error={history.isError}
+        onRetry={() => history.refetch()}
+        recordLimit={100}
         size="small"
         rowKey="id"
         loading={history.isLoading}
-        dataSource={history.data || []}
+        dataSource={history.data}
         pagination={{ pageSize: 10, hideOnSinglePage: true }}
         locale={{ emptyText: "No executions yet" }}
         columns={[

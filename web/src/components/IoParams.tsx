@@ -1,5 +1,6 @@
+import { ListTable } from "./ListView";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Modal, Select, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Form, Input, Modal, Select, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import { useState } from "react";
 
 import type { DataType, IoLocation, IoParam } from "../api/types";
@@ -40,6 +41,7 @@ export function TypeTag({ p }: { p: { data_type: string; enum_values?: string[] 
  * With `onChange` it becomes an editor (add / edit / delete rows); usable as a Form.Item control.
  */
 export function IoParamsTable(props: {
+  label?: string;
   value?: IoParam[];
   onChange?: (next: IoParam[]) => void;
   showLocation?: boolean;
@@ -98,10 +100,11 @@ export function IoParamsTable(props: {
 
   return (
     <>
-      <Table<IoParam & { _i: number }>
+      <ListTable<IoParam & { _i: number }>
+        label={props.label || "Parameters"}
         size="small"
         rowKey="_i"
-        pagination={false}
+
         dataSource={params.map((p, i) => ({ ...p, _i: i }))}
         locale={{ emptyText: props.emptyText || "Not filled in" }}
         columns={[

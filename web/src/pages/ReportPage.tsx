@@ -1,5 +1,6 @@
+import { ListSection, ListTable } from "../components/ListView";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, Button, Card, Col, Descriptions, Row, Space, Statistic, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Col, Descriptions, Row, Space, Statistic, Tag, Typography } from "antd";
 import dayjs from "dayjs";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -100,10 +101,12 @@ export function ReportPage() {
 
       {(c.by_category?.length ?? 0) > 0 && (
         <Card style={{ marginBottom: 16 }} title="By case category: pass rate = passed ÷ executed (skipped, blocked and not run do not count)" data-testid="by-category">
-          <Table
+          <ListTable
+            pagination={false}
+            label="Category results"
             size="small"
             rowKey="category"
-            pagination={false}
+
             dataSource={c.by_category}
             columns={[
               { title: "category", dataIndex: "label" },
@@ -129,14 +132,16 @@ export function ReportPage() {
       </Card>
 
       <Card style={{ marginBottom: 16 }} title="By requirement: defect density (defects ÷ executed cases) and severity-weighted score">
-        <RequirementStatsTable rows={c.by_requirement} />
+        <RequirementStatsTable rows={c.by_requirement} paginate={false} />
       </Card>
 
       <Card style={{ marginBottom: 16 }} title="By person: attributed defects (rejected defects do not count)">
-        <Table<PersonRow>
+        <ListTable<PersonRow>
+          pagination={false}
+          label="Report people"
           size="small"
           rowKey="person_id"
-          pagination={false}
+
           dataSource={c.by_person}
           locale={{ emptyText: "No people data" }}
           columns={[
@@ -151,7 +156,9 @@ export function ReportPage() {
       </Card>
 
       <Card style={{ marginBottom: 16 }} title={`Failures and errors (${c.failures.length})`}>
-        <Table<FailureRow>
+        <ListTable<FailureRow>
+          pagination={false}
+          label="Failed executions"
           size="small"
           rowKey="execution_id"
           dataSource={c.failures}
@@ -171,6 +178,7 @@ export function ReportPage() {
       {(c.no_script?.length || 0) > 0 && (
         <Card style={{ marginBottom: 16 }} title={`Not executed: no automation script (${c.no_script!.length})`} data-testid="report-no-script">
           <Typography.Paragraph type="secondary">These cases are in an automated task but have no script yet; they were skipped and are not counted in the pass rate.</Typography.Paragraph>
+          <ListSection label="Report cases without scripts" count={c.no_script!.length}>
           <Space wrap>
             {c.no_script!.map((n) => (
               <Link key={n.execution_id} to={`/cases/${n.case.id}`}>
@@ -178,11 +186,14 @@ export function ReportPage() {
               </Link>
             ))}
           </Space>
+          </ListSection>
         </Card>
       )}
 
       <Card style={{ marginBottom: 16 }} title={`Defects (${c.defects.length})`}>
-        <Table<DefectRow>
+        <ListTable<DefectRow>
+          pagination={false}
+          label="Report defects"
           size="small"
           rowKey="id"
           dataSource={c.defects}
@@ -204,6 +215,7 @@ export function ReportPage() {
       </Card>
 
       <Card title="Code links (requirement → node / API → code location)">
+        <ListSection label="Report code links" count={c.code_links.filter((l) => l.nodes.length || l.apis.length).length}>
         {c.code_links.every((l) => !l.nodes.length && !l.apis.length) ? (
           <Typography.Text type="secondary">No linked nodes or APIs</Typography.Text>
         ) : (
@@ -226,6 +238,7 @@ export function ReportPage() {
               </Descriptions>
             ))
         )}
+        </ListSection>
       </Card>
     </>
   );

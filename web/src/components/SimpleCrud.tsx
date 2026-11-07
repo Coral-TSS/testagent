@@ -1,5 +1,7 @@
+import type { TableProps } from "antd";
+import { ListTable } from "./ListView";
 import { PlusOutlined } from "@ant-design/icons";
-import { Button, Form, Modal, Popconfirm, Space, Table, Typography } from "antd";
+import { Button, Form, Modal, Popconfirm, Space, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useState, type ReactNode } from "react";
 
@@ -10,6 +12,10 @@ export function SimpleCrud<T extends { id: string }>(props: {
   title: string;
   rows?: T[];
   loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
+  total?: number;
+  filtered?: boolean;
   columns: ColumnsType<T>;
   fields: ReactNode;
   onCreate: (values: Record<string, unknown>) => Promise<unknown>;
@@ -17,7 +23,7 @@ export function SimpleCrud<T extends { id: string }>(props: {
   onDelete?: (row: T) => void;
   deleteLabel?: string;
   extraActions?: (row: T) => ReactNode;
-  expandable?: Parameters<typeof Table<T>>[0]["expandable"];
+  expandable?: TableProps<T>["expandable"];
   /** helpful empty state */
   emptyTitle?: string;
   emptyHint?: ReactNode;
@@ -52,12 +58,17 @@ export function SimpleCrud<T extends { id: string }>(props: {
           Add
         </Button>
       </Space>
-      <Table<T>
+      <ListTable<T>
+        error={props.error}
+        onRetry={props.onRetry}
+        total={props.total}
+        filtered={props.filtered}
+        label={props.title}
         size="small"
         rowKey="id"
         loading={props.loading}
         dataSource={props.rows}
-        pagination={false}
+
         expandable={props.expandable}
         locale={
           props.emptyTitle

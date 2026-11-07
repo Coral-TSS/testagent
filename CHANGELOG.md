@@ -75,6 +75,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Remaining resource, model, history, statistics and registry lists now share counts, bounded scroll
+  areas and retry feedback. Resource tables default to 50 rows per page; report snapshots and model
+  review fields retain all rows for printing. Capped history endpoints explicitly label loaded recent
+  records and their limits, and unvisited tab counts stay unknown until their data loads.
+- Reports and recent task runs now apply the selected system/version on the server before the record
+  limit; unrelated newer records can no longer hide older records of the selected system.
+
 - Requirements, cases, model suggestions and version tasks now show list counts and bounded scroll
   areas. Case search/category filters show matched vs scoped total counts, including zero matches;
   pagination no longer hides the full count. Failed loads show unavailable with retry instead of

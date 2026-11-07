@@ -1,5 +1,6 @@
+import { ListTable } from "./ListView";
 import { RobotOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Checkbox, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Popconfirm, Space, Tag, Typography } from "antd";
 import { useMemo, useState, type ReactNode } from "react";
 
 import type { AiProposal, CaseCategory, CaseStep, TestCase } from "../api/types";
@@ -149,9 +150,10 @@ export function ProposalDiff({
       </Typography.Paragraph>
       {stale && <Alert type="warning" showIcon style={{ marginBottom: 8 }} title={`The suggestion is based on revision ${proposal.base_revision} , but the case changed afterwards (current revision ${tc.revision}); compare before accepting.`} />}
       {!changed.length && <Alert type="info" showIcon style={{ marginBottom: 8 }} title="The suggestion matches the current content; nothing to accept." />}
-      <Table
+      <ListTable
+        label="Completion changes"
         size="small"
-        pagination={false}
+
         rowKey="key"
         dataSource={rows}
         columns={[

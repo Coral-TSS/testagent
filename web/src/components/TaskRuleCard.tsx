@@ -1,5 +1,6 @@
+import { ListSection, ListTable } from "./ListView";
 import { useQuery } from "@tanstack/react-query";
-import { Alert, App, Button, Card, Form, List, Popconfirm, Select, Space, Table, Tag, Typography } from "antd";
+import { Alert, App, Button, Card, Form, List, Popconfirm, Select, Space, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -98,11 +99,12 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
         </Space>
       </Form>
       {preview && (
-        <Table<PreviewCase>
+        <ListTable<PreviewCase>
+          label="Rule preview"
           style={{ marginTop: 12 }}
           size="small"
           rowKey="id"
-          pagination={false}
+
           dataSource={preview}
           title={() => `The rule matches ${preview.length} ready case(s)${preview.some((c) => c.excluded) ? " (those marked “removed manually” are not added)" : ""}`}
           locale={{ emptyText: "No matching ready cases" }}
@@ -117,6 +119,7 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
       {(task.exclusions?.length ?? 0) > 0 && (
         <>
           <Alert style={{ marginTop: 12 }} type="info" showIcon title="Cases removed by hand (the rule will not add them back)" />
+          <ListSection label="Excluded cases" count={task.exclusions?.length ?? 0}>
           <List
             size="small"
             dataSource={task.exclusions}
@@ -129,6 +132,7 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
               </List.Item>
             )}
           />
+          </ListSection>
         </>
       )}
     </Card>

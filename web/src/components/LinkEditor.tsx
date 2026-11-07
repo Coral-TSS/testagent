@@ -1,5 +1,6 @@
+import { ListTable } from "./ListView";
 import { useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Form, Input, Modal, Select, Space, Switch, Table, Tag, Typography } from "antd";
+import { Alert, App, Button, Form, Input, Modal, Select, Space, Switch, Tag, Typography } from "antd";
 import { useEffect } from "react";
 
 import { ApiError, api, describeError } from "../api/client";
@@ -236,9 +237,12 @@ export function LinkEditor({
 }
 
 /** All relations of the system: both readings, cardinality, key. */
-export function LinksTable({ links, loading, onOpen }: { links: Link[]; loading?: boolean; onOpen: (l: Link) => void }) {
+export function LinksTable({ links, loading, onOpen, error, onRetry }: { links?: Link[]; loading?: boolean; onOpen: (l: Link) => void; error?: boolean; onRetry?: () => void }) {
   return (
-    <Table<Link>
+    <ListTable<Link>
+      error={error}
+      onRetry={onRetry}
+      label="Model links"
       size="small"
       rowKey="id"
       loading={loading}

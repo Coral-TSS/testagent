@@ -85,6 +85,8 @@ export function SutOverviewPage() {
       <Col span={12}>
         <Card>
           <SimpleCrud<Environment>
+            error={envs.isError}
+            onRetry={() => envs.refetch()}
             title="Environment"
             emptyTitle="No environment yet"
             emptyHint="An environment is the SUT's address (e.g. http://127.0.0.1:8766). The platform checks it is reachable before running cases; with a start command it can be started in one click."
@@ -124,6 +126,8 @@ export function SutOverviewPage() {
       <Col span={12}>
         <Card>
           <SimpleCrud<Module>
+            error={modules.isError}
+            onRetry={() => modules.refetch()}
             title="Groups (optional, to organise nodes by business area)"
             emptyTitle="Groups are optional"
             emptyHint="Groups are only used to filter nodes by business area on the model graph; you can skip them."

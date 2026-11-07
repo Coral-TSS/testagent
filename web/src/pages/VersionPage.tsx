@@ -6,10 +6,10 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
-import type { CompletionOutcome, Requirement, Suggestion, Version } from "../api/types";
+import type { CaseRow, CompletionOutcome, Requirement, Suggestion, Task, Version } from "../api/types";
 import { AgentRunDrawer } from "../components/AgentRunDrawer";
 import { CaseList } from "../components/CaseList";
-import { ListTable, listTitle } from "../components/ListView";
+import { ListSection, ListTable, listTitle } from "../components/ListView";
 import { BatchBar } from "../components/BatchBar";
 import { EmptyState } from "../components/EmptyState";
 import { RequirementDrawer } from "../components/RequirementDrawer";
@@ -34,6 +34,9 @@ export function VersionPage() {
 
   const version = useQuery({ queryKey: ["version", versionId], queryFn: () => api<Version>(`/versions/${versionId}`) });
   const sutId = version.data?.sut_id || "";
+  // Observe the tables' existing caches without fetching unvisited tabs just to show a number.
+  const caseCount = useQuery({ queryKey: ["cases", sutId, versionId, null, null, ""], queryFn: () => api<CaseRow[]>(`/suts/${sutId}/cases`, { params: { version_id: versionId } }), enabled: false });
+  const taskCount = useQuery({ queryKey: ["tasks", versionId], queryFn: () => api<Task[]>(`/versions/${versionId}/tasks`), enabled: false });
   const reqs = useQuery({
     queryKey: ["requirements", versionId],
     queryFn: () => api<Requirement[]>(`/versions/${versionId}/requirements`),
@@ -276,18 +279,19 @@ export function VersionPage() {
             },
             {
               key: "cases",
-              label: "Test cases & coverage",
+              label: listTitle("Test cases & coverage", caseCount.data?.length),
               children: sutId && <CaseList sutId={sutId} versionId={versionId} onOpenRun={(id) => setParam("run", id)} />,
             },
             {
               key: "strategy",
-              label: "Test strategy & tasks",
+              label: listTitle("Test strategy & tasks", taskCount.data?.length),
               children: v && <StrategyTab version={v} onOpenRun={(id) => setParam("run", id)} />,
             },
             {
               key: "history",
-              label: "Change log",
+              label: listTitle("Change log", history.data?.length),
               children: (
+                <ListSection label="Version changes" count={history.data?.length} error={history.isError} onRetry={() => history.refetch()}>
                 <Timeline
                   items={(history.data || []).map((h, i) => ({
                     key: i,
@@ -299,6 +303,7 @@ export function VersionPage() {
                     ),
                   }))}
                 />
+                </ListSection>
               ),
             },
           ]}

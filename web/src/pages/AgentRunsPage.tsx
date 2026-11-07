@@ -1,5 +1,6 @@
+import { ListTable } from "../components/ListView";
 import { useQuery } from "@tanstack/react-query";
-import { Card, Select, Table, Typography } from "antd";
+import { Card, Select, Typography } from "antd";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -37,7 +38,11 @@ export function AgentRunsPage() {
         Agent run trace
       </Typography.Title>
       <Select allowClear placeholder="All purposes" style={{ width: 180, marginBottom: 12 }} options={PURPOSES} value={purpose} onChange={setPurpose} />
-      <Table<RunRow>
+      <ListTable<RunRow>
+        label="Agent traces"
+        error={runs.isError}
+        onRetry={() => runs.refetch()}
+        recordLimit={100}
         size="small"
         rowKey="id"
         loading={runs.isLoading}

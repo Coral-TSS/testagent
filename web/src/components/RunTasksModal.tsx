@@ -1,5 +1,6 @@
+import { ListTable } from "./ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Checkbox, Modal, Space, Switch, Table, Tag, Tooltip, Typography } from "antd";
+import { Alert, App, Button, Checkbox, Modal, Space, Switch, Tag, Tooltip, Typography } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -133,12 +134,15 @@ export function RunTasksModal({
         <Switch size="small" checked={setReady} onChange={setSetReady} aria-label="Set draft tasks ready first" />
         <Typography.Text>Also set draft tasks ready first</Typography.Text>
       </Space>
-      <Table<RunnableTask>
+      <ListTable<RunnableTask>
+        label="Task selection"
+        error={q.isError}
+        onRetry={() => q.refetch()}
         size="small"
         rowKey="id"
         loading={q.isLoading}
-        dataSource={rows}
-        pagination={false}
+        dataSource={q.data}
+
         rowSelection={{
           selectedRowKeys: picked,
           onChange: (k) => setPicked(k as string[]),

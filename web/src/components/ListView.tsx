@@ -1,5 +1,5 @@
 import { Button, Space, Table, Typography, type TableProps } from "antd";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 export const LIST_HEIGHT = "min(52vh, 560px)";
 
@@ -7,10 +7,11 @@ export function listTitle(label: string, count: number | undefined) {
   return `${label} (${count ?? "…"})`;
 }
 
-export function ListCount({ label, count, total, filtered, error, onRetry }: {
-  label: string; count?: number; total?: number; filtered?: boolean; error?: boolean; onRetry?: () => void;
+export function ListCount({ label, count, total, filtered, error, onRetry, recordLimit }: {
+  label: string; count?: number; total?: number; filtered?: boolean; error?: boolean; onRetry?: () => void; recordLimit?: number;
 }) {
   const text = count === undefined ? error ? "Count unavailable" : "Loading items…"
+    : recordLimit ? `Loaded ${count} recent ${count === 1 ? "record" : "records"} (up to ${recordLimit})`
     : filtered ? total !== undefined && total >= count ? `${count} / ${total} total` : `${count} matching items · total unavailable`
       : `Total ${count} ${count === 1 ? "item" : "items"}`;
   return (
@@ -23,8 +24,8 @@ export function ListCount({ label, count, total, filtered, error, onRetry }: {
 }
 
 /** Callers supply filtered rows; counts cover every row, independently of the current page. */
-export function ListTable<T extends object>({ label, total, filtered, error, onRetry, ...props }: TableProps<T> & {
-  label: string; total?: number; filtered?: boolean; error?: boolean; onRetry?: () => void;
+export function ListTable<T extends object>({ label, total, filtered, error, onRetry, recordLimit, ...props }: TableProps<T> & {
+  label: string; total?: number; filtered?: boolean; error?: boolean; onRetry?: () => void; recordLimit?: number;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const count = props.dataSource?.length;
@@ -36,15 +37,36 @@ export function ListTable<T extends object>({ label, total, filtered, error, onR
     body?.setAttribute("aria-label", `${label} rows`);
   }, [label]);
   return (
-    <div ref={root}>
+    <div ref={root} className="list-table">
       <Table<T>
         {...props}
         locale={{ ...props.locale, ...(count === undefined ? { emptyText: error ? "List unavailable" : "Loading items…" } : {}) }}
         scroll={{ x: "max-content", y: LIST_HEIGHT, ...props.scroll }}
         pagination={props.pagination ?? { pageSize: 50, hideOnSinglePage: true }}
-        title={() => <Typography.Text strong role="status" aria-label={`${label} count`}>{listTitle(label, count)}</Typography.Text>}
-        footer={() => <ListCount label={label} count={count} total={total} filtered={filtered} error={error} onRetry={onRetry} />}
+        title={(data) => <Space orientation="vertical" size={4} style={{ width: "100%" }}>
+          <Typography.Text strong role="status" aria-label={`${label} count`}>{listTitle(label, count)}</Typography.Text>
+          {props.title?.(data)}
+        </Space>}
+        footer={(data) => <Space orientation="vertical" size={4} style={{ width: "100%" }}>
+          {props.footer?.(data)}
+          <ListCount label={label} count={count} total={total} filtered={filtered} error={error} onRetry={onRetry} recordLimit={recordLimit} />
+        </Space>}
       />
     </div>
+  );
+}
+
+/** Lists made of cards or text share the same bounded, keyboard-scrollable region. */
+export function ListSection({ label, count, total, filtered, error, onRetry, recordLimit, children }: {
+  label: string; count?: number; total?: number; filtered?: boolean; error?: boolean; onRetry?: () => void; recordLimit?: number; children: ReactNode;
+}) {
+  return (
+    <section>
+      <Typography.Text strong role="status" aria-label={`${label} count`}>{listTitle(label, count)}</Typography.Text>
+      <div className="list-region" role="region" aria-label={`${label} rows`} tabIndex={0} style={{ maxHeight: LIST_HEIGHT, overflowY: "auto" }}>
+        {count === undefined ? <Typography.Text type="secondary">{error ? "List unavailable" : "Loading items…"}</Typography.Text> : children}
+      </div>
+      <ListCount label={label} count={count} total={total} filtered={filtered} error={error} onRetry={onRetry} recordLimit={recordLimit} />
+    </section>
   );
 }

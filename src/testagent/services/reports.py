@@ -99,7 +99,7 @@ class ReportService:
             raise AppError("NOT_FOUND", "Report not found")
         return row
 
-    def list(self, scope_type=None, scope_id=None, version_id=None) -> list[dict]:
+    def list(self, scope_type=None, scope_id=None, version_id=None, *, sut_id=None) -> list[dict]:
         with self.db.tx() as cur:
             cur.execute(
                 "SELECT r.id, r.scope_type, r.scope_id, r.created_at, r.created_by,"
@@ -114,8 +114,9 @@ class ReportService:
                 " WHERE (%(st)s::text IS NULL OR r.scope_type=%(st)s)"
                 " AND (%(si)s::uuid IS NULL OR r.scope_id=%(si)s::uuid)"
                 " AND (%(v)s::uuid IS NULL OR COALESCE(t.version_id, v.id)=%(v)s::uuid)"
+                " AND (%(sut)s::uuid IS NULL OR COALESCE(v.sut_id, tv.sut_id)=%(sut)s::uuid)"
                 " ORDER BY r.created_at DESC LIMIT 200",
-                {"st": scope_type, "si": scope_id, "v": version_id},
+                {"st": scope_type, "si": scope_id, "v": version_id, "sut": sut_id},
             )
             return cur.fetchall()
 

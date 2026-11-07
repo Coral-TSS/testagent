@@ -130,6 +130,8 @@ export function ApisPage() {
         builds request bodies for generated cases and automation scripts strictly by field name, type and unit (e.g. amount_minor in cents).
       </Typography.Paragraph>
       <SimpleCrud<ApiEndpoint>
+        error={apis.isError}
+        onRetry={() => apis.refetch()}
         title="API"
         emptyTitle="No APIs registered yet"
         emptyHint="Add one by hand, or click “Import from OpenAPI” above to import the SUT's /openapi.json in one go (with fields; field and link suggestions are generated automatically)."
@@ -258,10 +260,10 @@ export function ApisPage() {
                 children: (
                   <>
                     <Form.Item name="request_fields" label="Inputs: parameters and body fields">
-                      <IoParamsTable showLocation locations={["body", "path", "query", "header", "form"]} addLabel="Add input field" />
+                      <IoParamsTable label="Input parameters" showLocation locations={["body", "path", "query", "header", "form"]} addLabel="Add input field" />
                     </Form.Item>
                     <Form.Item name="response_fields" label="Outputs: success response fields">
-                      <IoParamsTable addLabel="Add output field" />
+                      <IoParamsTable label="Output parameters" addLabel="Add output field" />
                     </Form.Item>
                     <Typography.Text type="secondary">
                       Saving writes back to the API schema (existing constraints such as ranges are kept); switch to the “JSON (advanced)” tab to edit the schema directly.

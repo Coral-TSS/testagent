@@ -1,5 +1,6 @@
+import { ListTable } from "../components/ListView";
 import { useQuery } from "@tanstack/react-query";
-import { Card, Form, Input, Switch, Table, Tag, Typography } from "antd";
+import { Card, Form, Input, Switch, Tag, Typography } from "antd";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -27,12 +28,15 @@ function PersonRequirements({ personId }: { personId: string }) {
     queryFn: () => api<PersonReq[]>(`/persons/${personId}/requirements`),
   });
   return (
-    <Table<PersonReq>
+    <ListTable<PersonReq>
+      label="Person requirements"
+      error={q.isError}
+      onRetry={() => q.refetch()}
       size="small"
       rowKey="id"
       loading={q.isLoading}
       dataSource={q.data}
-      pagination={false}
+
       locale={{ emptyText: "Not responsible for any requirement yet" }}
       columns={[
         { title: "System", dataIndex: "sut_code" },
@@ -51,6 +55,7 @@ export function PersonsPage() {
     queryKey: ["persons", onlyActive],
     queryFn: () => api<Person[]>("/persons", { params: { active: onlyActive ? true : undefined } }),
   });
+  const allPersons = useQuery({ queryKey: ["persons", false], queryFn: () => api<Person[]>("/persons") });
   const create = useApiMutation((body: Record<string, unknown>) => api("/persons", { method: "POST", body }), {
     invalidate: [["persons"]],
     success: "Saved",
@@ -72,6 +77,10 @@ export function PersonsPage() {
         <Switch checked={onlyActive} onChange={setOnlyActive} /> Active only
       </div>
       <SimpleCrud<Person>
+        total={allPersons.data?.length}
+        filtered={onlyActive}
+        error={persons.isError || allPersons.isError}
+        onRetry={() => { persons.refetch(); if (onlyActive) allPersons.refetch(); }}
         title="Person"
         emptyTitle="No people yet"
         emptyHint="Register product, development and test people, assign owners on requirements by role; defects are attributed to people through requirements."

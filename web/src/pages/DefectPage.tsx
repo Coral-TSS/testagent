@@ -1,5 +1,6 @@
+import { ListTable } from "../components/ListView";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Card, Col, Descriptions, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Col, Descriptions, Form, Input, Modal, Popconfirm, Row, Select, Space, Tag, Tooltip, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -186,35 +187,36 @@ export function DefectPage() {
       </Col>
       <Modal title="Change attributed people" open={respOpen} onCancel={() => setRespOpen(false)} onOk={() => saveResp.mutate(resp)} confirmLoading={saveResp.isPending}>
         <Typography.Paragraph type="secondary">Once set manually, changing the cause category or requirements will not overwrite this.</Typography.Paragraph>
-        <Table
+        <ListTable
+          label="Defect responsibility"
           size="small"
-          rowKey={(_, i) => String(i)}
-          pagination={false}
-          dataSource={resp}
+          rowKey="_i"
+
+          dataSource={resp.map((r, _i) => ({ ...r, _i }))}
           columns={[
             {
               title: "Person",
-              render: (_: unknown, row, i) => (
+              render: (_: unknown, row) => (
                 <Select
                   style={{ width: 160 }}
                   showSearch
                   optionFilterProp="label"
                   value={row.person_id}
-                  onChange={(v) => setResp(resp.map((r, j) => (j === i ? { ...r, person_id: v } : r)))}
+                  onChange={(v) => setResp(resp.map((r, j) => (j === row._i ? { ...r, person_id: v } : r)))}
                   options={(persons.data || []).filter((p) => p.active || p.id === row.person_id).map((p) => ({ value: p.id, label: p.name }))}
                 />
               ),
             },
             {
               title: "Role",
-              render: (_: unknown, row, i) => (
-                <Select style={{ width: 110 }} value={row.role} onChange={(v) => setResp(resp.map((r, j) => (j === i ? { ...r, role: v } : r)))} options={Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))} />
+              render: (_: unknown, row) => (
+                <Select style={{ width: 110 }} value={row.role} onChange={(v) => setResp(resp.map((r, j) => (j === row._i ? { ...r, role: v } : r)))} options={Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))} />
               ),
             },
             {
               title: "",
-              render: (_: unknown, __, i) => (
-                <Popconfirm title="Remove?" onConfirm={() => setResp(resp.filter((_, j) => j !== i))}>
+              render: (_: unknown, row) => (
+                <Popconfirm title="Remove?" onConfirm={() => setResp(resp.filter((_, j) => j !== row._i))}>
                   <a>Remove</a>
                 </Popconfirm>
               ),

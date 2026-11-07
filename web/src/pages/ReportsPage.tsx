@@ -1,5 +1,6 @@
+import { ListTable } from "../components/ListView";
 import { useQuery } from "@tanstack/react-query";
-import { Card, Select, Space, Table, Tag } from "antd";
+import { Card, Select, Space, Tag } from "antd";
 import dayjs from "dayjs";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -68,8 +69,8 @@ export function ReportsPage() {
     enabled: Boolean(sutId),
   });
   const rows = useQuery({
-    queryKey: ["reports", versionId, scopeType],
-    queryFn: () => api<ReportRow[]>("/reports", { params: { version_id: versionId, scope_type: scopeType } }),
+    queryKey: ["reports", sutId, versionId, scopeType],
+    queryFn: () => api<ReportRow[]>("/reports", { params: { sut_id: sutId, version_id: versionId, scope_type: scopeType } }),
   });
   return (
     <Card title="Test reports">
@@ -78,11 +79,15 @@ export function ReportsPage() {
         <Select allowClear placeholder="Version" style={{ width: 130 }} disabled={!sutId} value={versionId} onChange={(v) => set("version_id", v)} options={(versions.data || []).map((v) => ({ value: v.id, label: v.name }))} />
         <Select allowClear placeholder="Type" style={{ width: 120 }} value={scopeType} onChange={(v) => set("scope_type", v)} options={Object.entries(SCOPE_LABEL).map(([value, label]) => ({ value, label }))} />
       </Space>
-      <Table<ReportRow>
+      <ListTable<ReportRow>
+        label="Reports"
+        error={rows.isError}
+        onRetry={() => rows.refetch()}
+        recordLimit={200}
         size="small"
         rowKey="id"
         loading={rows.isLoading}
-        dataSource={rows.data || []}
+        dataSource={rows.data}
         locale={{
           emptyText: (
             <EmptyState title="No reports yet" hint="A task report is generated automatically when a task run ends; once a version is in testing, click “Generate version report” on the version page. Reports cannot be changed once generated." />

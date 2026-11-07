@@ -1,5 +1,6 @@
+import { ListTable } from "../components/ListView";
 import { useQuery } from "@tanstack/react-query";
-import { Card, Table, Typography } from "antd";
+import { Card, Typography } from "antd";
 import dayjs from "dayjs";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -10,17 +11,26 @@ import { TaskRunStatusTag } from "../components/StatusTags";
 
 /** Executions: recent task runs (single-case debug runs and manual records are on the case detail page) */
 export function ExecutionsPage() {
-  const runs = useQuery({ queryKey: ["runs"], queryFn: () => api<TaskRunRow[]>("/runs"), refetchInterval: 10000 });
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const versionId = params.get("version_id");
-  const rows = (runs.data || []).filter((r) => !versionId || r.version_id === versionId);
+  const sutId = params.get("sut_id");
+  const runs = useQuery({
+    queryKey: ["runs", sutId, versionId],
+    queryFn: () => api<TaskRunRow[]>("/runs", { params: { sut_id: sutId, version_id: versionId } }),
+    refetchInterval: 10000,
+  });
+  const rows = runs.data;
   return (
     <Card title="Recent task runs">
       <Typography.Paragraph type="secondary">
         Run tasks or set schedules under “Test strategy & tasks” on the version page; debug runs and manual records of a single case are on the <Link to="/cases">case</Link> detail page.
       </Typography.Paragraph>
-      <Table<TaskRunRow>
+      <ListTable<TaskRunRow>
+        label="Recent task runs"
+        error={runs.isError}
+        onRetry={() => runs.refetch()}
+        recordLimit={50}
         size="small"
         rowKey="id"
         loading={runs.isLoading}

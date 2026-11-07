@@ -1,6 +1,7 @@
+import { ListTable } from "../components/ListView";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Form, Input, Modal, Popconfirm, Space, Table, Typography } from "antd";
+import { Button, Form, Input, Modal, Popconfirm, Space, Typography } from "antd";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -39,11 +40,14 @@ export function SutsPage() {
         </Button>
       </Space>
       <SutExplainer closable={Boolean(suts.data?.length)} />
-      <Table<Sut>
+      <ListTable<Sut>
+        label="SUTs"
+        error={suts.isError}
+        onRetry={() => suts.refetch()}
         rowKey="id"
         loading={suts.isLoading}
         dataSource={suts.data}
-        pagination={false}
+
         locale={{
           emptyText: (
             <EmptyState

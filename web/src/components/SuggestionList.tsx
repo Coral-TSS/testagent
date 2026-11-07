@@ -257,7 +257,7 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
           )}
         </Space>
       )}
-      <div role="region" aria-label="Model suggestions rows" tabIndex={0} style={{ maxHeight: LIST_HEIGHT, overflowY: "auto" }}>
+      <div className="list-region" role="region" aria-label="Model suggestions rows" tabIndex={0} style={{ maxHeight: LIST_HEIGHT, overflowY: "auto" }}>
       <List
         size="small"
         dataSource={shown}
