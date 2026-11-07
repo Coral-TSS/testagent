@@ -40,9 +40,11 @@ export function FlowSteps({ progress, compact }: { progress: SutProgress; compac
         style={{ flex: 1 }}
         current={progress.next ? current : progress.steps.length}
         onChange={(i) => navigate(progress.steps[i].path)}
-        items={progress.steps.map((s) => ({
+        items={progress.steps.map((s, i) => ({
           title: <span style={{ whiteSpace: "nowrap" }}>{s.title}</span>,
           status: STATUS[s.status],
+          // Steps suppresses onChange for the current item; it still links to its page.
+          onClick: progress.next && i === current ? () => navigate(s.path) : undefined,
           content: compact ? undefined : (
             <Tooltip title={s.summary}>
               <Typography.Text type="secondary" style={{ fontSize: 12, maxWidth: 140 }} ellipsis>

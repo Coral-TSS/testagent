@@ -75,6 +75,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- The current main-flow step opens its page when clicked or activated with Enter/Space. Other
+  steps still navigate once, and the separate Next action keeps its existing behavior.
+
 - Pytest execution now runs an independent checkout of the case's bound commit, including fixtures
   and helpers, and records that exact SHA. Local edits or newer commits cannot silently change the
   run. Legacy unbound cases pin starting HEAD; unavailable bindings fail explicitly in execution
