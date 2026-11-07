@@ -475,6 +475,8 @@ export interface Task {
   source?: string;
   /** automated tasks: ready cases without a script (#18) */
   script_gap_count?: number;
+  /** Latest run per task, including queued/running; null if never run (#14). */
+  latest_run?: TaskRunRow | null;
 }
 export interface ScriptGap {
   id: string;

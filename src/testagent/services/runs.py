@@ -18,6 +18,7 @@ from testagent.core.events import EventBus
 from testagent.services import environments as envs
 from testagent.services.changelog import log_change
 from testagent.services.executions import ExecutionService, is_api_case, select_executor
+from testagent.services.run_progress import run_counts
 from testagent.services.state import transition
 from testagent.services.task_binding import require_scripts, script_gaps
 
@@ -53,22 +54,12 @@ FORCED_REASON = {
 }
 FORCED_STATUS = {"skipped": "skipped", "blocked": "blocked", "no_script": "skipped"}
 FORCED_KIND = {"skipped": "non_functional", "no_script": "no_script"}
-COUNT_KEYS = ("passed", "failed", "error", "blocked", "skipped")
 
 
 def run_channel(db, run_id) -> str:
     """NOTIFY channel for one run; namespaced by schema so parallel test schemas never mix."""
     hexid = str(run_id).replace("-", "")
     return f"ta_run_{hexid}" + (f"_{db.schema}" if db.schema else "")
-
-
-def _counts(executions: list[dict], total: int | None) -> dict:
-    counts = {k: 0 for k in COUNT_KEYS}
-    for e in executions:
-        if e["status"] in counts:
-            counts[e["status"]] += 1
-    done = sum(counts.values())
-    return {"total": total if total is not None else done, "done": done, **counts}
 
 
 class RunService:
@@ -315,7 +306,7 @@ class RunService:
             for e in run["executions"]
             if e.get("failure_kind") == "no_script"
         ]
-        run["counts"] = _counts(run["executions"], run["total_cases"])
+        run["counts"] = run_counts(run["executions"], run["total_cases"])
         return run
 
     def list_recent(self, version_id=None, limit: int = 50) -> list[dict]:
@@ -333,7 +324,7 @@ class RunService:
             rows = cur.fetchall()
         for row in rows:
             statuses = row.pop("statuses") or []
-            row["counts"] = _counts([{"status": s} for s in statuses], row["total_cases"])
+            row["counts"] = run_counts([{"status": s} for s in statuses], row["total_cases"])
         return rows
 
     def list_for_task(self, task_id) -> list[dict]:
@@ -350,7 +341,7 @@ class RunService:
             rows = cur.fetchall()
         for row in rows:
             statuses = row.pop("statuses") or []
-            row["counts"] = _counts([{"status": s} for s in statuses], row["total_cases"])
+            row["counts"] = run_counts([{"status": s} for s in statuses], row["total_cases"])
         return rows
 
     # ------------------------------------------------------------ worker side

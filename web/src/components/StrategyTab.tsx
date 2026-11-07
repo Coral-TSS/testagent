@@ -10,7 +10,7 @@ import type { AiOutcome, Environment, Requirement, RequirementGap, Strategy, Tas
 import { KIND_LABEL, describeSelector } from "../utils/categories";
 import { BatchBar } from "./BatchBar";
 import { EmptyState } from "./EmptyState";
-import { TaskStatusTag } from "./StatusTags";
+import { TaskRunStatusTag, TaskStatusTag } from "./StatusTags";
 import { fmtTime } from "../utils/time";
 import { CorrectionButton } from "./CorrectionButton";
 import { RunTasksModal } from "./RunTasksModal";
@@ -33,7 +33,16 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
       }
     },
   });
-  const tasks = useQuery({ queryKey: ["tasks", vid], queryFn: () => api<Task[]>(`/versions/${vid}/tasks`) });
+  const tasks = useQuery({
+    queryKey: ["tasks", vid],
+    queryFn: () => api<Task[]>(`/versions/${vid}/tasks`),
+    // Keep polling even when idle: a schedule or another page can start a task.
+    refetchInterval: 5000,
+    retry: false,
+  });
+  const activeTasks = (tasks.data || []).filter((t) => ["queued", "running"].includes(t.latest_run?.status || ""));
+  const runningCount = activeTasks.filter((t) => t.latest_run?.status === "running").length;
+  const queuedCount = activeTasks.length - runningCount;
   const envs = useQuery({ queryKey: ["envs", version.sut_id], queryFn: () => api<Environment[]>(`/suts/${version.sut_id}/environments`) });
   useEffect(() => {
     if (strategy.data) form.setFieldsValue(strategy.data);
@@ -99,6 +108,29 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
   const s = strategy.data;
   return (
     <Space direction="vertical" style={{ width: "100%" }} size={16}>
+      {tasks.isError && (
+        <Alert
+          type="warning"
+          showIcon
+          title="Task run information could not be refreshed"
+          description={tasks.data ? "Showing the last loaded task and run information. Retry to check the current state." : "Tasks could not be loaded. Retry to check their runs."}
+          action={<Button onClick={() => tasks.refetch()} loading={tasks.isFetching}>Retry tasks</Button>}
+        />
+      )}
+      {activeTasks.length > 0 && (
+        <Alert
+          type="info"
+          showIcon
+          title={`${runningCount} task(s) running · ${queuedCount} task(s) queued`}
+          description={
+            <Space wrap>
+              {activeTasks.map((t) => (
+                <Link key={t.id} to={`/runs/${t.latest_run!.id}`} aria-label={`View live run for ${t.name}`}>{t.name}: view run</Link>
+              ))}
+            </Space>
+          }
+        />
+      )}
       <Card
         size="small"
         title={
@@ -234,9 +266,10 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
           loading={tasks.isLoading}
           dataSource={tasks.data}
           pagination={false}
+          scroll={{ x: "max-content" }}
           locale={{
             emptyText: (
-              <EmptyState
+              tasks.isError ? "Task information unavailable" : tasks.isLoading ? "Loading tasks…" : <EmptyState
                 title="No tasks yet"
                 hint="A task runs a batch of cases: enter a task name above, choose the executor (agent browser/automation script/manual) and environment, click “New task”, then pick cases in the task detail."
               />
@@ -266,6 +299,18 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
               ),
             },
             { title: "Status", dataIndex: "status", render: (st) => <TaskStatusTag status={st} /> },
+            {
+              title: "Latest run",
+              render: (_, t) => t.latest_run ? (
+                <Space orientation="vertical" size={2}>
+                  <Link to={`/runs/${t.latest_run.id}`} aria-label={`Latest run for ${t.name}`}>{fmtTime(t.latest_run.created_at)}</Link>
+                  <TaskRunStatusTag status={t.latest_run.status} />
+                  <Typography.Text type="secondary">
+                    {t.latest_run.status === "queued" ? "Awaiting start" : `${t.latest_run.counts.done}/${t.latest_run.counts.total} processed`}
+                  </Typography.Text>
+                </Space>
+              ) : <Typography.Text type="secondary">Never run yet</Typography.Text>,
+            },
             { title: "Next run", dataIndex: "next_run_at", render: (t: string | null, row) => (t ? fmtTime(t, { tz: row.schedule?.tz }) : "-") },
             {
               title: "Action",

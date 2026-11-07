@@ -14,6 +14,7 @@ from testagent.core.config import DEFAULT_TIMEZONE
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
+from testagent.services.run_progress import run_counts
 from testagent.services.state import transition
 from testagent.services.task_binding import (
     clean_selector,
@@ -211,11 +212,20 @@ class TaskService:
             self._version(cur, version_id)
             cur.execute(
                 "SELECT t.*, (SELECT count(*) FROM task_case tc WHERE tc.task_id=t.id)"
-                " AS case_count FROM test_task t WHERE version_id=%s ORDER BY created_at, name",
+                " AS case_count, to_jsonb(latest) AS latest_run FROM test_task t"
+                " LEFT JOIN LATERAL ("
+                " SELECT r.*, (SELECT jsonb_agg(e.status) FROM case_execution e"
+                " WHERE e.task_run_id=r.id) AS statuses FROM task_run r WHERE r.task_id=t.id"
+                " ORDER BY r.created_at DESC, r.id DESC LIMIT 1"
+                " ) latest ON true WHERE t.version_id=%s ORDER BY t.created_at, t.name",
                 (version_id,),
             )
             rows = cur.fetchall()
             for row in rows:
+                latest = row["latest_run"]
+                if latest is not None:
+                    statuses = latest.pop("statuses") or []
+                    latest["counts"] = run_counts([{"status": s} for s in statuses], latest["total_cases"])
                 row["script_gap_count"] = len(script_gaps(cur, row["id"])) if row["executor"] == "automation" else 0
             return rows
 
