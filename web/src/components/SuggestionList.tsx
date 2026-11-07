@@ -5,6 +5,7 @@ import { api, describeError } from "../api/client";
 import type { AcceptBatchResult, CompletionOutcome, DataType, Suggestion, SuggestionSource } from "../api/types";
 import { DATA_TYPE_LABEL } from "./EntityFields";
 import { CARD_LABEL, CARD_SHORT, effectText, preconditionText } from "./links";
+import { LIST_HEIGHT, ListCount, listTitle } from "./ListView";
 
 const ATTR: Record<string, string> = { conditions: "Conditions", states: "Status", constraints: "Constraints" };
 const KIND: Record<string, string> = { entity: "entities", action: "Actions", relation: "Link" };
@@ -91,7 +92,9 @@ function SourceTag({ s }: { s: Suggestion }) {
 }
 
 /** Accept/reject model suggestions (human-only; agent output never lands without this). */
-export function SuggestionList({ sutId, items, onChanged }: { sutId: string; items: Suggestion[]; onChanged: () => void }) {
+export function SuggestionList({ sutId, items, onChanged, loading, error, onRetry }: {
+  sutId: string; items: Suggestion[]; onChanged: () => void; loading?: boolean; error?: boolean; onRetry?: () => void;
+}) {
   const { message, modal } = App.useApp();
   const [busy, setBusy] = useState<string | null>(null);
   const [picked, setPicked] = useState<string[] | null>(null);
@@ -239,6 +242,7 @@ export function SuggestionList({ sutId, items, onChanged }: { sutId: string; ite
   const aiCount = pending.filter(inferred).length;
   return (
     <>
+      <Typography.Text strong role="status" aria-label="Model suggestions count">{listTitle("Model suggestions", loading || (error && !items.length) ? undefined : shown.length)}</Typography.Text>
       {pending.length > 0 && (
         <Space wrap style={{ marginBottom: 8 }} data-testid="suggestion-batch">
           <Button type="primary" size="small" disabled={!selected.length} loading={busy === "batch"} onClick={acceptSelected}>
@@ -253,10 +257,11 @@ export function SuggestionList({ sutId, items, onChanged }: { sutId: string; ite
           )}
         </Space>
       )}
+      <div role="region" aria-label="Model suggestions rows" tabIndex={0} style={{ maxHeight: LIST_HEIGHT, overflowY: "auto" }}>
       <List
         size="small"
         dataSource={shown}
-        locale={{ emptyText: "No suggestions" }}
+        locale={{ emptyText: loading ? "Loading suggestions…" : error ? "Suggestions unavailable" : onlyAi ? "No suggestions match the filter" : "No suggestions" }}
         renderItem={(s) => (
           <List.Item
             actions={
@@ -297,6 +302,8 @@ export function SuggestionList({ sutId, items, onChanged }: { sutId: string; ite
           </List.Item>
         )}
       />
+      </div>
+      <ListCount label="Model suggestions" count={loading || (error && !items.length) ? undefined : shown.length} total={items.length} filtered={onlyAi} error={error} onRetry={onRetry} />
     </>
   );
 }

@@ -208,6 +208,9 @@ export function ModelPage() {
                   </Button>
                 </Space>
                 <SuggestionList
+                  loading={linkSuggestions.isLoading}
+                  error={linkSuggestions.isError}
+                  onRetry={() => linkSuggestions.refetch()}
                   sutId={sutId}
                   items={pendingLinks}
                   onChanged={() => {

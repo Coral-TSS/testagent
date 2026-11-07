@@ -1,6 +1,6 @@
 import { FileTextOutlined, LockOutlined, PlusOutlined, RobotOutlined, UnlockOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Table, Tabs, Tag, Timeline } from "antd";
+import { App, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Tabs, Tag, Timeline } from "antd";
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -9,6 +9,7 @@ import { useApiMutation } from "../api/hooks";
 import type { CompletionOutcome, Requirement, Suggestion, Version } from "../api/types";
 import { AgentRunDrawer } from "../components/AgentRunDrawer";
 import { CaseList } from "../components/CaseList";
+import { ListTable, listTitle } from "../components/ListView";
 import { BatchBar } from "../components/BatchBar";
 import { EmptyState } from "../components/EmptyState";
 import { RequirementDrawer } from "../components/RequirementDrawer";
@@ -162,7 +163,7 @@ export function VersionPage() {
           items={[
             {
               key: "requirements",
-              label: `Requirements (${reqs.data?.length ?? 0})`,
+              label: listTitle("Requirements", reqs.data?.length),
               children: (
                 <>
                   <Button icon={<PlusOutlined />} disabled={locked} style={{ marginBottom: 12 }} onClick={() => setCreating(true)}>
@@ -211,13 +212,15 @@ export function VersionPage() {
                           ]),
                     ]}
                   />
-                  <Table<Requirement>
+                  <ListTable<Requirement>
+                    label="Requirements"
+                    error={reqs.isError}
+                    onRetry={() => reqs.refetch()}
                     size="small"
                     rowKey="id"
                     rowSelection={{ selectedRowKeys: reqSel, onChange: (k) => setReqSel(k as string[]) }}
                     loading={reqs.isLoading}
                     dataSource={reqs.data}
-                    pagination={false}
                     locale={{
                       emptyText: (
                         <EmptyState
@@ -251,13 +254,16 @@ export function VersionPage() {
             },
             {
               key: "suggestions",
-              label: `Model suggestions (${suggestions.data?.length ?? 0})`,
+              label: listTitle("Model suggestions", suggestions.data?.length),
               children: (
                 <>
                   <Button icon={<RobotOutlined />} loading={complete.isPending} disabled={!sutId} onClick={() => complete.mutate()} style={{ marginBottom: 12 }}>
                     AI complete model
                   </Button>
                   <SuggestionList
+                    loading={suggestions.isLoading}
+                    error={suggestions.isError}
+                    onRetry={() => suggestions.refetch()}
                     sutId={sutId}
                     items={suggestions.data || []}
                     onChanged={() => {

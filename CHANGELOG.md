@@ -75,6 +75,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Requirements, cases, model suggestions and version tasks now show list counts and bounded scroll
+  areas. Case search/category filters show matched vs scoped total counts, including zero matches;
+  pagination no longer hides the full count. Failed loads show unavailable with retry instead of
+  an empty list. Scroll regions are keyboard reachable and shrink with the viewport.
+
 - Marking a case Ready now reports its actual task associations after rule reconciliation, with
   task/version links, rule vs manual membership, and reasons other tasks were not joined. Case
   details retain this explanation after reload; batch results include successful and already-ready

@@ -1,6 +1,6 @@
 import { CodeOutlined, DownloadOutlined, PlusOutlined, RobotOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Checkbox, Dropdown, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Tooltip } from "antd";
+import { App, Button, Checkbox, Dropdown, Form, Input, Modal, Popconfirm, Select, Space, Tag, Tooltip } from "antd";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -17,6 +17,7 @@ import { CoverageView } from "./CoverageView";
 import { CaseCoverageTags, coverageSummary } from "./CoverageDetail";
 import { CATEGORY_COLOR, CATEGORY_LABEL } from "../utils/categories";
 import { ReadyTaskFeedback } from "./ReadyTaskFeedback";
+import { ListTable } from "./ListView";
 
 /** P09 case list: filters, manual create, AI generation (in a version), export, coverage report */
 export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versionId?: string; onOpenRun?: (id: string) => void }) {
@@ -26,6 +27,7 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
   const [status, setStatus] = useState<string>();
   const [reqFilter, setReqFilter] = useState<string>();
   const [q, setQ] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genReqs, setGenReqs] = useState<string[]>([]);
@@ -57,6 +59,12 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
     queryKey: ["cases", sutId, versionId || null, status || null, reqFilter || null, q],
     queryFn: () => api<CaseRow[]>(`/suts/${sutId}/cases`, { params: { version_id: versionId, status, requirement_id: reqFilter, q } }),
   });
+  // Share the unfiltered query key: the first view fetches once, and filters retain its scoped total.
+  const allCases = useQuery({
+    queryKey: ["cases", sutId, versionId || null, null, null, ""],
+    queryFn: () => api<CaseRow[]>(`/suts/${sutId}/cases`, { params: { version_id: versionId } }),
+  });
+  const shownCases = cases.data?.filter((row) => !categories.length || categories.includes(row.category || "requirement"));
   const reqs = useQuery({
     queryKey: ["requirements", versionId],
     queryFn: () => api<Requirement[]>(`/versions/${versionId}/requirements`),
@@ -267,12 +275,18 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
           </Button>
         </Space>
       )}
-      <Table<CaseRow>
+      <ListTable<CaseRow>
+        label="Test cases"
+        total={allCases.data?.length}
+        filtered={Boolean(status || reqFilter || q || categories.length)}
+        error={cases.isError || allCases.isError}
+        onRetry={() => { cases.refetch(); if (status || reqFilter || q) allCases.refetch(); }}
         size="small"
         rowKey="id"
         rowSelection={{ selectedRowKeys: selected, onChange: (keys) => setSelected(keys as string[]) }}
         loading={cases.isLoading}
-        dataSource={cases.data}
+        dataSource={shownCases}
+        onChange={(_, filters) => setCategories((filters.category || []).map(String))}
         pagination={{ pageSize: 50, hideOnSinglePage: true }}
         locale={{
           emptyText:
@@ -316,7 +330,7 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
             dataIndex: "category",
             width: 100,
             filters: Object.entries(CATEGORY_LABEL).map(([value, text]) => ({ value, text })),
-            onFilter: (v, r) => (r.category || "requirement") === v,
+            filteredValue: categories,
             render: (cat: CaseRow["category"], r) => (
               <Space size={2} wrap>
                 <Tag color={CATEGORY_COLOR[cat || "requirement"]}>{CATEGORY_LABEL[cat || "requirement"]}</Tag>

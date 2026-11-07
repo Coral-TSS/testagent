@@ -1,0 +1,65 @@
+{
+  "date": "2026-11-07",
+  "task": "DEMO-FIX-006",
+  "demo_issues": [1, 2],
+  "scope": ["requirements", "cases", "model suggestions", "version tasks"],
+  "status": "verified_locally",
+  "base_commit": "c7c5aac10076177cfebce680f2f48d54b131fb93",
+  "backend": {
+    "total": 475,
+    "passed": 474,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skipped_tests": ["tests.unit.test_core_units::test_secret_store_file_mode_600"],
+    "platform_passed": 432,
+    "demo_sut_passed": 42,
+    "browser_e2e_passed": 3,
+    "seconds": 620.5,
+    "frontend_build_unchanged_during_regression": true,
+    "raw_local_junit": "runtime/demo-fix-006-backend.xml"
+  },
+  "frontend": {
+    "files_passed": 38,
+    "tests_passed": 138,
+    "targeted_tests_passed": 18,
+    "lint": "passed",
+    "typecheck_and_build": "passed",
+    "raw_local_log": "runtime/demo-fix-006-frontend.log"
+  },
+  "browser_preview": {
+    "browser": "Chromium",
+    "bundle": "production build",
+    "api_data": "synthetic",
+    "viewport_sizes": [[1440, 1100], [1100, 760]],
+    "row_regions": {
+      "cases": {"height": 560, "content": 3050},
+      "compact_cases": {"height": 395, "content": 3050},
+      "requirements": {"height": 560, "content": 1950},
+      "suggestions": {"height": 560, "content": 2439},
+      "tasks": {"height": 560, "content": 1950}
+    },
+    "keyboard_scroll": "verified",
+    "pagination_count": "verified",
+    "zero_matches": "verified",
+    "error_and_retry": "verified",
+    "page_errors": [],
+    "local_artifacts": "output/playwright/demo-fix-006-*.png"
+  },
+  "tdd_red": {
+    "initial_frontend_failures": 6,
+    "unavailable_body_failure": 1,
+    "raw_local_log": "runtime/demo-fix-006-red.log",
+    "raw_local_boundary_log": "runtime/demo-fix-006-boundary-red.log"
+  },
+  "test_harness_correction": "release Enter between successive search submissions",
+  "ruff": "passed",
+  "diff_check": "passed",
+  "production_database_used": false,
+  "real_model_called": false,
+  "applied_migrations_changed": false,
+  "backend_api_changed": false,
+  "remote_push_authorized": true,
+  "deployed": false,
+  "remaining_scope": "other resource/history/statistics lists and remaining tab counts"
+}

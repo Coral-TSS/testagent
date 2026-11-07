@@ -14,6 +14,7 @@ import { TaskRunStatusTag, TaskStatusTag } from "./StatusTags";
 import { fmtTime } from "../utils/time";
 import { CorrectionButton } from "./CorrectionButton";
 import { RunTasksModal } from "./RunTasksModal";
+import { ListTable } from "./ListView";
 
 const TEST_TYPES = ["Functional", "API", "UI", "Regression", "Smoke"];
 const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "Automated", human: "Manual" };
@@ -259,13 +260,14 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
             { key: "delete", label: "Delete", danger: true, confirm: `Delete the ${taskSel.length} selected task(s)? Tasks with executions cannot be deleted (archive them instead).`, run: (id) => api(`/tasks/${id}`, { method: "DELETE" }) },
           ]}
         />
-        <Table<Task>
+        <ListTable<Task>
+          label="Tasks"
+          error={tasks.isError}
           size="small"
           rowKey="id"
           rowSelection={{ selectedRowKeys: taskSel, onChange: (k) => setTaskSel(k as string[]) }}
           loading={tasks.isLoading}
           dataSource={tasks.data}
-          pagination={false}
           scroll={{ x: "max-content" }}
           locale={{
             emptyText: (
