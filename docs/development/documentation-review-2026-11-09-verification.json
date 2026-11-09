@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-09",
+  "product_baseline": "f8eb3618acfcbed4f54915e03e43db01bbd3e2a8",
+  "document_files": 20,
+  "spec_files": 14,
+  "relative_links_checked": 50,
+  "evidence_paths_checked": 35,
+  "original_task_ids_preserved": 81,
+  "task_ledger_rows": 81,
+  "secret_pattern_scan": "passed",
+  "product_tests_rerun": false,
+  "errors": [],
+  "spec_sha256": {
+    "plan.md": "d268838e3a6dc52a8feb9f79c884999d769713e7d6fc443ddf371d381b4f55d4",
+    "README.md": "160031ceaa488f3fc81b7c61ee77d14bec97691426836bf30816f352fecc8be0",
+    "review-2026-11-09.md": "638bd560eb3e06e5b0c8de31924c0fcaf0ddbab500762754c16cdafa7714f260",
+    "spec.md": "6f31d6e0a6dc45cb5da9b3fad43be74cfa9610496f5f45f18aa348cb3aa96737",
+    "task-status.md": "8a07a710f4862f719879c742da045459d51a07ac76330597bf35f2de2e8af704",
+    "tasks.md": "676bc6379ba3861e4875d6103fe8ac0f0685ae4676827c99bfed1f69964de7b3",
+    "design/architecture.md": "7ddf673a4165e307d04ecae8893972b99f788194703f9f9c17d951e6fd174653",
+    "design/batch2-result-trust-proposal.md": "817c22de43e56459cbabfcfd09808a16d34ac0a9405d5a59ebda6e20e88b942b",
+    "design/detailed-design.md": "a78591f26054ecc40c9088789fdc852894e9ff863394ec75f4adcd813a0c3092",
+    "design/link-types-proposal-t18u.md": "c06266c3bf1e78637412d4a47e0b3ddb409ff696f233c10eec48450f600f403d",
+    "design/public-access-login-t98u.md": "02fcd8d84d48915800b523c5b4f2062247f57737985179867268dcc0f3efe1f0",
+    "design/task-case-binding-proposal-t24u.md": "b45fe74707b3252794a8fa5a28a86b323afa5d91697d2556c82bf3296dfa674f",
+    "design/team-readiness-roadmap-t33u.md": "0a40c660c3bd62f5204cc5f520f3697b88f8e7eedb3d938ae066140e2588adda",
+    "design/test-design.md": "586068f462878d12afa9ea9d41cd90dad9291d091d30709aa9c8947953204ccb"
+  }
+}

@@ -1,5 +1,7 @@
 # TestAgent
 
+Current develop documentation: [specification, architecture, plan and task status](specs/test-agent-platform/README.md). The latest recorded regression (2026-11-07) has 478 backend passes, one platform-specific skip and 167 frontend passes; real-model quality and deployment acceptance are tracked separately.
+
 English | [中文](README.zh.md)
 
 **An ontology-driven, agent-assisted functional test platform.** Describe your system as a small
@@ -16,10 +18,10 @@ every gate: they confirm, review and set things ready, the agent does the legwor
 ![TestAgent demo: model → AI cases → self-checked script → run → AI defect → report](docs/assets/demo.gif)
 
 > The demo above runs the real UI against the bundled demo app, with a scripted (deterministic) model
-> standing in for the LLM so the recording is reproducible. With a real model the flow is the same.
+> standing in for the LLM so the recording is reproducible. A real model uses the same platform flow, but output quality and defect detection require separate validation.
 
-> **Status: initial version (v0.1).** It works end to end and is covered by ~360 backend and ~80 frontend
-> tests, but expect rough edges. Feedback, bug reports and ideas are very welcome. Please
+> **Status: actively developed, single-instance platform.** See the current develop documentation above for capabilities and verification limits.
+> Feedback, bug reports and ideas are welcome. Please
 > [open an issue](https://github.com/Coral-TSS/testagent/issues).
 
 ---
