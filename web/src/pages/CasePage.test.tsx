@@ -21,7 +21,7 @@ const base = {
   origin_version_id: "v1",
   steps: [{ action: "Enter amount 0 and submit", expected: "An error is shown" }],
   test_data: { amount: 0 },
-  expected: "Submission refused",
+  expected: "提交被拒绝",
   agent_run_id: "run1",
   requirements: [{ id: "r1", code: "REQ-001", title: "Create purchase order", version_id: "v1" }],
   nodes: [{ id: "n1", kind: "action", name: "Create purchase order", deleted: false }],
@@ -44,12 +44,12 @@ describe("CasePage", () => {
     });
     renderPage(<CasePage />, { path: "/cases/:caseId", route: "/cases/c1" });
     expect(await screen.findByText("Create purchase order (REQ-001)")).toBeTruthy();
-    expect(screen.getByText("AI generated")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Set ready" }));
-    fireEvent.click(await screen.findByRole("button", { name: /OK/ }));
+    expect(screen.getByText("AI 生成")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "设为就绪" }));
+    fireEvent.click(await screen.findByRole("button", { name: /确定/ }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/cases/c1/status")).toBe(true));
     expect(calls.find((c) => c.method === "POST")!.body).toEqual({ status: "ready" });
-    expect(await screen.findByRole("button", { name: "Back to draft" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "退回草稿" })).toBeTruthy();
   });
 
   it("saves edits through PATCH with parsed test data", async () => {
@@ -61,10 +61,10 @@ describe("CasePage", () => {
       "PATCH /cases/c1": () => ({ body: { ...base, revision: 2 } }),
     });
     renderPage(<CasePage />, { path: "/cases/:caseId", route: "/cases/c1" });
-    const expected = await screen.findByLabelText("Expected result");
-    await waitFor(() => expect((expected as HTMLTextAreaElement).value).toBe("Submission refused"));
+    const expected = await screen.findByLabelText("预期结果");
+    await waitFor(() => expect((expected as HTMLTextAreaElement).value).toBe("提交被拒绝"));
     fireEvent.change(expected, { target: { value: "Shows “Amount must be greater than 0”" } });
-    fireEvent.click(screen.getByRole("button", { name: /Save/ }));
+    fireEvent.click(screen.getByRole("button", { name: /保存/ }));
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
     const body = calls.find((c) => c.method === "PATCH")!.body as Record<string, unknown>;
     expect(body.expected).toBe("Shows “Amount must be greater than 0”");

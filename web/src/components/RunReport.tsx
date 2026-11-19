@@ -48,12 +48,12 @@ export function EventLine({ ev }: { ev: ReportEvent }) {
             items={[
               {
                 key: "b",
-                label: "Request and response content",
+                label: "请求与响应内容",
                 children: (
                   <>
-                    <Body label="Query parameters" text={ev.params} />
-                    <Body label="Request body" text={ev.request} />
-                    <Body label="Response body" text={ev.response} />
+                    <Body label="查询参数" text={ev.params} />
+                    <Body label="请求体" text={ev.request} />
+                    <Body label="响应体" text={ev.response} />
                   </>
                 ),
               },
@@ -92,7 +92,7 @@ export function EventLine({ ev }: { ev: ReportEvent }) {
             )}
             {ev.actual != null && (
               <span style={{ marginLeft: 12 }}>
-                <Typography.Text type="secondary">Actual</Typography.Text> <code style={ok ? undefined : { color: "#cf1322" }}>{ev.actual}</code>
+                <Typography.Text type="secondary">实际</Typography.Text> <code style={ok ? undefined : { color: "#cf1322" }}>{ev.actual}</code>
               </span>
             )}
           </div>
@@ -107,14 +107,14 @@ export function EventLine({ ev }: { ev: ReportEvent }) {
   }
   return (
     <div data-testid="report-error">
-      <Tag color="red">{ev.name || "Error"}</Tag>
+      <Tag color="red">{ev.name || "错误"}</Tag>
       <Typography.Text type="danger">{ev.message}</Typography.Text>
     </div>
   );
 }
 
 function StepBody({ step }: { step: ReportStep }) {
-  if (!step.events.length) return <Typography.Text type="secondary">No request, action or assertion recorded for this step</Typography.Text>;
+  if (!step.events.length) return <Typography.Text type="secondary">该步骤没有记录请求、动作或断言</Typography.Text>;
   return (
     <Space orientation="vertical" size={6} style={{ width: "100%" }}>
       {step.events.map((ev) => (
@@ -126,7 +126,7 @@ function StepBody({ step }: { step: ReportStep }) {
 
 /** Readable report of a pytest execution: steps (requests/actions/assertions), test data, error explanation */
 export function RunReport({ report, testData, raw }: { report: Report; testData?: Record<string, unknown> | null; raw?: string | null }) {
-  if (!report.tests.length) return <Empty description="The script collected no test functions" />;
+  if (!report.tests.length) return <Empty description="脚本没有收集到测试函数" />;
   return (
     <Space orientation="vertical" style={{ width: "100%" }} size={16} data-testid="run-report">
       {report.tests.map((t) => {
@@ -134,13 +134,13 @@ export function RunReport({ report, testData, raw }: { report: Report; testData?
         return (
           <div key={t.name}>
             {t.failure?.explain && (
-              <Alert type={t.outcome === "failed" ? "error" : "warning"} showIcon style={{ marginBottom: 12 }} title={t.outcome === "failed" ? "Assertion failed" : "Execution error"} description={t.failure.explain} />
+              <Alert type={t.outcome === "failed" ? "error" : "warning"} showIcon style={{ marginBottom: 12 }} title={t.outcome === "failed" ? "断言失败" : "执行错误"} description={t.failure.explain} />
             )}
             <Descriptions size="small" column={4} style={{ marginBottom: 8 }}>
-              <Descriptions.Item label="Result">{t.outcome === "passed" ? <Tag color="green">Passed</Tag> : t.outcome === "failed" ? <Tag color="red">Failed</Tag> : <Tag color="orange">Error</Tag>}</Descriptions.Item>
-              <Descriptions.Item label="Assertion">{`${t.checks.total - t.checks.failed}/${t.checks.total} passed`}</Descriptions.Item>
-              <Descriptions.Item label="API request">{t.requests}</Descriptions.Item>
-              <Descriptions.Item label="Duration">{(t.duration_ms / 1000).toFixed(2)} s</Descriptions.Item>
+              <Descriptions.Item label="结果">{t.outcome === "passed" ? <Tag color="green">通过</Tag> : t.outcome === "failed" ? <Tag color="red">失败</Tag> : <Tag color="orange">错误</Tag>}</Descriptions.Item>
+              <Descriptions.Item label="断言">{`${t.checks.total - t.checks.failed}/${t.checks.total} 通过`}</Descriptions.Item>
+              <Descriptions.Item label="API 请求">{t.requests}</Descriptions.Item>
+              <Descriptions.Item label="耗时">{(t.duration_ms / 1000).toFixed(2)} s</Descriptions.Item>
             </Descriptions>
             {t.steps.length ? (
               <Steps
@@ -162,11 +162,11 @@ export function RunReport({ report, testData, raw }: { report: Report; testData?
                 }))}
               />
             ) : (
-              <Empty description="No steps recorded" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <Empty description="没有记录步骤" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             )}
             {t.steps.length > 0 && t.steps.every((s) => s.source !== "step") && (
               <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-                Step names come from script comments; after running “AI automation” again, scripts name steps and assertions with step()/check().
+                步骤名称来自脚本注释；再次运行“AI 自动化”后，脚本会用 step()/check() 命名步骤和断言。
               </Typography.Paragraph>
             )}
             <DataUsed test={t} testData={testData} />
@@ -179,7 +179,7 @@ export function RunReport({ report, testData, raw }: { report: Report; testData?
           items={[
             {
               key: "raw",
-              label: "Raw output (pytest)",
+              label: "原始输出（pytest）",
               children: <pre style={{ margin: 0, maxHeight: 360, overflow: "auto", fontSize: 12, whiteSpace: "pre-wrap" }}>{raw}</pre>,
             },
           ]}
@@ -194,7 +194,7 @@ function DataUsed({ test, testData }: { test: Report["tests"][number]; testData?
   if (!keys.length) return null;
   return (
     <div data-testid="report-data">
-      <Typography.Text type="secondary">Test data read by the script: </Typography.Text>
+      <Typography.Text type="secondary">脚本读取的测试数据： </Typography.Text>
       {keys.map((k) => {
         const has = testData ? k in testData : test.data_used ? k in test.data_used : false;
         const value = testData?.[k] ?? test.data_used?.[k];

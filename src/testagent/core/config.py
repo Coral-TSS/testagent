@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     browser_headless: bool = True
     pytest_timeout_s: float = 300
     timezone: str = DEFAULT_TIMEZONE  # cron schedules are evaluated in this zone by default
-    agent_language: str = "English"  # language of the text the agent writes for people
+    agent_language: str = "Simplified Chinese"  # language of the text the agent writes for people
 
     def allowed_host_list(self) -> list[str]:
         return [h.strip() for h in self.allowed_hosts.split(",") if h.strip()]

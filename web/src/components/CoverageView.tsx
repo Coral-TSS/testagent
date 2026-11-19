@@ -26,28 +26,28 @@ export function CoverageView({ coverage }: { coverage: Coverage }) {
     <Row gutter={16} data-testid="coverage">
       <Col span={6}>
         <Card size="small">
-          <Statistic title="Active cases" value={coverage.cases} />
+          <Statistic title="有效用例" value={coverage.cases} />
         </Card>
       </Col>
       <Col span={9}>
-        <Card size="small" title={`Requirement coverage ${r.covered}/${r.total}`}>
+        <Card size="small" title={`需求覆盖 ${r.covered}/${r.total}`}>
           <Progress percent={pct(r.covered, r.total)} />
-          <Typography.Text type="secondary">Uncovered requirements: </Typography.Text>
-          {r.uncovered.length ? r.uncovered.map((u) => <Tag color="red" key={u.id}>{`${u.code} ${u.title || ""}`}</Tag>) : <Tag color="green">None</Tag>}
+          <Typography.Text type="secondary">未覆盖的需求： </Typography.Text>
+          {r.uncovered.length ? r.uncovered.map((u) => <Tag color="red" key={u.id}>{`${u.code} ${u.title || ""}`}</Tag>) : <Tag color="green">无</Tag>}
         </Card>
       </Col>
       <Col span={9}>
-        <Card size="small" title={`Action node coverage ${a.covered}/${a.total}`}>
+        <Card size="small" title={`动作节点覆盖 ${a.covered}/${a.total}`}>
           <Progress percent={pct(a.covered, a.total)} />
-          <Typography.Text type="secondary">Uncovered actions: </Typography.Text>
-          {a.uncovered.length ? a.uncovered.map((u) => <Tag color="orange" key={u.id}>{u.name}</Tag>) : <Tag color="green">None</Tag>}
+          <Typography.Text type="secondary">未覆盖的动作： </Typography.Text>
+          {a.uncovered.length ? a.uncovered.map((u) => <Tag color="orange" key={u.id}>{u.name}</Tag>) : <Tag color="green">无</Tag>}
         </Card>
       </Col>
       {coverage.fields && coverage.fields.total > 0 && (
         <Col span={24} style={{ marginTop: 12 }}>
-          <Card size="small" title={`Field coverage ${coverage.fields.covered}/${coverage.fields.total} (entity fields referenced by requirements)`}>
+          <Card size="small" title={`字段覆盖 ${coverage.fields.covered}/${coverage.fields.total}（需求引用的实体字段）`}>
             <Progress percent={pct(coverage.fields.covered, coverage.fields.total)} />
-            <Typography.Text type="secondary">Uncovered fields: </Typography.Text>
+            <Typography.Text type="secondary">未覆盖的字段： </Typography.Text>
             {coverage.fields.uncovered.length ? (
               coverage.fields.uncovered.map((u) => (
                 <Tag color="orange" key={u.id}>
@@ -55,16 +55,16 @@ export function CoverageView({ coverage }: { coverage: Coverage }) {
                 </Tag>
               ))
             ) : (
-              <Tag color="green">None</Tag>
+              <Tag color="green">无</Tag>
             )}
           </Card>
         </Col>
       )}
       {coverage.relations && coverage.relations.total > 0 && (
         <Col span={24} style={{ marginTop: 12 }}>
-          <Card size="small" title={`Link coverage ${coverage.relations.covered}/${coverage.relations.total} (entity links referenced by requirements)`}>
+          <Card size="small" title={`关系覆盖 ${coverage.relations.covered}/${coverage.relations.total}（需求引用的实体关系）`}>
             <Progress percent={pct(coverage.relations.covered, coverage.relations.total)} />
-            <Typography.Text type="secondary">Uncovered links: </Typography.Text>
+            <Typography.Text type="secondary">未覆盖的关系： </Typography.Text>
             {coverage.relations.uncovered.length ? (
               coverage.relations.uncovered.map((u) => (
                 <Tag color="orange" key={u.id}>
@@ -72,7 +72,7 @@ export function CoverageView({ coverage }: { coverage: Coverage }) {
                 </Tag>
               ))
             ) : (
-              <Tag color="green">None</Tag>
+              <Tag color="green">无</Tag>
             )}
           </Card>
         </Col>
@@ -83,12 +83,12 @@ export function CoverageView({ coverage }: { coverage: Coverage }) {
       <Col span={24} style={{ marginTop: 12 }}>
         {coverage.cases ? (
           <>
-            <Dist title="Priority distribution" data={coverage.by_priority} />
-            <Dist title="Type distribution" data={coverage.by_type} />
-            <Dist title="Scenario distribution" data={coverage.by_scenario} labels={scenarioLabels} />
+            <Dist title="优先级分布" data={coverage.by_priority} />
+            <Dist title="类型分布" data={coverage.by_type} />
+            <Dist title="场景分布" data={coverage.by_scenario} labels={scenarioLabels} />
           </>
         ) : (
-          <Empty description="No cases yet" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <Empty description="暂无测试用例" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         )}
       </Col>
     </Row>

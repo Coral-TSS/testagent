@@ -11,11 +11,11 @@ export interface RouteObject {
 }
 
 const SUT_PAGES: Record<string, string> = {
-  model: "Model",
-  review: "Model review",
-  apis: "API registry",
-  versions: "Version",
-  cases: "Case library",
+  model: "模型",
+  review: "模型评审",
+  apis: "API 注册表",
+  versions: "版本",
+  cases: "用例库",
 };
 const DETAIL: Record<string, NavKind> = {
   versions: "version",
@@ -27,16 +27,16 @@ const DETAIL: Record<string, NavKind> = {
   reports: "report",
 };
 const LIST_PAGES: Record<string, string> = {
-  cases: "Test cases",
-  executions: "Execution",
-  reports: "Report",
-  defects: "Defect",
+  cases: "测试用例",
+  executions: "执行",
+  reports: "报告",
+  defects: "缺陷",
 };
 const VERSION_TABS: Record<string, string> = {
-  suggestions: "Model suggestions",
-  cases: "Test cases & coverage",
-  strategy: "Test strategy & tasks",
-  history: "Change log",
+  suggestions: "模型建议",
+  cases: "测试用例与覆盖",
+  strategy: "测试策略与任务",
+  history: "变更日志",
 };
 
 export function routeObject(pathname: string, search: string): RouteObject {

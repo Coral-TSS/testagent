@@ -32,22 +32,22 @@ export function SutOverviewPage() {
 
   const createEnv = useApiMutation(
     (body: Record<string, unknown>) => api(`/suts/${sutId}/environments`, { method: "POST", body }),
-    { invalidate: [["envs", sutId]], success: "Saved" },
+    { invalidate: [["envs", sutId]], success: "已保存" },
   );
   const updateEnv = useApiMutation(
     ({ id, body }: { id: string; body: Record<string, unknown> }) => api(`/environments/${id}`, { method: "PATCH", body }),
-    { invalidate: [["envs", sutId]], success: "Saved" },
+    { invalidate: [["envs", sutId]], success: "已保存" },
   );
   const deleteEnv = useApiMutation((id: string) => api(`/environments/${id}`, { method: "DELETE" }), {
     invalidate: [["envs", sutId]],
   });
   const createModule = useApiMutation(
     (body: Record<string, unknown>) => api(`/suts/${sutId}/modules`, { method: "POST", body }),
-    { invalidate: [["modules", sutId]], success: "Saved" },
+    { invalidate: [["modules", sutId]], success: "已保存" },
   );
   const updateModule = useApiMutation(
     ({ id, body }: { id: string; body: Record<string, unknown> }) => api(`/modules/${id}`, { method: "PATCH", body }),
-    { invalidate: [["modules", sutId]], success: "Saved" },
+    { invalidate: [["modules", sutId]], success: "已保存" },
   );
   const deleteModule = useApiMutation((id: string) => api(`/modules/${id}`, { method: "DELETE" }), {
     invalidate: [["modules", sutId]],
@@ -59,15 +59,15 @@ export function SutOverviewPage() {
         <SutExplainer repoPath={progress.data?.repo_path} closable />
       </Col>
       <Col span={24}>
-        <Card title={sut.data?.name || "SUT"} loading={sut.isLoading}>
+        <Card title={sut.data?.name || "被测系统"} loading={sut.isLoading}>
           <Descriptions column={3}>
-            <Descriptions.Item label="Code">{sut.data?.code}</Descriptions.Item>
+            <Descriptions.Item label="编号">{sut.data?.code}</Descriptions.Item>
             <Descriptions.Item label="description">{sut.data?.description || "-"}</Descriptions.Item>
-            <Descriptions.Item label="Shortcuts">
-              <Link to={`/suts/${sutId}/model`}>Model</Link>&nbsp;·&nbsp;<Link to={`/suts/${sutId}/review`}>Model review</Link>&nbsp;·&nbsp;
-              <Link to={`/suts/${sutId}/apis`}>API registry</Link>
+            <Descriptions.Item label="快捷键">
+              <Link to={`/suts/${sutId}/model`}>模型</Link>&nbsp;·&nbsp;<Link to={`/suts/${sutId}/review`}>模型评审</Link>&nbsp;·&nbsp;
+              <Link to={`/suts/${sutId}/apis`}>API 注册表</Link>
             </Descriptions.Item>
-            <Descriptions.Item label="Local test repo (the git repository holding the automation scripts)" span={3}>
+            <Descriptions.Item label="本地测试仓库（存放自动化脚本的 git 仓库）" span={3}>
               <PathText path={progress.data?.repo_path} />
             </Descriptions.Item>
           </Descriptions>
@@ -77,7 +77,7 @@ export function SutOverviewPage() {
         <Card
           title={`Getting started${progress.data?.version ? ` (version ${progress.data.version.name})` : ""}`}
           loading={progress.isLoading}
-          extra={progress.data?.next ? `Next: ${progress.data.next.label}` : progress.data ? "Main flow complete" : null}
+          extra={progress.data?.next ? `Next: ${progress.data.next.label}` : progress.data ? "主流程已完成" : null}
         >
           {progress.data && <OnboardingChecklist progress={progress.data} />}
         </Card>
@@ -87,31 +87,31 @@ export function SutOverviewPage() {
           <SimpleCrud<Environment>
             error={envs.isError}
             onRetry={() => envs.refetch()}
-            title="Environment"
-            emptyTitle="No environment yet"
-            emptyHint="An environment is the SUT's address (e.g. http://127.0.0.1:8766). The platform checks it is reachable before running cases; with a start command it can be started in one click."
+            title="环境"
+            emptyTitle="暂无环境"
+            emptyHint="环境是被测系统的地址（例如 http://127.0.0.1:8766）。执行用例前平台会检查其是否可达；如果配置了启动命令，还可以一键启动。"
             rows={envs.data}
             loading={envs.isLoading}
             columns={[
-              { title: "Name", dataIndex: "name" },
+              { title: "名称", dataIndex: "name" },
               { title: "URL", dataIndex: "base_url" },
-              { title: "Status", width: 150, render: (_: unknown, e: Environment) => <EnvironmentStatus env={e} compact /> },
+              { title: "状态", width: 150, render: (_: unknown, e: Environment) => <EnvironmentStatus env={e} compact /> },
             ]}
             fields={
               <>
-                <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                <Form.Item name="name" label="名称" rules={[{ required: true }]}>
                   <Input />
                 </Form.Item>
-                <Form.Item name="base_url" label="URL" rules={[{ required: true, pattern: /^https?:\/\/\S+$/, message: "Starts with http:// or https://" }]}>
+                <Form.Item name="base_url" label="URL" rules={[{ required: true, pattern: /^https?:\/\/\S+$/, message: "以 http:// 或 https:// 开头" }]}>
                   <Input placeholder="http://127.0.0.1:8766" />
                 </Form.Item>
-                <Form.Item name="credential_ref" label="Login credential reference (optional)">
+                <Form.Item name="credential_ref" label="登录凭据引用（可选）">
                   <Input />
                 </Form.Item>
                 <Form.Item
                   name="start_command"
-                  label="Start command (optional, starts the SUT on this machine; run automatically on platform start when unreachable)"
-                  extra={isMember ? "Only an admin can change the start command (it runs on the platform server)." : undefined}
+                  label="启动命令（可选，用于在本机启动被测系统；平台启动时若不可达会自动运行）"
+                  extra={isMember ? "只有管理员可以更改启动命令（命令在平台服务器上运行）。" : undefined}
                 >
                   <Input disabled={isMember} placeholder="uv run uvicorn examples.procurement.api:create_app --factory --host 127.0.0.1 --port 8766" />
                 </Form.Item>
@@ -128,18 +128,18 @@ export function SutOverviewPage() {
           <SimpleCrud<Module>
             error={modules.isError}
             onRetry={() => modules.refetch()}
-            title="Groups (optional, to organise nodes by business area)"
-            emptyTitle="Groups are optional"
-            emptyHint="Groups are only used to filter nodes by business area on the model graph; you can skip them."
+            title="分组（可选，用于按业务域组织节点）"
+            emptyTitle="分组是可选的"
+            emptyHint="分组只用于在模型图上按业务域过滤节点；可以不填。"
             rows={modules.data}
             loading={modules.isLoading}
             columns={[
-              { title: "Name", dataIndex: "name" },
+              { title: "名称", dataIndex: "name" },
               { title: "description", dataIndex: "description" },
             ]}
             fields={
               <>
-                <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+                <Form.Item name="name" label="名称" rules={[{ required: true }]}>
                   <Input />
                 </Form.Item>
                 <Form.Item name="description" label="description">
@@ -154,7 +154,7 @@ export function SutOverviewPage() {
         </Card>
       </Col>
       <Col span={24}>
-        <Card title="Version" extra={<Link to={`/suts/${sutId}/versions`}>Manage versions</Link>}>
+        <Card title="版本" extra={<Link to={`/suts/${sutId}/versions`}>管理版本</Link>}>
           {(versions.data || []).map((v) => (
             <Tag key={v.id} style={{ padding: "4px 8px" }}>
               <Link to={`/versions/${v.id}`}>{v.name}</Link> <VersionStatusTag status={v.status} />
@@ -162,9 +162,9 @@ export function SutOverviewPage() {
           ))}
           {versions.data?.length === 0 && (
             <EmptyState
-              title="No version yet"
-              hint="A version is a batch of requirements to test. Create a version, enter requirements, confirm and freeze them, then create a strategy, generate cases and run them."
-              actionLabel="New version"
+              title="暂无版本"
+              hint="版本是一批待测需求。先创建版本，录入需求并确认、冻结，再创建策略、生成用例并执行。"
+              actionLabel="新建版本"
               onAction={() => navigate(`/suts/${sutId}/versions?new=1`)}
             />
           )}

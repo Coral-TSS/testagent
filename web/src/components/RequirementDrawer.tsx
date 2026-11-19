@@ -53,9 +53,9 @@ export function RequirementDrawer(props: {
     qc.invalidateQueries({ queryKey: ["suggestions", sutId] });
   };
   const opts = { onSuccess: refresh };
-  const update = useApiMutation((body: Record<string, unknown>) => api(`/requirements/${reqId}`, { method: "PATCH", body }), { ...opts, success: "Saved" });
-  const people = useApiMutation((body: unknown) => api(`/requirements/${reqId}/people`, { method: "PUT", body }), { ...opts, success: "People saved" });
-  const structure = useApiMutation((body: unknown) => api(`/requirements/${reqId}/structure`, { method: "PUT", body }), { ...opts, success: "Structure saved" });
+  const update = useApiMutation((body: Record<string, unknown>) => api(`/requirements/${reqId}`, { method: "PATCH", body }), { ...opts, success: "已保存" });
+  const people = useApiMutation((body: unknown) => api(`/requirements/${reqId}/people`, { method: "PUT", body }), { ...opts, success: "人员已保存" });
+  const structure = useApiMutation((body: unknown) => api(`/requirements/${reqId}/structure`, { method: "PUT", body }), { ...opts, success: "结构已保存" });
   const ai = useApiMutation(() => api<AiOutcome>(`/requirements/${reqId}/structure`, { method: "POST" }), {
     onSuccess: (out) => {
       refresh();
@@ -63,7 +63,7 @@ export function RequirementDrawer(props: {
       props.onOpenRun(out.agent_run_id);
     },
   });
-  const confirm = useApiMutation(() => api(`/requirements/${reqId}/confirm`, { method: "POST" }), { ...opts, success: "Requirement confirmed" });
+  const confirm = useApiMutation(() => api(`/requirements/${reqId}/confirm`, { method: "POST" }), { ...opts, success: "需求已确认" });
   const r = req.data;
   const editable = !locked;
 
@@ -77,19 +77,19 @@ export function RequirementDrawer(props: {
             {r.code} {r.title} <RequirementStatusTag status={r.status} />
           </Space>
         ) : (
-          "Requirement"
+          "需求"
         )
       }
       extra={
         r && (
           <Space>
-            {r.agent_run_id && <Button onClick={() => props.onOpenRun(r.agent_run_id!)}>View AI trace</Button>}
+            {r.agent_run_id && <Button onClick={() => props.onOpenRun(r.agent_run_id!)}>查看 AI 追踪</Button>}
             <Button icon={<RobotOutlined />} disabled={!editable} loading={ai.isPending} onClick={() => ai.mutate()}>
-              AI structure
+              AI 结构化
             </Button>
-            <Popconfirm title="Confirm this requirement? Confirmed requirements are a prerequisite for freezing." onConfirm={() => confirm.mutate()} disabled={!editable || r.status === "confirmed"}>
+            <Popconfirm title="要确认该需求吗？已确认的需求是冻结的前提。" onConfirm={() => confirm.mutate()} disabled={!editable || r.status === "confirmed"}>
               <Button type="primary" disabled={!editable || r.status === "confirmed"}>
-                Confirm
+                确认
               </Button>
             </Popconfirm>
           </Space>
@@ -98,26 +98,26 @@ export function RequirementDrawer(props: {
     >
       {r && (
         <>
-          {locked && <Alert type="info" showIcon style={{ marginBottom: 12 }} title="The version's requirements are frozen and read-only. To change them, unfreeze the version first (a reason is required)." />}
+          {locked && <Alert type="info" showIcon style={{ marginBottom: 12 }} title="该版本的需求已冻结且只读。要修改请先解冻版本（必须填写原因）。" />}
           <Form name="requirement-detail" form={form} layout="vertical" disabled={!editable} onFinish={(v) => update.mutate(v)}>
-            <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+            <Form.Item name="title" label="标题" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="priority" label="Priority">
+            <Form.Item name="priority" label="优先级">
               <Select style={{ width: 120 }} options={["P0", "P1", "P2"].map((p) => ({ value: p, label: p }))} />
             </Form.Item>
-            <Form.Item name="raw_text" label="Requirement text">
+            <Form.Item name="raw_text" label="需求正文">
               <Input.TextArea autoSize={{ minRows: 4 }} />
             </Form.Item>
             {editable && (
               <Button size="small" htmlType="submit" loading={update.isPending}>
-                Save basic info
+                保存基本信息
               </Button>
             )}
           </Form>
-          <Divider titlePlacement="start">Owners</Divider>
+          <Divider titlePlacement="start">负责人</Divider>
           <PeopleRolePicker value={r.people} disabled={!editable} saving={people.isPending} onSave={(p) => people.mutate(p)} />
-          <Divider titlePlacement="start">Structure (actor / preconditions / action / expected result / constraints)</Divider>
+          <Divider titlePlacement="start">结构（执行者 / 前置条件 / 动作 / 预期结果 / 约束）</Divider>
           <StructureEditor
             value={r.structured}
             nodes={graph.data?.nodes || []}
@@ -129,7 +129,7 @@ export function RequirementDrawer(props: {
           />
           {(r.fields?.length || 0) > 0 && (
             <Space wrap style={{ marginTop: 8 }}>
-              <Typography.Text type="secondary">Fields involved: </Typography.Text>
+              <Typography.Text type="secondary">涉及字段： </Typography.Text>
               {r.fields!.map((f) => (
                 <Tag key={f.id} color="purple">
                   <Link to={`/suts/${sutId}/model?node=${f.node_id}`}>{fieldLabel(f)}</Link>
@@ -139,7 +139,7 @@ export function RequirementDrawer(props: {
           )}
           {(r.links?.length || 0) > 0 && (
             <Space wrap style={{ marginTop: 8 }}>
-              <Typography.Text type="secondary">Links involved: </Typography.Text>
+              <Typography.Text type="secondary">涉及关系： </Typography.Text>
               {r.links!.map((l) => (
                 <Tag key={`${l.part}:${l.link_id}`} color="volcano">
                   <Link to={`/suts/${sutId}/review`}>{`${l.from_name} ${l.forward_name} ${l.to_name}`}</Link>
@@ -157,17 +157,17 @@ export function RequirementDrawer(props: {
               ))}
             </Space>
           ) : (
-            <Typography.Text type="secondary">No cases yet; generate them by AI or create them by hand in the “Test cases & coverage” tab.</Typography.Text>
+            <Typography.Text type="secondary">暂无测试用例；请在“测试用例与覆盖”页签用 AI 生成或手工创建。</Typography.Text>
           )}
           {r.coverage && (
             <>
-              <Divider titlePlacement="start">Coverage detail</Divider>
+              <Divider titlePlacement="start">覆盖详情</Divider>
               <RequirementCoverage coverage={r.coverage} sutId={sutId} />
             </>
           )}
           {(r.suggestions?.length || 0) > 0 && (
             <>
-              <Divider titlePlacement="start">Model suggestions</Divider>
+              <Divider titlePlacement="start">模型建议</Divider>
               <SuggestionList sutId={sutId} items={r.suggestions!} onChanged={refresh} />
             </>
           )}

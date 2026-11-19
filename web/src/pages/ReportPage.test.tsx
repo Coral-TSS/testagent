@@ -68,7 +68,7 @@ const report = {
         responsible: [{ name: "Lee Dev", role: "developer" }],
       },
     ],
-    code_links: [{ requirement_code: "REQ-001", nodes: [{ name: "Order", code_ref: "order.py" }], apis: [{ method: "POST", path: "/orders", code_ref: "api.py:10" }] }],
+    code_links: [{ requirement_code: "REQ-001", nodes: [{ name: "顺序", code_ref: "order.py" }], apis: [{ method: "POST", path: "/orders", code_ref: "api.py:10" }] }],
     weights_used: { critical: 10, major: 3, minor: 1, trivial: 0.1 },
     snapshot_id: "snap1",
     generated_at: "2026-10-31T13:00:00Z",
@@ -84,14 +84,14 @@ describe("ReportPage", () => {
     renderPage(<ReportPage />, { path: "/reports/:reportId", route: "/reports/rp1" });
     expect(await screen.findByText("REQ-001 Place order")).toBeTruthy();
     expect(screen.getByText("0.50")).toBeTruthy(); // density 2 / 4
-    expect(screen.getByText("Critical 1")).toBeTruthy();
-    expect(screen.getByText("Developer 2 (6)")).toBeTruthy();
-    expect(screen.getByText("Lee Dev (Developer)")).toBeTruthy();
+    expect(screen.getByText("严重 1")).toBeTruthy();
+    expect(screen.getByText("开发 2 (6)")).toBeTruthy();
+    expect(screen.getByText("Lee Dev (开发)")).toBeTruthy();
     expect(screen.getByText("POST /orders · api.py:10")).toBeTruthy();
-    expect(screen.getByText("Critical 10 · Major 3 · Minor 1 · Trivial 0.1")).toBeTruthy();
-    expect(screen.getByText(/No AI summary/)).toBeTruthy();
+    expect(screen.getByText("严重 10 · 主要 3 · 次要 1 · 轻微 0.1")).toBeTruthy();
+    expect(screen.getByText(/没有 AI 摘要/)).toBeTruthy();
     expect(screen.getByText("66.7%")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Regenerate" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新生成" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/runs/run1/report")).toBe(true));
     // no PUT/PATCH/DELETE on a report: it is immutable
     expect(calls.some((c) => c.path.startsWith("/reports/") && c.method !== "GET")).toBe(false);
@@ -113,12 +113,12 @@ describe("ReportPage result trust", () => {
     renderPage(<ReportPage />, { path: "/reports/:reportId", route: "/reports/rp1" });
     expect(await screen.findByText("Expected 400, got 201")).toBeTruthy();
     const byCause = screen.getByTestId("by-cause");
-    expect(byCause.textContent).toContain("Suspected system issue 1");
-    expect(byCause.textContent).toContain("Platform / configuration issue 1");
-    expect(byCause.textContent).toContain("not defects of the system");
+    expect(byCause.textContent).toContain("疑似系统问题 1");
+    expect(byCause.textContent).toContain("平台 / 配置问题 1");
+    expect(byCause.textContent).toContain("不是被测系统的缺陷");
     expect(byCause.textContent).not.toContain("script issue 0");
     expect(screen.getByTestId("report-no-script").textContent).toContain("TC-007 Export");
-    expect(screen.getByTestId("pass-rate-note").textContent).toContain("1 without an automation script");
+    expect(screen.getByTestId("pass-rate-note").textContent).toContain("1 个无自动化脚本");
   });
 });
 
@@ -134,8 +134,8 @@ describe("ReportsPage", () => {
       }),
     });
     renderPage(<ReportsPage />, { path: "/reports", route: "/reports" });
-    expect(await screen.findByText("Smoke report")).toBeTruthy();
-    expect(screen.getByText("Version 1.0 report")).toBeTruthy();
+    expect(await screen.findByText("Smoke 报告")).toBeTruthy();
+    expect(screen.getByText("版本 1.0 报告")).toBeTruthy();
     expect(screen.getAllByText("66.7%")).toHaveLength(2);
   });
 });

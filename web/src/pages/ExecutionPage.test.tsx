@@ -47,14 +47,14 @@ describe("ExecutionPage", () => {
       "GET /artifacts/bb": () => ({ body: "png" }),
     });
     renderPage(<ExecutionPage />, { path: "/executions/:executionId", route: "/executions/e1" });
-    expect(await screen.findByText("Unmet assertions")).toBeTruthy();
+    expect(await screen.findByText("未满足的断言")).toBeTruthy();
     expect(screen.getByText(execution.failed_assertion)).toBeTruthy();
-    expect(screen.getByText("failed")).toBeTruthy();
-    expect(screen.getByText("1. Fill")).toBeTruthy();
+    expect(screen.getByText("失败")).toBeTruthy();
+    expect(screen.getByText("1. 填写")).toBeTruthy();
     expect(screen.getByText("label “Amount”")).toBeTruthy();
     expect(screen.getByText("got “Submitted successfully”")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Download trace.zip" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Download step-1.png" })).toBeNull();
+    expect(screen.getByRole("button", { name: "下载 trace.zip" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "下载 step-1.png" })).toBeNull();
     await waitFor(() => expect(screen.getAllByRole("img", { name: /Step \d screenshot/ })).toHaveLength(2));
   });
 
@@ -107,17 +107,17 @@ describe("ExecutionPage", () => {
     mockFetch({ "GET /executions/e1": () => ({ body: pytestRun }) });
     renderPage(<ExecutionPage />, { path: "/executions/:executionId", route: "/executions/e1" });
     expect(await screen.findByTestId("run-report")).toBeTruthy();
-    expect(screen.getByText("Assertion failed")).toBeTruthy();
-    expect(screen.queryByText("Unmet assertions")).toBeNull(); // explained once, not twice
+    expect(screen.getByText("断言失败")).toBeTruthy();
+    expect(screen.queryByText("未满足的断言")).toBeNull(); // explained once, not twice
     expect(screen.getByText("Step 1: create purchase order")).toBeTruthy();
     expect(screen.getByText("POST")).toBeTruthy();
     expect(screen.getByText("http://x/sample/orders")).toBeTruthy();
     expect(screen.getByText("201", { selector: ".ant-tag" })).toBeTruthy();
-    expect(screen.getByText("1/2 passed")).toBeTruthy();
+    expect(screen.getByText("1/2 通过")).toBeTruthy();
     expect(screen.getAllByText("'approved'").length).toBeGreaterThan(0);
     expect(screen.getByText("amount_minor = 100")).toBeTruthy();
     expect(screen.getByText("title (not provided, script defaults used)")).toBeTruthy();
-    expect(screen.getByText("Raw output (pytest)")).toBeTruthy();
+    expect(screen.getByText("原始输出（pytest）")).toBeTruthy();
   });
 
   it("summarizes old pytest output without a report", () => {
@@ -128,7 +128,7 @@ describe("ExecutionPage", () => {
   });
 
   it("describes locator targets", () => {
-    expect(describeTarget({ role: "button", name: "Submit" })).toBe("button “Submit”");
+    expect(describeTarget({ role: "button", name: "提交" })).toBe("button “提交”");
     expect(describeTarget({ selector: "#amount" })).toBe("#amount");
     expect(describeTarget(null)).toBe("");
   });

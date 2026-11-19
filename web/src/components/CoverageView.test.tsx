@@ -22,10 +22,10 @@ describe("CoverageView", () => {
         }}
       />,
     );
-    expect(screen.getByText("Requirement coverage 2/3")).toBeTruthy();
+    expect(screen.getByText("需求覆盖 2/3")).toBeTruthy();
     expect(screen.getByText("REQ-003 Export purchase orders")).toBeTruthy();
-    expect(screen.getByText("Action node coverage 2/3")).toBeTruthy();
-    expect(screen.getByText("Boundary 2")).toBeTruthy();
+    expect(screen.getByText("动作节点覆盖 2/3")).toBeTruthy();
+    expect(screen.getByText("边界 2")).toBeTruthy();
     expect(screen.getByText("P0 1")).toBeTruthy();
   });
 });

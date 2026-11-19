@@ -33,13 +33,13 @@ describe("api client", () => {
     mockFetch({
       "POST /suts": () => ({
         status: 422,
-        body: { code: "VALIDATION", message: "Bad parameter", field_errors: [{ field: "code", msg: "Required" }] },
+        body: { code: "VALIDATION", message: "Bad parameter", field_errors: [{ field: "code", msg: "必填" }] },
       }),
     });
     const err = (await api("/suts", { method: "POST", body: {} }).catch((e: unknown) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err.code).toBe("VALIDATION");
-    expect(describeError(err)).toBe("Bad parameter (code: Required)");
+    expect(describeError(err)).toBe("Bad parameter (code: 必填)");
   });
 
   it("dispatches the auth event on 401", async () => {

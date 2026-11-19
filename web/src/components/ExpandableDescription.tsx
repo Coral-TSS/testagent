@@ -19,8 +19,8 @@ export function ExpandableDescription({ text, name }: { text?: string | null; na
       size="small"
       aria-expanded={expanded}
       aria-controls={id}
-      aria-label={`${expanded ? "Collapse" : "Expand"} description of ${name}`}
+      aria-label={`${expanded ? "收起" : "展开"} ${name} 的描述`}
       onClick={(event) => { event.stopPropagation(); setExpandedText(expanded ? null : text); }}
-    >{expanded ? "Show less" : "Show more"}</Button>}
+    >{expanded ? "收起" : "展开更多"}</Button>}
   </div>;
 }

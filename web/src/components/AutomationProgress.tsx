@@ -38,13 +38,13 @@ export function AutomationProgress({ versionId, onChanged }: { versionId: string
       showIcon
       title={
         <Space wrap>
-          <span>AI automation{pending ? "In progress" : "Done"}</span>
+          <span>AI 自动化{pending ? "进行中" : "已完成"}</span>
           <Progress percent={Math.round((finished / jobs.length) * 100)} size="small" style={{ width: 160 }} />
           <Typography.Text type="secondary">
             {finished}/{jobs.length}: passed and bound {ok.length}
-            {sutIssue.length ? `, suspected system issue ${sutIssue.length}` : ""}, needs fix {needsFix.length}
-            {envDown.length ? `, env unavailable ${envDown.length} (re-queue after starting the environment)` : ""}
-            {failed.length ? `, error ${failed.length}` : ""}
+            {sutIssue.length ? `，疑似系统问题 ${sutIssue.length}` : ""}{needsFix.length ? `，待修复 ${needsFix.length}` : ""}
+            {envDown.length ? `，环境不可用 ${envDown.length}（启动环境后重新排队）` : ""}
+            {failed.length ? `，错误 ${failed.length}` : ""}
           </Typography.Text>
         </Space>
       }
@@ -52,20 +52,20 @@ export function AutomationProgress({ versionId, onChanged }: { versionId: string
         sutIssue.length || needsFix.length || failed.length || envDown.length ? (
           <Space orientation="vertical" size={2}>
             {sutIssue.length > 0 && (
-              <Typography.Text strong>Suspected system issues (the self-check found the system behaving differently; do not “fix” the script):</Typography.Text>
+              <Typography.Text strong>疑似系统问题（自检发现系统表现与预期不符；不要去“修”脚本）：</Typography.Text>
             )}
             {sutIssue.map((j) => (
               <span key={j.id}>
-                <Link to={`/cases/${j.case_id}`}>{j.code}</Link> {j.title} <Tag color="red">Suspected SUT issue</Tag>
+                <Link to={`/cases/${j.case_id}`}>{j.code}</Link> {j.title} <Tag color="red">疑似被测系统问题</Tag>
                 <Typography.Text type="secondary">{j.automation_note}</Typography.Text>
               </span>
             ))}
-            {sutIssue.length > 0 && (needsFix.length || envDown.length || failed.length) ? <Typography.Text strong>Script / environment problems:</Typography.Text> : null}
+            {sutIssue.length > 0 && (needsFix.length || envDown.length || failed.length) ? <Typography.Text strong>脚本 / 环境问题：</Typography.Text> : null}
             {[...needsFix, ...envDown, ...failed].map((j) => (
               <span key={j.id}>
                 <Link to={`/cases/${j.case_id}`}>{j.code}</Link> {j.title}{" "}
                 <Tag color={j.status === "error" || j.automation_status === "env_unavailable" ? "red" : "orange"}>
-                  {j.status === "error" ? "Error" : j.automation_status === "env_unavailable" ? "Env unavailable" : "Needs fix"}
+                  {j.status === "error" ? "错误" : j.automation_status === "env_unavailable" ? "环境不可用" : "待修复"}
                 </Tag>
                 <Typography.Text type="secondary">{j.status === "error" ? j.error : j.automation_note}</Typography.Text>
               </span>

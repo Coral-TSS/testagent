@@ -43,16 +43,16 @@ export function RequirementStatsTable({ rows, loading, error, onRetry, paginate 
       pagination={paginate ? undefined : false}
       error={error}
       onRetry={onRetry}
-      label="Requirement statistics"
+      label="需求统计"
       size="small"
       rowKey="requirement_id"
       loading={loading}
       dataSource={rows}
 
-      locale={{ emptyText: "No requirements" }}
+      locale={{ emptyText: "暂无需求" }}
       columns={[
         {
-          title: "Requirement",
+          title: "需求",
           dataIndex: "code",
           width: 220,
           render: (v: string, r) => (
@@ -61,13 +61,13 @@ export function RequirementStatsTable({ rows, loading, error, onRetry, paginate 
             </Link>
           ),
         },
-        { title: "Defects", dataIndex: "defect_count", width: 80, sorter: (a, b) => a.defect_count - b.defect_count },
-        { title: "Weighted score", dataIndex: "weighted_score", width: 80, render: fmtScore, sorter: (a, b) => a.weighted_score - b.weighted_score },
-        { title: "Executed cases", dataIndex: "executed_cases", width: 100 },
-        { title: "Defect density", dataIndex: "density", width: 90, render: fmtDensity, sorter: (a, b) => (a.density ?? -1) - (b.density ?? -1) },
-        { title: "Severity distribution", dataIndex: "by_severity", render: (v: Record<string, number>) => <BySeverity value={v} /> },
+        { title: "缺陷", dataIndex: "defect_count", width: 80, sorter: (a, b) => a.defect_count - b.defect_count },
+        { title: "加权分", dataIndex: "weighted_score", width: 80, render: fmtScore, sorter: (a, b) => a.weighted_score - b.weighted_score },
+        { title: "已执行用例", dataIndex: "executed_cases", width: 100 },
+        { title: "缺陷密度", dataIndex: "density", width: 90, render: fmtDensity, sorter: (a, b) => (a.density ?? -1) - (b.density ?? -1) },
+        { title: "严重级别分布", dataIndex: "by_severity", render: (v: Record<string, number>) => <BySeverity value={v} /> },
         {
-          title: "Owner / developer / tester",
+          title: "负责人 / 开发 / 测试",
           key: "people",
           render: (_: unknown, r) => [r.owner.join(", ") || "-", r.developers.join(", ") || "-", r.testers.join(", ") || "-"].join(" / "),
         },

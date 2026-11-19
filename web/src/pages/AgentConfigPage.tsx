@@ -20,7 +20,7 @@ export function AgentConfigPage() {
   }, [cfg.data, form]);
   const save = useApiMutation((body: Record<string, unknown>) => api<AgentConfig>("/agent/config", { method: "PUT", body }), {
     invalidate: [["agent-config"]],
-    success: "Settings saved",
+    success: "设置已保存",
   });
   const onFinish = (v: Record<string, unknown>) => {
     const body = { ...v };
@@ -41,23 +41,23 @@ export function AgentConfigPage() {
   return (
     <Card style={{ maxWidth: 720 }}>
       <Typography.Title level={3} style={{ marginTop: 0 }}>
-        Agent model settings
+        Agent 模型设置
       </Typography.Title>
       {cfg.data && !cfg.data.configured && (
-        <Alert type="warning" showIcon style={{ marginBottom: 16 }} title="No model configured yet; AI structuring, completion and strategy generation are unavailable." />
+        <Alert type="warning" showIcon style={{ marginBottom: 16 }} title="尚未配置模型；AI 结构化、补全和策略生成不可用。" />
       )}
-      {readOnly && <Alert type="info" showIcon style={{ marginBottom: 16 }} title="Only an admin can change the model settings." />}
+      {readOnly && <Alert type="info" showIcon style={{ marginBottom: 16 }} title="只有管理员可以更改模型设置。" />}
       <Form form={form} layout="vertical" onFinish={onFinish} disabled={readOnly}>
-        <Form.Item name="base_url" label="Base URL (OpenAI-compatible)" rules={[{ required: true }]}>
+        <Form.Item name="base_url" label="Base URL（兼容 OpenAI）" rules={[{ required: true }]}>
           <Input placeholder="https://api.example.com/v1" />
         </Form.Item>
-        <Form.Item name="model" label="Model name" rules={[{ required: true }]}>
+        <Form.Item name="model" label="模型名称" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
         <Form.Item
           name="api_key"
           label="API Key"
-          extra={cfg.data?.api_key_masked ? `Current: ${cfg.data.api_key_masked} (leave empty to keep)` : "Not set"}
+          extra={cfg.data?.api_key_masked ? `Current: ${cfg.data.api_key_masked} (leave empty to keep)` : "未设置"}
         >
           <Input.Password autoComplete="new-password" />
         </Form.Item>
@@ -68,37 +68,37 @@ export function AgentConfigPage() {
           <Form.Item name="max_tokens" label="max_tokens">
             <InputNumber min={1} />
           </Form.Item>
-          <Form.Item name="timeout_s" label="Timeout (seconds)">
+          <Form.Item name="timeout_s" label="超时（秒）">
             <InputNumber min={1} />
           </Form.Item>
-          <Form.Item name="max_steps" label="Max steps">
+          <Form.Item name="max_steps" label="最大步数">
             <InputNumber min={1} max={200} />
           </Form.Item>
         </Space>
-        <Typography.Title level={5}>Case automation</Typography.Title>
+        <Typography.Title level={5}>用例自动化</Typography.Title>
         <Space wrap align="start">
           <Form.Item
             name="max_self_checks"
-            label="Self-check attempts"
-            extra="How many pytest self-checks to run at most after the AI writes a script; if the last one fails the script is not bound and the case is marked “Needs fix”"
+            label="自检次数"
+            extra="AI 写完脚本后最多运行多少次 pytest 自检；如果最后一次失败，脚本不会绑定，用例会标记为“待修复”"
           >
             <InputNumber min={1} max={20} />
           </Form.Item>
           <Form.Item
             name="auto_automate"
-            label="Generate automation scripts after AI case generation"
+            label="AI 生成用例后接着生成自动化脚本"
             valuePropName="checked"
-            extra="Generated and self-checked one by one in the background; progress is on the version page; can be switched off per generation"
+            extra="会在后台逐条生成并自检；进度在版本页查看；每次生成都可以关闭此选项"
           >
             <Switch />
           </Form.Item>
         </Space>
         <Space>
           <Button type="primary" htmlType="submit" loading={save.isPending}>
-            Save
+            保存
           </Button>
           <Button onClick={test} loading={testing} disabled={!cfg.data?.configured}>
-            Test connection
+            测试连接
           </Button>
         </Space>
       </Form>

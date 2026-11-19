@@ -14,17 +14,17 @@ import { fmtTime } from "../utils/time";
 
 const ACTIVE = new Set(["queued", "running"]);
 export const PURPOSE: Record<string, string> = {
-  structure_requirement: "Requirement structuring",
-  complete_model: "Model completion",
-  generate_strategy: "Strategy generation",
-  generate_cases: "Case generation",
-  complete_case: "Case AI completion",
-  automate_case: "Case automation",
-  execute_case_browser: "Browser execution",
-  execute_case_api: "API execution",
-  analyze_failure: "Failure analysis",
-  summarize_report: "Report summary",
-  digest_correction: "Correction processing",
+  structure_requirement: "需求结构化",
+  complete_model: "模型补全",
+  generate_strategy: "策略生成",
+  generate_cases: "用例生成",
+  complete_case: "用例 AI 补全",
+  automate_case: "用例自动化",
+  execute_case_browser: "浏览器执行",
+  execute_case_api: "API 执行",
+  analyze_failure: "失败分析",
+  summarize_report: "报告摘要",
+  digest_correction: "纠正处理",
 };
 
 function json(value: unknown, labels?: Record<string, string>) {
@@ -60,11 +60,11 @@ export function StepItem({ step, labels }: { step: AgentStep & { resolved_args?:
           size="small"
           ghost
           items={[
-            { key: "a", label: "Parameter", children: json(step.args, labels) },
+            { key: "a", label: "参数", children: json(step.args, labels) },
             ...(step.resolved_args
-              ? [{ key: "x", label: "Actual arguments (resolved against the current system/codes)", children: json(step.resolved_args, labels) }]
+              ? [{ key: "x", label: "实际参数（已按当前系统/编号解析）", children: json(step.resolved_args, labels) }]
               : []),
-            { key: "r", label: "Result", children: json(step.result, labels) },
+            { key: "r", label: "结果", children: json(step.result, labels) },
           ]}
         />
       </>
@@ -73,7 +73,7 @@ export function StepItem({ step, labels }: { step: AgentStep & { resolved_args?:
   if (step.type === "submit_invalid") {
     return (
       <>
-        <Tag color="orange">Submission check failed</Tag>
+        <Tag color="orange">提交校验失败</Tag>
         <ul style={{ margin: 0 }}>
           {step.errors?.map((e, i) => (
             <li key={i}>
@@ -87,8 +87,8 @@ export function StepItem({ step, labels }: { step: AgentStep & { resolved_args?:
   if (step.type === "submit") {
     return (
       <>
-        <Tag color="green">Submission result</Tag>
-        <Collapse size="small" ghost items={[{ key: "r", label: "Result", children: json(step.result, labels) }]} />
+        <Tag color="green">提交结果</Tag>
+        <Collapse size="small" ghost items={[{ key: "r", label: "结果", children: json(step.result, labels) }]} />
       </>
     );
   }
@@ -131,40 +131,40 @@ export function AgentRunDrawer({ runId, onClose }: { runId: string | null; onClo
   });
   const cancel = useApiMutation(() => api(`/agent/runs/${runId}/cancel`, { method: "POST" }), {
     invalidate: [["agent-run", runId]],
-    success: "Cancellation requested",
+    success: "已请求取消",
   });
   const r = run.data;
   return (
-    <ReadingDrawer kind="agent" open={Boolean(runId)} onClose={onClose} title="Agent run trace">
+    <ReadingDrawer kind="agent" open={Boolean(runId)} onClose={onClose} title="Agent 运行追踪">
       {r && (
         <>
           <Descriptions column={2} size="small" style={{ marginBottom: 16 }}>
-            <Descriptions.Item label="Purpose">{PURPOSE[r.purpose] || r.purpose}</Descriptions.Item>
-            <Descriptions.Item label="object" span={2}>
+            <Descriptions.Item label="用途">{PURPOSE[r.purpose] || r.purpose}</Descriptions.Item>
+            <Descriptions.Item label="对象" span={2}>
               <RefLinks refs={r.subjects} />
             </Descriptions.Item>
-            <Descriptions.Item label="Status">
+            <Descriptions.Item label="状态">
               <Space>
                 <RunStatusTag status={r.status} />
                 {ACTIVE.has(r.status) && (
                   <Button size="small" danger disabled={r.cancel_requested} onClick={() => cancel.mutate()}>
-                    {r.cancel_requested ? "Cancelling" : "Cancel"}
+                    {r.cancel_requested ? "正在取消" : "取消"}
                   </Button>
                 )}
               </Space>
             </Descriptions.Item>
-            <Descriptions.Item label="Start">{fmtTime(r.started_at, { seconds: true })}</Descriptions.Item>
-            <Descriptions.Item label="End">{fmtTime(r.ended_at, { seconds: true })}</Descriptions.Item>
-            <Descriptions.Item label="Injected prompts">
+            <Descriptions.Item label="开始">{fmtTime(r.started_at, { seconds: true })}</Descriptions.Item>
+            <Descriptions.Item label="结束">{fmtTime(r.ended_at, { seconds: true })}</Descriptions.Item>
+            <Descriptions.Item label="已注入的提示词">
               {[r.injected?.template, r.injected?.entry_template]
                 .filter(Boolean)
                 .map((t) => `${t!.name} v${t!.version}`)
-                .join(", ") || "Built-in default"}
+                .join(", ") || "内置默认"}
             </Descriptions.Item>
-            <Descriptions.Item label="Injected memories">
-              {r.injected?.memory_ids?.length ? <Link to="/agent/tools?tab=memories">{r.injected.memory_ids.length} item(s)</Link> : "None"}
+            <Descriptions.Item label="已注入的记忆">
+              {r.injected?.memory_ids?.length ? <Link to="/agent/tools?tab=memories">{r.injected.memory_ids.length} 项</Link> : "无"}
             </Descriptions.Item>
-            <Descriptions.Item label="Run ID">
+            <Descriptions.Item label="执行 ID">
               <Typography.Text copyable style={{ fontSize: 12 }}>
                 {r.id}
               </Typography.Text>
@@ -173,8 +173,8 @@ export function AgentRunDrawer({ runId, onClose }: { runId: string | null; onClo
           {r.error_code && <Alert type="error" showIcon style={{ marginBottom: 16 }} title={r.error_code} description={r.error} />}
         </>
       )}
-      <ListSection label="Agent trace steps" count={r?.steps.length} error={run.isError} onRetry={() => run.refetch()}>
-        {r?.steps.length ? <Timeline items={r.steps.map((s, i) => ({ key: i, content: <StepItem step={s} labels={r.labels} /> }))} /> : <Empty description="No steps yet" />}
+      <ListSection label="Agent 追踪步骤" count={r?.steps.length} error={run.isError} onRetry={() => run.refetch()}>
+        {r?.steps.length ? <Timeline items={r.steps.map((s, i) => ({ key: i, content: <StepItem step={s} labels={r.labels} /> }))} /> : <Empty description="暂无步骤" />}
       </ListSection>
     </ReadingDrawer>
   );

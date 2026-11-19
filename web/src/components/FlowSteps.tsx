@@ -14,7 +14,7 @@ export function FlowSteps({ progress, compact }: { progress: SutProgress; compac
   const location = useLocation();
   const [runTasks, setRunTasks] = useState<string | null>(null);
   const next = progress.next;
-  /** "Run tasks" opens the batch-run dialog in place; going to the page you are on scrolls to its target. */
+  /** "执行任务" opens the batch-run dialog in place; going to the page you are on scrolls to its target. */
   const go = () => {
     if (!next) return;
     if (next.kind === "run_tasks" && next.version_id) {
@@ -65,7 +65,7 @@ export function FlowSteps({ progress, compact }: { progress: SutProgress; compac
         </Space>
       ) : (
         <Typography.Text type="success" style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
-          Main flow complete
+          主流程已完成
         </Typography.Text>
       )}
     </div>

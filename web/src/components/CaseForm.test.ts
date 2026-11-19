@@ -5,7 +5,7 @@ describe("formToBody", () => {
     const { body, error } = formToBody({
       title: "Amount is 0",
       test_point: "  ",
-      steps: [{ action: "Submit" }, { action: " " }],
+      steps: [{ action: "提交" }, { action: " " }],
       test_data: '{"amount": 0}',
       requirement_ids: ["r1"],
     });
@@ -16,7 +16,7 @@ describe("formToBody", () => {
       priority: "P1",
       type_tag: "functional",
       mode: "manual",
-      steps: [{ action: "Submit" }],
+      steps: [{ action: "提交" }],
       test_data: { amount: 0 },
       requirement_ids: ["r1"],
       node_ids: [],
@@ -25,6 +25,6 @@ describe("formToBody", () => {
 
   it("rejects invalid or non-object test data", () => {
     expect(formToBody({ title: "x", test_data: "{bad" }).error).toMatch(/JSON/);
-    expect(formToBody({ title: "x", test_data: "[1]" }).error).toMatch(/object/);
+    expect(formToBody({ title: "x", test_data: "[1]" }).error).toMatch(/对象|JSON 对象/);
   });
 });

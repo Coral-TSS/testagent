@@ -47,7 +47,7 @@ export function MissingScriptsModal({
         method: "POST",
         body: { case_ids: ids, environment_id: task.environment_id || undefined },
       });
-      message.success(`AI automation queued for ${out.queued} case(s); run the task again when they are bound`);
+      message.success(`已为 ${out.queued} 条用例排队 AI 自动化；脚本绑定后再执行任务`);
       onClose();
     } catch (err) {
       message.error(describeError(err));
@@ -71,7 +71,7 @@ export function MissingScriptsModal({
       }
       // taking them out by hand: the rule will not put them back
       await api(`/tasks/${task.id}/cases`, { method: "PUT", body: { case_ids: task.cases.map((c) => c.id).filter((i) => !ids.includes(i)) } });
-      message.success(`Moved ${ids.length} case(s) to an agent task`);
+      message.success(`已将 ${ids.length} 条用例移到 Agent 任务`);
       refresh();
       onClose();
     } catch (err) {
@@ -82,12 +82,12 @@ export function MissingScriptsModal({
   };
 
   return (
-    <Modal open={open} onCancel={onClose} footer={null} width={640} title="Some cases in this automated task have no automation script" destroyOnHidden>
+    <Modal open={open} onCancel={onClose} footer={null} width={640} title="该自动化任务中的部分用例还没有自动化脚本" destroyOnHidden>
       <Alert
         type="warning"
         showIcon
         style={{ marginBottom: 12 }}
-        title={`${gaps.length} case(s) have no script yet. If you run anyway they are skipped (not executed, not an error, not counted in the pass rate).`}
+        title={`${gaps.length} 条用例尚无脚本。若仍要执行，这些用例会被跳过（未执行，不算错误，也不计入通过率）。`}
       />
       <Space wrap style={{ marginBottom: 12 }} data-testid="gap-list">
         {gaps.map((g) => (
@@ -99,20 +99,20 @@ export function MissingScriptsModal({
       <Space orientation="vertical" style={{ width: "100%" }} size={12}>
         <div>
           <Button type="primary" loading={busy === "generate"} onClick={generate}>
-            Generate scripts (AI automation)
+            生成脚本（AI 自动化）
           </Button>
-          <Typography.Text type="secondary"> Queues AI automation for these cases.</Typography.Text>
+          <Typography.Text type="secondary"> 将这些用例加入 AI 自动化队列。</Typography.Text>
         </div>
         <Space wrap>
           <Button loading={busy === "move"} onClick={move}>
-            Move to an agent task
+            移到 Agent 任务
           </Button>
           <Select
-            aria-label="Target task"
+            aria-label="目标任务"
             style={{ width: 260 }}
             value={target}
             onChange={setTarget}
-            options={[{ value: "new", label: "New agent task" }, ...agentTasks.map((t) => ({ value: t.id, label: t.name }))]}
+            options={[{ value: "new", label: "新建 Agent 任务" }, ...agentTasks.map((t) => ({ value: t.id, label: t.name }))]}
           />
         </Space>
         <div>
@@ -122,7 +122,7 @@ export function MissingScriptsModal({
               onProceed();
             }}
           >
-            {action === "run" ? "Skip these cases and run" : "Set ready anyway"}
+            {action === "run" ? "跳过这些用例并执行" : "仍然设为就绪"}
           </Button>
         </div>
       </Space>

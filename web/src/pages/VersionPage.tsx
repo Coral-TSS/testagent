@@ -19,7 +19,7 @@ import { RunTasksModal } from "../components/RunTasksModal";
 import { SuggestionList, completionNote } from "../components/SuggestionList";
 import { fmtTime } from "../utils/time";
 
-const ROLE: Record<string, string> = { owner: "Owner", developer: "Developer", tester: "Tester" };
+const ROLE: Record<string, string> = { owner: "负责人", developer: "开发", tester: "测试" };
 
 /** P05 version detail + requirement list; P06 requirement drawer; strategy & tasks */
 export function VersionPage() {
@@ -65,23 +65,23 @@ export function VersionPage() {
   };
   const create = useApiMutation((body: Record<string, unknown>) => api(`/versions/${versionId}/requirements`, { method: "POST", body }), {
     invalidate: [["requirements", versionId]],
-    success: "Requirement created",
+    success: "需求已创建",
     onSuccess: () => {
       setCreating(false);
       form.resetFields();
     },
   });
-  const freeze = useApiMutation(() => api(`/versions/${versionId}/freeze`, { method: "POST" }), { onSuccess: refreshVersion, success: "Requirements frozen; model snapshot created" });
+  const freeze = useApiMutation(() => api(`/versions/${versionId}/freeze`, { method: "POST" }), { onSuccess: refreshVersion, success: "需求已冻结，并已创建模型快照" });
   const unfreeze = useApiMutation((reason: string) => api(`/versions/${versionId}/unfreeze`, { method: "POST", body: { reason } }), {
     onSuccess: () => {
       setUnfreezeReason(null);
       refreshVersion();
     },
-    success: "Unfrozen",
+    success: "已解冻",
   });
   const setStatus = useApiMutation((status: string) => api(`/versions/${versionId}/status`, { method: "POST", body: { status } }), {
     onSuccess: refreshVersion,
-    success: "Status updated",
+    success: "状态已更新",
   });
   const complete = useApiMutation(() => api<CompletionOutcome>(`/suts/${sutId}/model/complete`, { method: "POST", body: { version_id: versionId } }), {
     invalidate: [["suggestions", sutId]],
@@ -93,7 +93,7 @@ export function VersionPage() {
   });
 
   const versionReport = useApiMutation(() => api<{ id: string }>(`/versions/${versionId}/report`, { method: "POST" }), {
-    success: "Version report generated",
+    success: "版本报告已生成",
     invalidate: [["reports"]],
     onSuccess: (r) => navigate(`/reports/${r.id}`),
   });
@@ -121,41 +121,41 @@ export function VersionPage() {
                     loading={freeze.isPending}
                     onClick={() =>
                       modal.confirm({
-                        title: "Freeze requirements?",
-                        content: "All requirements must be confirmed. Freezing creates a model snapshot and makes the requirements read-only.",
+                        title: "要冻结需求吗？",
+                        content: "所有需求都必须已确认。冻结会生成模型快照，并使需求变为只读。",
                         onOk: () => freeze.mutateAsync(),
                       })
                     }
                   >
-                    Freeze requirements
+                    冻结需求
                   </Button>
                 )}
                 {v.status === "requirements_frozen" && (
                   <>
                     <Button icon={<UnlockOutlined />} onClick={() => setUnfreezeReason("")}>
-                      Unfreeze
+                      取消冻结
                     </Button>
                     <Button type="primary" onClick={() => setRunTasks(true)}>
-                      Start testing
+                      开始测试
                     </Button>
                   </>
                 )}
-                {v.status === "testing" && <Button onClick={() => setStatus.mutate("closed")}>Close version</Button>}
+                {v.status === "testing" && <Button onClick={() => setStatus.mutate("closed")}>关闭版本</Button>}
                 {v.status !== "planning" && (
                   <Button icon={<FileTextOutlined />} loading={versionReport.isPending} onClick={() => versionReport.mutate()}>
-                    Generate version report
+                    生成版本报告
                   </Button>
                 )}
-                <Link to={`/reports?sut_id=${v.sut_id}&version_id=${v.id}`}>Report history</Link>
+                <Link to={`/reports?sut_id=${v.sut_id}&version_id=${v.id}`}>报告历史</Link>
               </Space>
             }
             column={3}
           >
-            <Descriptions.Item label="SUT">
-              <Link to={`/suts/${v.sut_id}`}>{v.sut_name ? `${v.sut_name} (${v.sut_code})` : "View"}</Link>
+            <Descriptions.Item label="被测系统">
+              <Link to={`/suts/${v.sut_id}`}>{v.sut_name ? `${v.sut_name} (${v.sut_code})` : "查看"}</Link>
             </Descriptions.Item>
-            <Descriptions.Item label="Frozen at">{fmtTime(v.frozen_at, { seconds: true })}</Descriptions.Item>
-            <Descriptions.Item label="Model snapshot">{v.model_snapshot_id ? <Tag color="purple">Generated</Tag> : "-"}</Descriptions.Item>
+            <Descriptions.Item label="冻结于">{fmtTime(v.frozen_at, { seconds: true })}</Descriptions.Item>
+            <Descriptions.Item label="模型快照">{v.model_snapshot_id ? <Tag color="purple">已生成</Tag> : "-"}</Descriptions.Item>
           </Descriptions>
         )}
       </Card>
@@ -166,14 +166,14 @@ export function VersionPage() {
           items={[
             {
               key: "requirements",
-              label: listTitle("Requirements", reqs.data?.length),
+              label: listTitle("需求", reqs.data?.length),
               children: (
                 <>
                   <Button icon={<PlusOutlined />} disabled={locked} style={{ marginBottom: 12 }} onClick={() => setCreating(true)}>
-                    Add requirement
+                    添加需求
                   </Button>
                   <BatchBar
-                    noun=" requirement(s)"
+                    noun=" 条需求"
                     selected={reqSel}
                     labelOf={(id) => {
                       const r = reqs.data?.find((x) => x.id === id);
@@ -191,15 +191,15 @@ export function VersionPage() {
                         : [
                             {
                               key: "structure",
-                              label: "AI structure",
+                              label: "AI 结构化",
                               run: (id: string) => api(`/requirements/${id}/structure`, { method: "POST" }),
                             },
                           ]),
                       {
                         key: "confirm",
-                        label: "Confirm",
+                        label: "确认",
                         primary: true,
-                        confirm: `Confirm the ${reqSel.length} selected requirement(s)? (only structured requirements can be confirmed)`,
+                        confirm: `要确认所选的 ${reqSel.length} 条需求吗？（只有已结构化的需求可以确认）`,
                         run: (id: string) => api(`/requirements/${id}/confirm`, { method: "POST" }),
                       },
                       ...(locked
@@ -207,16 +207,16 @@ export function VersionPage() {
                         : [
                             {
                               key: "delete",
-                              label: "Delete",
+                              label: "删除",
                               danger: true,
-                              confirm: `Delete the ${reqSel.length} selected requirement(s)? Requirements with linked cases cannot be deleted.`,
+                              confirm: `要删除所选的 ${reqSel.length} 条需求吗？已关联用例的需求不能删除。`,
                               run: (id: string) => api(`/requirements/${id}`, { method: "DELETE" }),
                             },
                           ]),
                     ]}
                   />
                   <ListTable<Requirement>
-                    label="Requirements"
+                    label="需求"
                     error={reqs.isError}
                     onRetry={() => reqs.refetch()}
                     size="small"
@@ -227,9 +227,9 @@ export function VersionPage() {
                     locale={{
                       emptyText: (
                         <EmptyState
-                          title="This version has no requirements yet"
-                          hint="Enter the requirements to test this time (title and text), assign owners, click “AI structure” to split them into actor/preconditions/action/expected result/constraints linked to the model, confirm, then freeze."
-                          actionLabel={locked ? undefined : "Add requirement"}
+                          title="该版本还没有需求"
+                          hint="录入本次要测的需求（标题和正文），指定负责人，点击“AI 结构化”拆成与模型关联的执行者/前置条件/动作/预期结果/约束，确认后再冻结。"
+                          actionLabel={locked ? undefined : "添加需求"}
                           onAction={() => setCreating(true)}
                         />
                       ),
@@ -242,12 +242,12 @@ export function VersionPage() {
                       style: { cursor: "pointer" },
                     })}
                     columns={[
-                      { title: "Code", dataIndex: "code", width: 110 },
-                      { title: "Title", dataIndex: "title" },
-                      { title: "Priority", dataIndex: "priority", width: 80 },
-                      { title: "Status", dataIndex: "status", width: 100, render: (s) => <RequirementStatusTag status={s} /> },
+                      { title: "编号", dataIndex: "code", width: 110 },
+                      { title: "标题", dataIndex: "title" },
+                      { title: "优先级", dataIndex: "priority", width: 80 },
+                      { title: "状态", dataIndex: "status", width: 100, render: (s) => <RequirementStatusTag status={s} /> },
                       {
-                        title: "Owners",
+                        title: "负责人",
                         render: (_, r) => (r.people || []).map((p) => <Tag key={`${p.person_id}-${p.role}`}>{`${ROLE[p.role]}: ${p.name}`}</Tag>),
                       },
                     ]}
@@ -257,11 +257,11 @@ export function VersionPage() {
             },
             {
               key: "suggestions",
-              label: listTitle("Model suggestions", suggestions.data?.length),
+              label: listTitle("模型建议", suggestions.data?.length),
               children: (
                 <>
                   <Button icon={<RobotOutlined />} loading={complete.isPending} disabled={!sutId} onClick={() => complete.mutate()} style={{ marginBottom: 12 }}>
-                    AI complete model
+                    AI 补全模型
                   </Button>
                   <SuggestionList
                     loading={suggestions.isLoading}
@@ -279,19 +279,19 @@ export function VersionPage() {
             },
             {
               key: "cases",
-              label: listTitle("Test cases & coverage", caseCount.data?.length),
+              label: listTitle("测试用例与覆盖", caseCount.data?.length),
               children: sutId && <CaseList sutId={sutId} versionId={versionId} onOpenRun={(id) => setParam("run", id)} />,
             },
             {
               key: "strategy",
-              label: listTitle("Test strategy & tasks", taskCount.data?.length),
+              label: listTitle("测试策略与任务", taskCount.data?.length),
               children: v && <StrategyTab version={v} onOpenRun={(id) => setParam("run", id)} />,
             },
             {
               key: "history",
-              label: listTitle("Change log", history.data?.length),
+              label: listTitle("变更日志", history.data?.length),
               children: (
-                <ListSection label="Version changes" count={history.data?.length} error={history.isError} onRetry={() => history.refetch()}>
+                <ListSection label="版本变更" count={history.data?.length} error={history.isError} onRetry={() => history.refetch()}>
                 <Timeline
                   items={(history.data || []).map((h, i) => ({
                     key: i,
@@ -317,28 +317,28 @@ export function VersionPage() {
         onOpenRun={(id) => setParam("run", id)}
       />
       <AgentRunDrawer runId={params.get("run")} onClose={() => setParam("run", null)} />
-      <Modal title="Add requirement" open={creating} onCancel={() => setCreating(false)} onOk={() => form.submit()} confirmLoading={create.isPending} forceRender>
+      <Modal title="添加需求" open={creating} onCancel={() => setCreating(false)} onOk={() => form.submit()} confirmLoading={create.isPending} forceRender>
         <Form form={form} layout="vertical" initialValues={{ priority: "P1" }} onFinish={(vals) => create.mutate(vals)}>
-          <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+          <Form.Item name="title" label="标题" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="priority" label="Priority">
+          <Form.Item name="priority" label="优先级">
             <Select options={["P0", "P1", "P2"].map((p) => ({ value: p, label: p }))} />
           </Form.Item>
-          <Form.Item name="raw_text" label="Requirement text">
+          <Form.Item name="raw_text" label="需求正文">
             <Input.TextArea rows={5} />
           </Form.Item>
         </Form>
       </Modal>
       <Modal
-        title="Unfreeze version"
+        title="解冻版本"
         open={unfreezeReason !== null}
         onCancel={() => setUnfreezeReason(null)}
         okButtonProps={{ disabled: !unfreezeReason?.trim() }}
         confirmLoading={unfreeze.isPending}
         onOk={() => unfreeze.mutate(unfreezeReason!.trim())}
       >
-        <p>After unfreezing, requirements can be edited again and must be confirmed and frozen again. Please give a reason (recorded in the change log).</p>
+        <p>解冻后需求可再次编辑，并且必须重新确认并冻结。请填写原因（会记入变更日志）。</p>
         <Input.TextArea rows={3} value={unfreezeReason || ""} onChange={(e) => setUnfreezeReason(e.target.value)} />
       </Modal>
     </>

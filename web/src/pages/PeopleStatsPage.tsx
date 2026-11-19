@@ -12,9 +12,9 @@ import { SEVERITY } from "../components/DefectTags";
 import { ByRole, RequirementStatsTable, fmtScore } from "../components/StatsTables";
 
 const SORT: Record<string, string> = {
-  attributed_score: "By weighted score",
-  attributed_count: "By attributed defects",
-  related_count: "By related defects",
+  attributed_score: "按加权分",
+  attributed_count: "按已归因缺陷",
+  related_count: "按相关缺陷",
 };
 
 /** Severity weights: only affect statistics and reports generated afterwards (existing reports keep their weights) */
@@ -27,29 +27,29 @@ export function SeverityWeightsCard() {
     if (q.data) form.setFieldsValue(q.data);
   }, [q.data, form]);
   const save = useApiMutation((body: SeverityWeights) => api<SeverityWeights>("/settings/severity-weights", { method: "PUT", body }), {
-    success: "Weights saved; new statistics and reports will use them",
+    success: "权重已保存；新的统计和报告将使用它们",
     onSuccess: () => qc.invalidateQueries({ queryKey: ["severity-weights"] }).then(() => qc.invalidateQueries({ queryKey: ["stats"] })),
   });
   return (
-    <Card title="Severity weights" size="small" style={{ marginBottom: 16 }} loading={q.isLoading}>
+    <Card title="严重级别权重" size="small" style={{ marginBottom: 16 }} loading={q.isLoading}>
       <Form form={form} layout="inline" onFinish={(v) => save.mutate(v)}>
         {Object.entries(SEVERITY).map(([k, [label]]) => (
-          <Form.Item key={k} name={k} label={label} rules={[{ required: true, message: "Required" }]}>
+          <Form.Item key={k} name={k} label={label} rules={[{ required: true, message: "必填" }]}>
             <InputNumber min={0} max={1000} style={{ width: 80 }} />
           </Form.Item>
         ))}
         <Form.Item>
           <Space>
             <Button htmlType="submit" loading={save.isPending}>
-              Save weights
+              保存权重
             </Button>
             <Button type="link" disabled={!defaults.data} onClick={() => defaults.data && form.setFieldsValue(defaults.data)}>
-              Fill in defaults
+              填入默认值
             </Button>
           </Space>
         </Form.Item>
       </Form>
-      <Typography.Text type="secondary">Weighted score = sum of the severity weights of the defects{defaults.data ? ` (default ${Object.entries(SEVERITY).map(([k, [l]]) => `${l} ${defaults.data[k]}`).join(" / ")})` : ""}; rejected defects do not count. Generated reports keep the weights they were generated with.</Typography.Text>
+      <Typography.Text type="secondary">加权分 = 各缺陷严重级别权重之和{defaults.data ? `（默认 ${Object.entries(SEVERITY).map(([k, [l]]) => `${l} ${defaults.data[k]}`).join(" / ")}）` : ""}；已拒绝的缺陷不计入。已生成的报告沿用生成时的权重。</Typography.Text>
     </Card>
   );
 }
@@ -96,10 +96,10 @@ export function PeopleStatsPage() {
   return (
     <>
       <SeverityWeightsCard />
-      <Card title="People stats">
+      <Card title="人员统计">
         <Space wrap style={{ marginBottom: 12 }}>
-          <Select allowClear placeholder="SUT" style={{ width: 150 }} value={sutId} onChange={(v) => update({ sut_id: v, version_id: undefined })} options={(suts.data || []).map((s) => ({ value: s.id, label: s.code }))} />
-          <Select allowClear placeholder="Version" style={{ width: 130 }} disabled={!sutId} value={versionId} onChange={(v) => update({ version_id: v })} options={(versions.data || []).map((v) => ({ value: v.id, label: v.name }))} />
+          <Select allowClear placeholder="被测系统" style={{ width: 150 }} value={sutId} onChange={(v) => update({ sut_id: v, version_id: undefined })} options={(suts.data || []).map((s) => ({ value: s.id, label: s.code }))} />
+          <Select allowClear placeholder="版本" style={{ width: 130 }} disabled={!sutId} value={versionId} onChange={(v) => update({ version_id: v })} options={(versions.data || []).map((v) => ({ value: v.id, label: v.name }))} />
           <DatePicker.RangePicker
             value={from && to ? [dayjs(from), dayjs(to)] : null}
             onChange={(r) =>
@@ -119,10 +119,10 @@ export function PeopleStatsPage() {
           items={[
             {
               key: "people",
-              label: listTitle("People ranking", people.data?.length),
+              label: listTitle("人员排行", people.data?.length),
               children: (
                 <ListTable<PersonStat>
-                  label="People ranking"
+                  label="人员排行"
                   error={people.isError}
                   onRetry={() => people.refetch()}
                   size="small"
@@ -130,7 +130,7 @@ export function PeopleStatsPage() {
                   loading={people.isLoading}
                   dataSource={people.data}
 
-                  locale={{ emptyText: "No attributed or related defects in scope" }}
+                  locale={{ emptyText: "范围内没有已归因或相关缺陷" }}
                   expandable={{
                     rowExpandable: (p) => p.requirements.length > 0,
                     expandedRowRender: (p) => (
@@ -145,27 +145,27 @@ export function PeopleStatsPage() {
                   }}
                   columns={[
                     {
-                      title: "Person",
+                      title: "人员",
                       dataIndex: "name",
                       render: (v: string, p) => (
                         <Space>
                           <Link to={drill(p.person_id)}>{v}</Link>
-                          {!p.active && <Tag>Disabled</Tag>}
+                          {!p.active && <Tag>已停用</Tag>}
                         </Space>
                       ),
                     },
-                    { title: "Attributed defects", dataIndex: "attributed_count", width: 90 },
-                    { title: "Weighted score", dataIndex: "attributed_score", width: 80, render: fmtScore },
-                    { title: "By role (count/weighted score)", dataIndex: "attributed_by_role", render: (v: PersonStat["attributed_by_role"]) => <ByRole value={v} /> },
-                    { title: "Related defects", dataIndex: "related_count", width: 90 },
-                    { title: "", key: "drill", width: 90, render: (_: unknown, p) => <Link to={drill(p.person_id)}>View defects</Link> },
+                    { title: "已归因缺陷", dataIndex: "attributed_count", width: 90 },
+                    { title: "加权分", dataIndex: "attributed_score", width: 80, render: fmtScore },
+                    { title: "按角色（数量/加权分）", dataIndex: "attributed_by_role", render: (v: PersonStat["attributed_by_role"]) => <ByRole value={v} /> },
+                    { title: "相关缺陷", dataIndex: "related_count", width: 90 },
+                    { title: "", key: "drill", width: 90, render: (_: unknown, p) => <Link to={drill(p.person_id)}>查看缺陷</Link> },
                   ]}
                 />
               ),
             },
             {
               key: "requirements",
-              label: listTitle("Defect density per requirement", reqs.data?.length),
+              label: listTitle("各需求的缺陷密度", reqs.data?.length),
               children: <RequirementStatsTable rows={reqs.data} loading={reqs.isLoading} error={reqs.isError} onRetry={() => reqs.refetch()} />,
             },
           ]}

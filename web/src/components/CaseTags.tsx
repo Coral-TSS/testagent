@@ -1,14 +1,14 @@
 import { Tag } from "antd";
 
 export const SCENARIO: Record<string, [string, string]> = {
-  normal: ["Normal", "green"],
-  boundary: ["Boundary", "gold"],
-  exception: ["Exception", "red"],
+  normal: ["正常", "green"],
+  boundary: ["边界", "gold"],
+  exception: ["异常", "red"],
 };
 const STATUS: Record<string, [string, string]> = {
-  draft: ["Draft", "default"],
-  ready: ["Ready", "green"],
-  deprecated: ["Deprecated", "default"],
+  draft: ["草稿", "default"],
+  ready: ["就绪", "green"],
+  deprecated: ["已废弃", "default"],
 };
 
 export function ScenarioTag({ value }: { value?: string | null }) {

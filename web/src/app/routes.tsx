@@ -57,7 +57,7 @@ export const routes: RouteObject[] = [
       { path: "agent/runs", element: <AgentRunsPage /> }, // P15 agent runs
       { path: "agent/tools", element: <AgentToolsPage /> }, // P15
       { path: "users", element: <UsersPage /> }, // accounts (admin)
-      { path: "*", element: <Placeholder code="404" title="Page not found" milestone="—" /> },
+      { path: "*", element: <Placeholder code="404" title="页面不存在" milestone="—" /> },
     ],
   },
 ];

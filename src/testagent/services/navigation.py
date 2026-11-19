@@ -47,18 +47,18 @@ class _Chain:
         row = _one(self.cur, "SELECT id, sut_id, name, status FROM version WHERE id=%s", (version_id,))
         self.add_sut(row["sut_id"])
         self.version = {"id": str(row["id"]), "name": row["name"], "status": row["status"]}
-        self.add("version", row["id"], f"Version {row['name']}", f"/versions/{row['id']}")
+        self.add("version", row["id"], f"版本 {row['name']}", f"/versions/{row['id']}")
 
     def add_task(self, task_id):
         row = _one(self.cur, "SELECT id, version_id, name FROM test_task WHERE id=%s", (task_id,))
         self.add_version(row["version_id"])
-        self.add("strategy", None, "Test strategy & tasks", f"/versions/{row['version_id']}?tab=strategy")
+        self.add("strategy", None, "测试策略与任务", f"/versions/{row['version_id']}?tab=strategy")
         self.add("task", row["id"], row["name"], f"/tasks/{row['id']}")
 
     def add_run(self, run_id):
         row = _one(self.cur, "SELECT id, task_id, created_at FROM task_run WHERE id=%s", (run_id,))
         self.add_task(row["task_id"])
-        self.add("run", row["id"], f"Run {_fmt_time(row['created_at'])}", f"/runs/{row['id']}")
+        self.add("run", row["id"], f"执行 {_fmt_time(row['created_at'])}", f"/runs/{row['id']}")
 
     def add_case(self, case_id, with_parents=True):
         row = _one(
@@ -72,10 +72,10 @@ class _Chain:
         if with_parents:
             if row["version_id"]:
                 self.add_version(row["version_id"])
-                self.add("cases", None, "Case", f"/versions/{row['version_id']}?tab=cases")
+                self.add("cases", None, "用例", f"/versions/{row['version_id']}?tab=cases")
             else:
                 self.add_sut(row["sut_id"])
-                self.add("cases", None, "Case library", f"/suts/{row['sut_id']}/cases")
+                self.add("cases", None, "用例库", f"/suts/{row['sut_id']}/cases")
         self.add("case", row["id"], f"{row['title']} ({row['code']})", f"/cases/{row['id']}")
         return row
 
@@ -114,7 +114,7 @@ def context(db, kind: str, id_) -> dict:
             chain.add(
                 "execution",
                 row["id"],
-                f"{case['title']} ({case['code']}) execution",
+                f"{case['title']} ({case['code']}) 的执行",
                 f"/executions/{row['id']}",
             )
         elif kind == "defect":
@@ -125,39 +125,39 @@ def context(db, kind: str, id_) -> dict:
             else:
                 chain.add_sut(row["sut_id"])
                 path = f"/defects?sut_id={row['sut_id']}"
-            chain.add("defects", None, "Defect", path)
+            chain.add("defects", None, "缺陷", path)
             chain.add("defect", row["id"], f"{row['title']} ({row['code']})", f"/defects/{row['id']}")
         else:  # report
             row = _one(cur, "SELECT id, scope_type, scope_id FROM report WHERE id=%s", (id_,))
             if row["scope_type"] == "version":
                 chain.add_version(row["scope_id"])
-                label = "Version report"
+                label = "版本报告"
             else:
                 chain.add_run(row["scope_id"])
-                label = "Task report"
+                label = "任务报告"
             chain.add("report", row["id"], label, f"/reports/{row['id']}")
         return {"sut": chain.sut, "version": chain.version, "crumbs": chain.items}
 
 
 # ------------------------------------------------------------------ main-flow progress
 STEP_TITLES = {
-    "sut": "SUT",
-    "model": "Model",
-    "requirements": "Requirements",
-    "strategy": "Strategy",
-    "tasks": "Tasks",
-    "cases": "Cases",
-    "runs": "Runs",
-    "results": "Results",
+    "sut": "被测系统",
+    "model": "模型",
+    "requirements": "需求",
+    "strategy": "策略",
+    "tasks": "任务",
+    "cases": "用例",
+    "runs": "执行",
+    "results": "结果",
 }
 RUN_TEXT = {
-    "queued": "Queued",
-    "running": "Running",
-    "passed": "Passed",
-    "not_executed": "Not executed",
-    "failed": "failed",
-    "error": "Error",
-    "cancelled": "Cancelled",
+    "queued": "排队中",
+    "running": "运行中",
+    "passed": "通过",
+    "not_executed": "未执行",
+    "failed": "失败",
+    "error": "错误",
+    "cancelled": "已取消",
 }
 
 
@@ -208,9 +208,9 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
         step(
             "sut",
             "done" if envs else "todo",
-            f"Environment {envs} " if envs else "No environment yet (the SUT's address)",
+            f"环境 {envs} 个" if envs else "暂无环境（被测系统地址）",
             base,
-            None if envs else {"label": "Add environment", "path": base},
+            None if envs else {"label": "添加环境", "path": base},
         )
 
         cur.execute(
@@ -231,15 +231,15 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             (sut_id,),
         )
         model_done = nodes["entities"] > 0 and nodes["actions"] > 0
-        summary = f"entities {nodes['entities']} · actions {nodes['actions']} · links {links}"
+        summary = f"实体 {nodes['entities']} · 动作 {nodes['actions']} · 关系 {links}"
         if pending:
-            summary += f" · pending suggestions {pending}"
+            summary += f" · 待处理建议 {pending}"
         step(
             "model",
             "done" if model_done else ("doing" if nodes["entities"] or nodes["actions"] else "todo"),
             summary,
             f"{base}/model",
-            None if model_done else {"label": "Build the model (entities, actions, links)", "path": f"{base}/model"},
+            None if model_done else {"label": "构建模型（实体、动作、关系）", "path": f"{base}/model"},
         )
 
         vpath = f"/versions/{version['id']}" if version else f"{base}/versions"
@@ -247,12 +247,12 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             step(
                 "requirements",
                 "todo",
-                "No version yet",
+                "暂无版本",
                 vpath,
-                {"label": "New version", "path": vpath},
+                {"label": "新建版本", "path": vpath},
             )
             for key in ("strategy", "tasks", "cases", "runs", "results"):
-                step(key, "todo", "Create a version first", vpath)
+                step(key, "todo", "请先创建版本", vpath)
         else:
             vid = version["id"]
             cur.execute(
@@ -265,16 +265,16 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             if frozen:
                 st, action = "done", None
             elif not reqs["total"]:
-                st, action = "todo", {"label": "Add requirement", "path": vpath}
+                st, action = "todo", {"label": "添加需求", "path": vpath}
             elif reqs["confirmed"] < reqs["total"]:
-                st, action = "doing", {"label": "Confirm requirements", "path": vpath}
+                st, action = "doing", {"label": "确认需求", "path": vpath}
             else:
-                st, action = "doing", {"label": "Freeze requirements", "path": vpath}
+                st, action = "doing", {"label": "冻结需求", "path": vpath}
             step(
                 "requirements",
                 st,
-                f"Version {version['name']} · requirements {reqs['total']} (confirmed {reqs['confirmed']})"
-                + (" · frozen" if frozen else ""),
+                f"版本 {version['name']} · 需求 {reqs['total']}（已确认 {reqs['confirmed']}）"
+                + (" · 已冻结" if frozen else ""),
                 vpath,
                 action,
             )
@@ -283,14 +283,14 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             cur.execute("SELECT status FROM test_strategy WHERE version_id=%s", (vid,))
             strategy = cur.fetchone()
             if strategy and strategy["status"] == "confirmed":
-                step("strategy", "done", "Confirmed", spath)
+                step("strategy", "done", "已确认", spath)
             else:
                 step(
                     "strategy",
                     "doing" if strategy else "todo",
-                    "Draft, to be confirmed" if strategy else "No test strategy yet",
+                    "草稿，待确认" if strategy else "尚无测试策略",
                     spath,
-                    {"label": "Confirm test strategy" if strategy else "Create test strategy", "path": spath},
+                    {"label": "确认测试策略" if strategy else "创建测试策略", "path": spath},
                 )
 
             cur.execute(
@@ -302,9 +302,9 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             step(
                 "tasks",
                 "done" if tasks["ready"] else ("doing" if tasks["n"] else "todo"),
-                f"Task {tasks['n']} (ready/run {tasks['ready']})",
+                f"任务 {tasks['n']}（就绪/执行 {tasks['ready']}）",
                 spath,
-                None if tasks["ready"] else {"label": "Set ready" if tasks["n"] else "New task", "path": spath},
+                None if tasks["ready"] else {"label": "设为就绪" if tasks["n"] else "新建任务", "path": spath},
             )
 
             cpath = f"{vpath}?tab=cases"
@@ -320,11 +320,11 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             step(
                 "cases",
                 "done" if cases["ready"] else ("doing" if cases["n"] else "todo"),
-                f"Case {cases['n']} (ready {cases['ready']}, automated {cases['automated']})",
+                f"用例 {cases['n']}（就绪 {cases['ready']}，已自动化 {cases['automated']}）",
                 cpath,
                 None
                 if cases["ready"]
-                else {"label": "Review and set ready" if cases["n"] else "Generate cases", "path": cpath},
+                else {"label": "评审并设为就绪" if cases["n"] else "生成用例", "path": cpath},
             )
 
             cur.execute(
@@ -338,18 +338,18 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
                 step(
                     "runs",
                     "done" if last["status"] not in ("queued", "running") else "doing",
-                    f"Execution {last['n']} time(s), latest{RUN_TEXT.get(last['status'], last['status'])}",
+                    f"已执行 {last['n']} 次，最近一次{RUN_TEXT.get(last['status'], last['status'])}",
                     f"/runs/{last['id']}",
                 )
             else:
                 # #13: the button runs the tasks (the UI opens the "Run tasks" dialog), it does
                 # not just jump to the page; with nothing ready it says what is missing
                 action = (
-                    {"label": "Run tasks", "path": spath, "kind": "run_tasks", "version_id": str(vid)}
+                    {"label": "执行任务", "path": spath, "kind": "run_tasks", "version_id": str(vid)}
                     if tasks["ready"]
-                    else {"label": "Set tasks ready" if tasks["n"] else "New task", "path": spath}
+                    else {"label": "将任务设为就绪" if tasks["n"] else "新建任务", "path": spath}
                 )
-                step("runs", "todo", "Not run yet", spath, action)
+                step("runs", "todo", "尚未执行", spath, action)
 
             cur.execute(
                 "SELECT count(*) AS n, count(*) FILTER (WHERE status IN ('open','in_progress'))"
@@ -369,9 +369,9 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             step(
                 "results",
                 "done" if reports and not defects["open"] else ("doing" if reports else "todo"),
-                f"Defect {defects['n']} (open {defects['open']}) · reports {reports}",
+                f"缺陷 {defects['n']}（待处理 {defects['open']}）· 报告 {reports}",
                 f"/defects?sut_id={sut_id}&version_id={vid}" if defects["open"] else rpath,
-                {"label": "Handle defects", "path": f"/defects?sut_id={sut_id}&version_id={vid}"}
+                {"label": "处理缺陷", "path": f"/defects?sut_id={sut_id}&version_id={vid}"}
                 if defects["open"]
                 else None,
             )
@@ -390,7 +390,7 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             "next": {
                 "key": nxt["key"],
                 "title": nxt["title"],
-                "label": (nxt["action"] or {}).get("label") or f"Next: {nxt['title']}",
+                "label": (nxt["action"] or {}).get("label") or f"下一步：{nxt['title']}",
                 "path": (nxt["action"] or {}).get("path") or nxt["path"],
                 **{k: v for k, v in (nxt["action"] or {}).items() if k in ("kind", "version_id")},
             }

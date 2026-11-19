@@ -9,7 +9,7 @@ import { useApiMutation } from "../api/hooks";
 import type { Person } from "../api/types";
 import { SimpleCrud } from "../components/SimpleCrud";
 
-const ROLE: Record<string, string> = { owner: "Owner", developer: "Developer", tester: "Tester" };
+const ROLE: Record<string, string> = { owner: "负责人", developer: "开发", tester: "测试" };
 
 interface PersonReq {
   id: string;
@@ -29,7 +29,7 @@ function PersonRequirements({ personId }: { personId: string }) {
   });
   return (
     <ListTable<PersonReq>
-      label="Person requirements"
+      label="人员负责的需求"
       error={q.isError}
       onRetry={() => q.refetch()}
       size="small"
@@ -37,12 +37,12 @@ function PersonRequirements({ personId }: { personId: string }) {
       loading={q.isLoading}
       dataSource={q.data}
 
-      locale={{ emptyText: "Not responsible for any requirement yet" }}
+      locale={{ emptyText: "尚未负责任何需求" }}
       columns={[
-        { title: "System", dataIndex: "sut_code" },
-        { title: "Version", dataIndex: "version_name", render: (v, r) => <Link to={`/versions/${r.version_id}`}>{v}</Link> },
-        { title: "Requirement", render: (_, r) => `${r.code} ${r.title}` },
-        { title: "Role", dataIndex: "roles", render: (roles: string[]) => roles.map((x) => <Tag key={x}>{ROLE[x] || x}</Tag>) },
+        { title: "系统", dataIndex: "sut_code" },
+        { title: "版本", dataIndex: "version_name", render: (v, r) => <Link to={`/versions/${r.version_id}`}>{v}</Link> },
+        { title: "需求", render: (_, r) => `${r.code} ${r.title}` },
+        { title: "角色", dataIndex: "roles", render: (roles: string[]) => roles.map((x) => <Tag key={x}>{ROLE[x] || x}</Tag>) },
       ]}
     />
   );
@@ -58,20 +58,20 @@ export function PersonsPage() {
   const allPersons = useQuery({ queryKey: ["persons", false], queryFn: () => api<Person[]>("/persons") });
   const create = useApiMutation((body: Record<string, unknown>) => api("/persons", { method: "POST", body }), {
     invalidate: [["persons"]],
-    success: "Saved",
+    success: "已保存",
   });
   const update = useApiMutation(
     ({ id, body }: { id: string; body: Record<string, unknown> }) => api(`/persons/${id}`, { method: "PATCH", body }),
-    { invalidate: [["persons"]], success: "Saved" },
+    { invalidate: [["persons"]], success: "已保存" },
   );
   const deactivate = useApiMutation((id: string) => api(`/persons/${id}/deactivate`, { method: "POST" }), {
     invalidate: [["persons"]],
-    success: "Disabled",
+    success: "已停用",
   });
   return (
-    <Card extra={<Link to="/stats/people">People stats & ranking</Link>}>
+    <Card extra={<Link to="/stats/people">人员统计与排行</Link>}>
       <Typography.Title level={3} style={{ marginTop: 0 }}>
-        Person
+        人员
       </Typography.Title>
       <div style={{ marginBottom: 8 }}>
         <Switch checked={onlyActive} onChange={setOnlyActive} /> Active only
@@ -81,34 +81,34 @@ export function PersonsPage() {
         filtered={onlyActive}
         error={persons.isError || allPersons.isError}
         onRetry={() => { persons.refetch(); if (onlyActive) allPersons.refetch(); }}
-        title="Person"
-        emptyTitle="No people yet"
-        emptyHint="Register product, development and test people, assign owners on requirements by role; defects are attributed to people through requirements."
+        title="人员"
+        emptyTitle="暂无人员"
+        emptyHint="登记产品、开发和测试人员，按角色在需求上指定负责人；缺陷通过需求归因到人员。"
         rows={persons.data}
         loading={persons.isLoading}
         expandable={{ expandedRowRender: (p) => <PersonRequirements personId={p.id} /> }}
         columns={[
-          { title: "Name", dataIndex: "name" },
-          { title: "Title", dataIndex: "title" },
-          { title: "Email", dataIndex: "email" },
-          { title: "Status", dataIndex: "active", render: (a) => (a ? <Tag color="green">Active</Tag> : <Tag>Disabled</Tag>) },
+          { title: "名称", dataIndex: "name" },
+          { title: "标题", dataIndex: "title" },
+          { title: "邮箱", dataIndex: "email" },
+          { title: "状态", dataIndex: "active", render: (a) => (a ? <Tag color="green">正常</Tag> : <Tag>已停用</Tag>) },
         ]}
         fields={
           <>
-            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+            <Form.Item name="name" label="名称" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="title" label="Title">
+            <Form.Item name="title" label="标题">
               <Input />
             </Form.Item>
-            <Form.Item name="email" label="Email" rules={[{ type: "email" }]}>
+            <Form.Item name="email" label="邮箱" rules={[{ type: "email" }]}>
               <Input />
             </Form.Item>
           </>
         }
         onCreate={(v) => create.mutateAsync(v)}
         onUpdate={(row, v) => update.mutateAsync({ id: row.id, body: v })}
-        extraActions={(row) => row.active ? <a onClick={() => deactivate.mutate(row.id)}>Deactivate</a> : <a onClick={() => update.mutate({ id: row.id, body: { active: true } })}>Enable</a>}
+        extraActions={(row) => row.active ? <a onClick={() => deactivate.mutate(row.id)}>停用</a> : <a onClick={() => update.mutate({ id: row.id, body: { active: true } })}>启用</a>}
       />
     </Card>
   );

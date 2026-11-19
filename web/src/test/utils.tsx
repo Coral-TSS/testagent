@@ -1,14 +1,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { App as AntApp, ConfigProvider } from "antd";
-import enUS from "antd/locale/en_US";
+import zhCN from "antd/locale/zh_CN";
+import dayjs from "dayjs";
+import "dayjs/locale/zh-cn";
+
+dayjs.locale("zh-cn");
 import type { ReactElement } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 export function renderPage(element: ReactElement, { path = "/", route = "/", motion = true } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <ConfigProvider locale={enUS} theme={motion ? undefined : { token: { motion: false } }}>
+    <ConfigProvider locale={zhCN} button={{ autoInsertSpace: false }} theme={motion ? undefined : { token: { motion: false } }}>
       <AntApp>
         <QueryClientProvider client={qc}>
           <MemoryRouter initialEntries={[route]}>

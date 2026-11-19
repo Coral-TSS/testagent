@@ -1,57 +1,57 @@
 import { Tag } from "antd";
 
 const VERSION: Record<string, [string, string]> = {
-  planning: ["Planning", "blue"],
-  requirements_frozen: ["Requirements frozen", "purple"],
-  testing: ["Testing", "orange"],
-  closed: ["Closed", "default"],
+  planning: ["规划中", "blue"],
+  requirements_frozen: ["需求已冻结", "purple"],
+  testing: ["测试中", "orange"],
+  closed: ["已关闭", "default"],
 };
 const REQUIREMENT: Record<string, [string, string]> = {
-  draft: ["Draft", "default"],
-  structured: ["Structured", "blue"],
-  confirmed: ["Confirmed", "green"],
+  draft: ["草稿", "default"],
+  structured: ["已结构化", "blue"],
+  confirmed: ["已确认", "green"],
 };
 const RUN: Record<string, [string, string]> = {
-  queued: ["Queued", "default"],
-  running: ["Running", "processing"],
-  succeeded: ["Success", "green"],
-  failed: ["failed", "red"],
-  cancelled: ["Cancelled", "default"],
-  error: ["Error", "red"],
+  queued: ["排队中", "default"],
+  running: ["运行中", "processing"],
+  succeeded: ["成功", "green"],
+  failed: ["失败", "red"],
+  cancelled: ["已取消", "default"],
+  error: ["错误", "red"],
 };
 
 const EXECUTION: Record<string, [string, string]> = {
-  queued: ["Queued", "default"],
-  running: ["Running", "processing"],
-  passed: ["Passed", "green"],
-  failed: ["failed", "red"],
-  error: ["Error", "volcano"],
-  blocked: ["Blocked", "orange"],
-  skipped: ["Skipped", "default"],
+  queued: ["排队中", "default"],
+  running: ["运行中", "processing"],
+  passed: ["通过", "green"],
+  failed: ["失败", "red"],
+  error: ["错误", "volcano"],
+  blocked: ["阻塞", "orange"],
+  skipped: ["跳过", "default"],
 };
 const TASK_RUN: Record<string, [string, string]> = {
-  queued: ["Queued", "default"],
-  running: ["Running", "processing"],
-  passed: ["Passed", "green"],
-  failed: ["Has failures", "red"],
-  error: ["Error", "volcano"],
-  cancelled: ["Cancelled", "default"],
+  queued: ["排队中", "default"],
+  running: ["运行中", "processing"],
+  passed: ["通过", "green"],
+  failed: ["存在失败", "red"],
+  error: ["错误", "volcano"],
+  cancelled: ["已取消", "default"],
   // nothing ran: every case lacks an automation script (neither passed nor failed)
-  not_executed: ["Not executed", "gold"],
+  not_executed: ["未执行", "gold"],
 };
 const TASK: Record<string, [string, string]> = {
-  draft: ["Draft", "default"],
-  ready: ["Ready", "blue"],
-  running: ["Running", "processing"],
-  done: ["Done", "green"],
-  cancelled: ["Cancelled", "default"],
-  archived: ["Archived", "default"],
+  draft: ["草稿", "default"],
+  ready: ["就绪", "blue"],
+  running: ["运行中", "processing"],
+  done: ["已完成", "green"],
+  cancelled: ["已取消", "default"],
+  archived: ["已归档", "default"],
 };
 export const EXECUTOR_LABEL: Record<string, string> = {
-  agent_browser: "Agent browser",
+  agent_browser: "Agent 浏览器",
   agent_api: "Agent API",
-  pytest: "pytest script",
-  manual: "Manual",
+  pytest: "pytest 脚本",
+  manual: "手工",
 };
 
 function make(map: Record<string, [string, string]>) {
@@ -67,5 +67,5 @@ export const RunStatusTag = make(RUN);
 export const ExecutionStatusTag = make(EXECUTION);
 export const TaskRunStatusTag = make(TASK_RUN);
 export const TaskStatusTag = make(TASK);
-export const KIND_LABEL: Record<string, string> = { entity: "entities", action: "Actions", relation: "Link" };
+export const KIND_LABEL: Record<string, string> = { entity: "实体", action: "动作", relation: "关系" };
 export const KIND_COLOR: Record<string, string> = { entity: "#1677ff", action: "#52c41a", relation: "#fa8c16" };

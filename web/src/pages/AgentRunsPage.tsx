@@ -35,11 +35,11 @@ export function AgentRunsPage() {
   return (
     <Card>
       <Typography.Title level={3} style={{ marginTop: 0 }}>
-        Agent run trace
+        Agent 运行追踪
       </Typography.Title>
-      <Select allowClear placeholder="All purposes" style={{ width: 180, marginBottom: 12 }} options={PURPOSES} value={purpose} onChange={setPurpose} />
+      <Select allowClear placeholder="全部用途" style={{ width: 180, marginBottom: 12 }} options={PURPOSES} value={purpose} onChange={setPurpose} />
       <ListTable<RunRow>
-        label="Agent traces"
+        label="Agent 追踪"
         error={runs.isError}
         onRetry={() => runs.refetch()}
         recordLimit={100}
@@ -49,12 +49,12 @@ export function AgentRunsPage() {
         dataSource={runs.data}
         onRow={(r) => ({ onClick: () => setParams({ run: r.id }), style: { cursor: "pointer" } })}
         columns={[
-          { title: "Time", dataIndex: "created_at", render: (t: string) => t.replace("T", " ").slice(0, 19) },
-          { title: "Purpose", dataIndex: "purpose", render: (p) => label.get(p) || p },
-          { title: "object", dataIndex: "subjects", render: (s?: RefLabel[]) => <RefLinks refs={s} max={3} /> },
-          { title: "Status", dataIndex: "status", render: (s) => <RunStatusTag status={s} /> },
-          { title: "Steps", dataIndex: "step_count" },
-          { title: "Error", dataIndex: "error_code" },
+          { title: "时间", dataIndex: "created_at", render: (t: string) => t.replace("T", " ").slice(0, 19) },
+          { title: "用途", dataIndex: "purpose", render: (p) => label.get(p) || p },
+          { title: "对象", dataIndex: "subjects", render: (s?: RefLabel[]) => <RefLinks refs={s} max={3} /> },
+          { title: "状态", dataIndex: "status", render: (s) => <RunStatusTag status={s} /> },
+          { title: "步骤", dataIndex: "step_count" },
+          { title: "错误", dataIndex: "error_code" },
         ]}
       />
       <AgentRunDrawer runId={params.get("run")} onClose={() => setParams({})} />

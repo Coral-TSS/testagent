@@ -15,7 +15,7 @@ const base: RunnableTask = {
   executor: "agent",
   status: "ready",
   environment_id: "env1",
-  environment_name: "Testing",
+  environment_name: "测试中",
   ready_cases: 2,
   case_count: 2,
   active_run_id: null,
@@ -42,16 +42,16 @@ describe("RunTasksModal (#13)", () => {
     const onDone = vi.fn();
     renderPage(<RunTasksModal open versionId="v1" startTesting onClose={() => {}} onDone={onDone} />);
     expect(await screen.findByText("Draft task")).toBeTruthy();
-    expect(screen.getByText("Not set ready")).toBeTruthy();
-    expect(screen.getByText("No environment")).toBeTruthy();
-    expect(screen.getByTestId("run-tasks-gaps").textContent).toContain("1 case(s)");
-    const button = await screen.findByRole("button", { name: "Run 2 task(s)" });
+    expect(screen.getByText("未设为就绪")).toBeTruthy();
+    expect(screen.getByText("无环境")).toBeTruthy();
+    expect(screen.getByTestId("run-tasks-gaps").textContent).toContain("1 条用例");
+    const button = await screen.findByRole("button", { name: "执行 2 个任务" });
     fireEvent.click(button);
     await waitFor(() => expect(calls.some((c) => c.path === "/versions/v1/run-tasks")).toBe(true));
     expect(calls.find((c) => c.path === "/versions/v1/run-tasks")!.body).toEqual({ task_ids: ["t1", "t2"], set_ready: false, allow_missing_scripts: false, start_testing: true });
     await waitFor(() => expect(onDone).toHaveBeenCalled());
-    expect(await screen.findByText(/Started 1 task\(s\), 1 not started/)).toBeTruthy();
-    expect(screen.getByText(/cases without script \(TC-002\)/)).toBeTruthy();
+    expect(await screen.findByText(/已启动 1 个任务，1 个未启动/)).toBeTruthy();
+    expect(screen.getByText(/无脚本的用例（TC-002）/)).toBeTruthy();
   });
 
   it("can only change the status, and run missing scripts anyway", async () => {
@@ -61,7 +61,7 @@ describe("RunTasksModal (#13)", () => {
     });
     renderPage(<RunTasksModal open versionId="v1" startTesting onClose={() => {}} />);
     await screen.findByText("Draft task");
-    fireEvent.click(screen.getByRole("button", { name: "Only change status" }));
+    fireEvent.click(screen.getByRole("button", { name: "仅变更状态" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/versions/v1/status")).toBe(true));
     expect(calls.find((c) => c.path === "/versions/v1/status")!.body).toEqual({ status: "testing" });
     expect(calls.some((c) => c.path === "/versions/v1/run-tasks")).toBe(false);
@@ -74,10 +74,10 @@ describe("RunTasksModal (#13)", () => {
     expect(selectable({ ...rows[2], case_count: 0, reason: "no_cases" }, true)).toBe(false);
   });
 
-  it("opens from the flow bar's Run tasks step", async () => {
+  it("opens from the flow bar's 执行任务 step", async () => {
     mockFetch({ "GET /versions/v1/runnable-tasks": () => ({ body: rows }) });
-    renderPage(<FlowSteps progress={{ ...progress, next: { key: "runs", title: "Runs", label: "Run tasks", path: "/versions/v1?tab=strategy", kind: "run_tasks", version_id: "v1" } }} />);
-    fireEvent.click(screen.getByRole("button", { name: /Run tasks/ }));
+    renderPage(<FlowSteps progress={{ ...progress, next: { key: "runs", title: "执行", label: "执行任务", path: "/versions/v1?tab=strategy", kind: "run_tasks", version_id: "v1" } }} />);
+    fireEvent.click(screen.getByRole("button", { name: /执行任务/ }));
     const dialog = await screen.findByRole("dialog");
     expect(await within(dialog).findByText("Draft task")).toBeTruthy();
   });

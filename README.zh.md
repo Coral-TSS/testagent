@@ -20,8 +20,7 @@
 > **状态：持续迭代的单实例平台。** develop已包含账号登录与后续修复；最新已记录回归（2026-11-07）为478项后端通过/1项跳过、167项前端通过。真实模型效果、线上部署与完整验收分别记录，见[当前进度与规格](specs/test-agent-platform/README.md)。
 > 非常欢迎反馈、报 bug 和提想法，请[提交 issue](https://github.com/Coral-TSS/testagent/issues)。
 
-> 说明：平台界面和 Agent 默认输出目前是英文（Agent 输出语言可以用 `TESTAGENT_AGENT_LANGUAGE` 配置，例如设为 `Chinese`）。
-> 下文中的按钮、菜单名保留英文原文，方便对照。
+> 说明：平台界面和 Agent 默认输出为简体中文。Agent 输出语言可用环境变量 `TESTAGENT_AGENT_LANGUAGE` 覆盖（例如设为 `English`）。
 
 ---
 
@@ -183,7 +182,7 @@ cd web && npm run lint && npx tsc -b --noEmit && npm test && npm run build
 
 ## 路线图
 
-- 中文（zh-CN）界面和 Agent 输出可选（国际化）；Agent 输出语言现在已经可以用 `TESTAGENT_AGENT_LANGUAGE` 配置
+- 界面和 Agent 输出默认已是简体中文；可用 `TESTAGENT_AGENT_LANGUAGE` 覆盖 Agent 输出语言（例如设为 `English`）
 - 多用户模式，支持账号和角色（目前是单用户、本机使用）
 - 更多执行器和集成（CI 触发、缺陷跟踪系统、测试管理工具导出）
 - 非功能测试（性能、安全），而不只是标记为跳过

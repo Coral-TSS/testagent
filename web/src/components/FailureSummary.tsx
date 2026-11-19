@@ -5,24 +5,24 @@ import type { FailureKind, FailureSummary as Summary, SuspectedCause } from "../
 
 /** Suspected cause → label and colour (batch 2). Always "suspected": a person confirms. */
 export const CAUSE_TAG: Record<SuspectedCause, [string, string]> = {
-  sut: ["Suspected system issue", "red"],
-  script: ["Suspected script / case issue", "orange"],
-  environment: ["Environment issue", "blue"],
-  platform: ["Platform / configuration issue", "default"],
-  unknown: ["Cause unclear", "default"],
+  sut: ["疑似系统问题", "red"],
+  script: ["疑似脚本 / 用例问题", "orange"],
+  environment: ["环境问题", "blue"],
+  platform: ["平台 / 配置问题", "default"],
+  unknown: ["原因不明", "default"],
 };
 export const KIND_LABEL: Record<FailureKind, string> = {
-  assertion: "Assertion failed",
-  locator: "Element not found",
-  timeout: "Timed out",
-  script_error: "Script error",
-  http_error: "Error response",
-  env_unreachable: "System unreachable",
-  platform: "Platform / config",
-  agent_error: "Agent did not finish",
-  no_script: "No script",
-  non_functional: "Non-functional (not run)",
-  unknown: "Unknown",
+  assertion: "断言失败",
+  locator: "未找到元素",
+  timeout: "超时",
+  script_error: "脚本错误",
+  http_error: "错误响应",
+  env_unreachable: "系统不可达",
+  platform: "平台 / 配置",
+  agent_error: "Agent 未完成",
+  no_script: "无脚本",
+  non_functional: "非功能（未执行）",
+  unknown: "未知",
 };
 
 export function CauseTag({ cause }: { cause?: SuspectedCause | null }) {
@@ -36,11 +36,11 @@ export function CauseTag({ cause }: { cause?: SuspectedCause | null }) {
 export function FailureSummary({ summary, raw, versionId }: { summary: Summary; raw?: string | null; versionId?: string | null }) {
   const rawText = raw ?? summary.raw;
   const rows: [string, React.ReactNode][] = [];
-  if (summary.expected) rows.push(["Expected", <Typography.Text code>{summary.expected}</Typography.Text>]);
-  if (summary.actual) rows.push(["Actual", <Typography.Text code>{summary.actual}</Typography.Text>]);
+  if (summary.expected) rows.push(["预期", <Typography.Text code>{summary.expected}</Typography.Text>]);
+  if (summary.actual) rows.push(["实际", <Typography.Text code>{summary.actual}</Typography.Text>]);
   if (summary.requirement_refs?.length)
     rows.push([
-      "Requirement",
+      "需求",
       <Space size={4} wrap>
         {summary.requirement_refs.map((r) => (
           <span key={r.code}>
@@ -51,7 +51,7 @@ export function FailureSummary({ summary, raw, versionId }: { summary: Summary; 
         ))}
       </Space>,
     ]);
-  if (summary.step) rows.push(["Step", summary.step]);
+  if (summary.step) rows.push(["步骤", summary.step]);
   return (
     <div data-testid="failure-summary">
       <Space size={6} wrap style={{ marginBottom: 6 }}>
@@ -83,7 +83,7 @@ export function FailureSummary({ summary, raw, versionId }: { summary: Summary; 
           items={[
             {
               key: "raw",
-              label: "Raw error output",
+              label: "原始错误输出",
               children: <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: 12 }}>{rawText}</pre>,
             },
           ]}

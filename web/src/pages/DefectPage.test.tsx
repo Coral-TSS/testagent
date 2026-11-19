@@ -40,16 +40,16 @@ describe("DefectPage", () => {
       }),
     });
     renderPage(<DefectPage />, { path: "/defects/:defectId", route: "/defects/d1" });
-    expect(await screen.findByText("AI suggestion: Development issue")).toBeTruthy();
-    expect(screen.getByText("Created by AI")).toBeTruthy();
+    expect(await screen.findByText("AI 建议：开发问题")).toBeTruthy();
+    expect(screen.getByText("由 AI 创建")).toBeTruthy();
     expect(screen.getByText("POST /orders · orders.py:10")).toBeTruthy();
-    expect(screen.getByText("Environment issues and undetermined defects are not attributed to people")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Accept/ }));
+    expect(screen.getByText("环境问题和待判定缺陷不归因到人员")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /接受/ }));
     await waitFor(() => expect(calls.some((c) => c.path === "/defects/d1/accept-suggestion")).toBe(true));
-    expect(await screen.findByText("Lee Dev (Developer) · inferred")).toBeTruthy();
-    expect(screen.getByText("Attributed to the requirement’s developer")).toBeTruthy();
+    expect(await screen.findByText("Lee Dev (开发) · 推断")).toBeTruthy();
+    expect(screen.getByText("归因于需求的开发人员")).toBeTruthy();
     // allowed transitions from open
-    expect(screen.getByRole("button", { name: "Start work" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "开始处理" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^Close$/ })).toBeNull();
   });
 });
@@ -66,7 +66,7 @@ describe("DefectsPage", () => {
     renderPage(<DefectsPage />, { path: "/defects", route: "/defects?status=open" });
     expect(await screen.findByText("Amount 0 can be submitted (DEF-001)")).toBeTruthy();
     expect(screen.getByText("Lee Dev, Zhao Dev")).toBeTruthy();
-    expect(screen.getByText("AI suggestion: Development issue")).toBeTruthy();
+    expect(screen.getByText("AI 建议：开发问题")).toBeTruthy();
     const list = calls.find((c) => c.path === "/defects")!;
     expect(list).toBeTruthy();
   });

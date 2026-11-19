@@ -9,14 +9,14 @@ describe("StepItem", () => {
   it("renders model, tool and invalid-submit steps with readable tool labels", () => {
     render(
       <>
-        <StepItem step={{ type: "model", seq: 1, content: "Thinking", tool_calls: [{ name: "search_nodes", args: {} }], ms: 12 }} />
-        <StepItem step={{ type: "tool", tool: "search_nodes", status: "error", args: { q: "x" }, result: "Error" }} />
+        <StepItem step={{ type: "model", seq: 1, content: "思考中", tool_calls: [{ name: "search_nodes", args: {} }], ms: 12 }} />
+        <StepItem step={{ type: "tool", tool: "search_nodes", status: "error", args: { q: "x" }, result: "错误" }} />
         <StepItem step={{ type: "submit_invalid", errors: [{ loc: "items.0.node_id", msg: "Node not found" }] }} />
       </>,
     );
     expect(screen.getByText("Model #1")).toBeTruthy();
-    expect(screen.getByText("Search model nodes (search_nodes)", { selector: "code" })).toBeTruthy();
-    expect(screen.getByText("Search model nodes (search_nodes)", { selector: ".ant-tag" })).toBeTruthy();
+    expect(screen.getByText("搜索模型节点 (search_nodes)", { selector: "code" })).toBeTruthy();
+    expect(screen.getByText("搜索模型节点 (search_nodes)", { selector: ".ant-tag" })).toBeTruthy();
     expect(screen.getByText("Node not found")).toBeTruthy();
   });
 
@@ -33,7 +33,7 @@ describe("StepItem", () => {
 
 describe("agent labels", () => {
   it("labels tools and keeps unknown names", () => {
-    expect(toolLabel("get_api_schema")).toBe("View API schema (get_api_schema)");
+    expect(toolLabel("get_api_schema")).toBe("查看 API 模式 (get_api_schema)");
     expect(toolLabel("custom_tool")).toBe("custom_tool");
     expect(withLabels(`x ${NODE.toUpperCase()}`, { [NODE]: "PurchaseOrder" })).toBe("x PurchaseOrder [B1D63985]");
     expect(withLabels("no ids", undefined)).toBe("no ids");

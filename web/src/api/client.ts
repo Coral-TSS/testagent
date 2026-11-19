@@ -12,7 +12,7 @@ export class ApiError extends Error {
   related: string[];
 
   constructor(status: number, body: Partial<{ code: string; message: string; field_errors: FieldError[]; related: string[] }>) {
-    super(body.message || `Request failed (${status})`);
+    super(body.message || `请求失败（${status}）`);
     this.status = status;
     this.code = body.code || "UNKNOWN";
     this.fieldErrors = body.field_errors || [];

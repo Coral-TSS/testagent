@@ -101,15 +101,15 @@ export function IoParamsTable(props: {
   return (
     <>
       <ListTable<IoParam & { _i: number }>
-        label={props.label || "Parameters"}
+        label={props.label || "参数"}
         size="small"
         rowKey="_i"
 
         dataSource={params.map((p, i) => ({ ...p, _i: i }))}
-        locale={{ emptyText: props.emptyText || "Not filled in" }}
+        locale={{ emptyText: props.emptyText || "未填写" }}
         columns={[
           {
-            title: "Name",
+            title: "名称",
             width: 170,
             render: (_, p) => (
               <Space orientation="vertical" size={0}>
@@ -120,23 +120,23 @@ export function IoParamsTable(props: {
               </Space>
             ),
           },
-          { title: "Type", width: 150, render: (_, p) => <TypeTag p={p} /> },
+          { title: "类型", width: 150, render: (_, p) => <TypeTag p={p} /> },
           {
-            title: "Required",
+            title: "必填",
             width: 56,
-            render: (_, p) => (p.required ? <Tag color="red">Required</Tag> : <Typography.Text type="secondary">no</Typography.Text>),
+            render: (_, p) => (p.required ? <Tag color="red">必填</Tag> : <Typography.Text type="secondary">否</Typography.Text>),
           },
           ...(props.showLocation
             ? [
                 {
-                  title: "Location",
+                  title: "位置",
                   width: 84,
                   render: (_: unknown, p: IoParam) => (p.location ? LOCATION_LABEL[p.location] || p.location : "—"),
                 },
               ]
             : []),
           {
-            title: "Format / example",
+            title: "格式 / 示例",
             width: 130,
             render: (_, p) => (
               <Space orientation="vertical" size={0}>
@@ -147,7 +147,7 @@ export function IoParamsTable(props: {
             ),
           },
           {
-            title: "Mapped field",
+            title: "映射字段",
             width: 130,
             render: (_, p) => (p.field ? <Tag color="purple">{p.field}</Tag> : "—"),
           },
@@ -159,13 +159,13 @@ export function IoParamsTable(props: {
                   width: 64,
                   render: (_: unknown, p: IoParam & { _i: number }) => (
                     <Space size={4}>
-                      <Tooltip title="Edit">
+                      <Tooltip title="编辑">
                         <a aria-label={`Edit ${p.name}`} onClick={() => open(p._i)}>
                           <EditOutlined />
                         </a>
                       </Tooltip>
-                      <Tooltip title="Delete">
-                        <a aria-label={`Delete ${p.name}`} onClick={() => props.onChange?.(params.filter((_, i) => i !== p._i))}>
+                      <Tooltip title="删除">
+                        <a aria-label={`删除 ${p.name}`} onClick={() => props.onChange?.(params.filter((_, i) => i !== p._i))}>
                           <DeleteOutlined />
                         </a>
                       </Tooltip>
@@ -178,31 +178,31 @@ export function IoParamsTable(props: {
       />
       {editable && (
         <Button size="small" type="dashed" icon={<PlusOutlined />} style={{ marginTop: 6 }} onClick={() => open("new")}>
-          {props.addLabel || "Add parameter"}
+          {props.addLabel || "添加参数"}
         </Button>
       )}
       <Modal
         open={editing !== null}
-        title={editing === "new" ? props.addLabel || "Add parameter" : "Edit parameter"}
+        title={editing === "new" ? props.addLabel || "Add parameter" : "编辑参数"}
         onCancel={() => setEditing(null)}
         onOk={() => form.submit()}
         forceRender
       >
         <Form form={form} layout="vertical" onFinish={save}>
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }}>
-            <Form.Item name="name" label="Name (same as the API field)" rules={[{ required: true, whitespace: true }]}>
-              <Input placeholder="e.g. amount_minor" />
+            <Form.Item name="name" label="名称（与 API 字段相同）" rules={[{ required: true, whitespace: true }]}>
+              <Input placeholder="例如 amount_minor" />
             </Form.Item>
-            <Form.Item name="display_name" label="Display name">
-              <Input placeholder="e.g. Amount" />
+            <Form.Item name="display_name" label="显示名">
+              <Input placeholder="例如 Amount" />
             </Form.Item>
           </Space>
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }}>
-            <Form.Item name="data_type" label="Type" rules={[{ required: true, message: "Type is required" }]}>
+            <Form.Item name="data_type" label="类型" rules={[{ required: true, message: "必须填写类型" }]}>
               <Select options={DATA_TYPE_OPTIONS} />
             </Form.Item>
             {props.showLocation && (
-              <Form.Item name="location" label="Location">
+              <Form.Item name="location" label="位置">
                 <Select
                   allowClear
                   options={(props.locations || (Object.keys(LOCATION_LABEL) as IoLocation[])).map((l) => ({
@@ -212,26 +212,26 @@ export function IoParamsTable(props: {
                 />
               </Form.Item>
             )}
-            <Form.Item name="required" label="Required" valuePropName="checked">
+            <Form.Item name="required" label="必填" valuePropName="checked">
               <Switch />
             </Form.Item>
           </Space>
           {dataType === "enum" && (
-            <Form.Item name="enum_values" label="Enum values (Enter to add)" rules={[{ required: true, message: "An enum field needs its values" }]}>
-              <Select mode="tags" tokenSeparators={[",", ", "]} placeholder="e.g. pending, approved" />
+            <Form.Item name="enum_values" label="枚举值（回车添加）" rules={[{ required: true, message: "枚举字段需要填写取值" }]}>
+              <Select mode="tags" tokenSeparators={[",", ", "]} placeholder="例如 pending、approved" />
             </Form.Item>
           )}
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }}>
             <Form.Item name="format" label="format">
-              <Input placeholder="e.g. integer in cents, YYYY-MM-DD, uuid" />
+              <Input placeholder="例如：以分为单位的整数、YYYY-MM-DD、uuid" />
             </Form.Item>
-            <Form.Item name="example" label="Example">
+            <Form.Item name="example" label="示例">
               <Input placeholder="e.g. 5000000" />
             </Form.Item>
           </Space>
           {props.fieldOptions && (
-            <Form.Item name="attribute_id" label="Mapped entity field (Entity.field)">
-              <Select allowClear showSearch optionFilterProp="label" options={props.fieldOptions} placeholder="e.g. PurchaseOrder.amount_minor" />
+            <Form.Item name="attribute_id" label="映射的实体字段（实体.字段）">
+              <Select allowClear showSearch optionFilterProp="label" options={props.fieldOptions} placeholder="例如 PurchaseOrder.amount_minor" />
             </Form.Item>
           )}
           <Form.Item name="description" label="description">

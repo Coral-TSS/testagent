@@ -34,65 +34,65 @@ describe("version task run entry (#14)", () => {
     setup(() => ({ body: [
       task,
       { ...task, id: "t2", name: "API", latest_run: { ...run, id: "run2", task_id: "t2", status: "queued", started_at: null } },
-      { ...task, id: "t3", name: "Regression", status: "done", latest_run: { ...run, id: "run3", task_id: "t3", status: "failed", counts: { ...run.counts, done: 3, failed: 2 } } },
+      { ...task, id: "t3", name: "回归", status: "done", latest_run: { ...run, id: "run3", task_id: "t3", status: "failed", counts: { ...run.counts, done: 3, failed: 2 } } },
       { ...task, id: "t4", name: "New task", status: "draft", latest_run: null },
     ] }));
-    const link = await screen.findByRole("link", { name: "Latest run for Smoke" });
+    const link = await screen.findByRole("link", { name: "查看 Smoke 的最近一次执行" });
     expect(link.getAttribute("href")).toBe("/runs/run1");
     const row = link.closest("tr")!;
-    expect(within(row).getByText("1/3 processed")).toBeTruthy();
-    const banner = screen.getByText("1 task(s) running · 1 task(s) queued");
-    expect(banner.compareDocumentPosition(screen.getByText("Test strategy")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole("link", { name: "View live run for API" }).getAttribute("href")).toBe("/runs/run2");
-    expect(screen.getByText("Awaiting start")).toBeTruthy();
-    expect(screen.getByText("Has failures")).toBeTruthy();
-    expect(screen.getByText("Never run yet")).toBeTruthy();
+    expect(within(row).getByText("1/3 已处理")).toBeTruthy();
+    const banner = screen.getByText("1 个任务运行中 · 1 个任务排队中");
+    expect(banner.compareDocumentPosition(screen.getByText("测试策略")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole("link", { name: "查看 API 的现场执行" }).getAttribute("href")).toBe("/runs/run2");
+    expect(screen.getByText("等待启动")).toBeTruthy();
+    expect(screen.getByText("存在失败")).toBeTruthy();
+    expect(screen.getByText("尚未执行")).toBeTruthy();
   });
 
   it("refreshes progress and removes the live banner when a run finishes", async () => {
     let finished = false;
     setup(() => ({ body: [finished ? { ...task, status: "done", latest_run: { ...run, status: "passed", counts: { ...run.counts, done: 3, passed: 3 } } } : task] }));
-    await screen.findByText("1/3 processed");
+    await screen.findByText("1/3 已处理");
     finished = true;
-    await waitFor(() => expect(screen.getByText("3/3 processed")).toBeTruthy(), { timeout: 8000 });
-    expect(screen.getByText("Passed")).toBeTruthy();
-    expect(screen.queryByText("1 task(s) running · 0 task(s) queued")).toBeNull();
-    expect(screen.getByRole("link", { name: "Latest run for Smoke" }).getAttribute("href")).toBe("/runs/run1");
+    await waitFor(() => expect(screen.getByText("3/3 已处理")).toBeTruthy(), { timeout: 8000 });
+    expect(screen.getByText("通过")).toBeTruthy();
+    expect(screen.queryByText("1 个任务运行中 · 0 个任务排队中")).toBeNull();
+    expect(screen.getByRole("link", { name: "查看 Smoke 的最近一次执行" }).getAttribute("href")).toBe("/runs/run1");
   });
 
   it("discovers scheduled runs even if no task was active when the page opened", async () => {
     let started = false;
     setup(() => ({ body: [started ? task : { ...task, status: "ready", latest_run: null }] }));
-    await screen.findByText("Never run yet");
+    await screen.findByText("尚未执行");
     started = true;
-    await waitFor(() => expect(screen.getByRole("link", { name: "View live run for Smoke" })).toBeTruthy(), { timeout: 8000 });
-    expect(screen.queryByText("Never run yet")).toBeNull();
+    await waitFor(() => expect(screen.getByRole("link", { name: "查看 Smoke 的现场执行" })).toBeTruthy(), { timeout: 8000 });
+    expect(screen.queryByText("尚未执行")).toBeNull();
   });
 
   it("offers retry instead of showing a failed request as an empty task list", async () => {
     let failed = true;
-    setup(() => failed ? { status: 503, body: { code: "UNAVAILABLE", message: "Offline" } } : { body: [task] });
-    expect(await screen.findByText("Task run information could not be refreshed")).toBeTruthy();
-    expect(screen.queryByText("No tasks yet")).toBeNull();
+    setup(() => failed ? { status: 503, body: { code: "UNAVAILABLE", message: "离线" } } : { body: [task] });
+    expect(await screen.findByText("测试任务执行信息无法刷新")).toBeTruthy();
+    expect(screen.queryByText("暂无测试任务")).toBeNull();
     failed = false;
-    fireEvent.click(screen.getByRole("button", { name: "Retry tasks" }));
-    expect(await screen.findByRole("link", { name: "Latest run for Smoke" })).toBeTruthy();
-    expect(screen.queryByText("Task run information could not be refreshed")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "重试任务" }));
+    expect(await screen.findByRole("link", { name: "查看 Smoke 的最近一次执行" })).toBeTruthy();
+    expect(screen.queryByText("测试任务执行信息无法刷新")).toBeNull();
   });
 
   it("retains the last run with a stale-data warning when a refresh fails", async () => {
     let failed = false;
-    setup(() => failed ? { status: 503, body: { code: "UNAVAILABLE", message: "Offline" } } : { body: [task] });
-    await screen.findByRole("link", { name: "Latest run for Smoke" });
+    setup(() => failed ? { status: 503, body: { code: "UNAVAILABLE", message: "离线" } } : { body: [task] });
+    await screen.findByRole("link", { name: "查看 Smoke 的最近一次执行" });
     failed = true;
-    await screen.findByText("Task run information could not be refreshed", {}, { timeout: 8000 });
-    expect(screen.getByText(/Showing the last loaded task and run information/)).toBeTruthy();
-    const warning = screen.getByText("Task run information could not be refreshed");
-    const banner = screen.getByText("1 task(s) running · 0 task(s) queued");
+    await screen.findByText("测试任务执行信息无法刷新", {}, { timeout: 8000 });
+    expect(screen.getByText(/正在显示上次加载的任务和执行信息/)).toBeTruthy();
+    const warning = screen.getByText("测试任务执行信息无法刷新");
+    const banner = screen.getByText("1 个任务运行中 · 0 个任务排队中");
     expect(warning.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Latest run for Smoke" }).getAttribute("href")).toBe("/runs/run1");
+    expect(screen.getByRole("link", { name: "查看 Smoke 的最近一次执行" }).getAttribute("href")).toBe("/runs/run1");
     failed = false;
-    fireEvent.click(screen.getByRole("button", { name: "Retry tasks" }));
-    await waitFor(() => expect(screen.queryByText("Task run information could not be refreshed")).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "重试任务" }));
+    await waitFor(() => expect(screen.queryByText("测试任务执行信息无法刷新")).toBeNull());
   });
 });

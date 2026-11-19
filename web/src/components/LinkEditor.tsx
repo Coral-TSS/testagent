@@ -73,7 +73,7 @@ export function LinkEditor({
         ? api<Link>(`/links/${link.id}`, { method: "PATCH", body })
         : api<Link>(`/suts/${sutId}/links`, { method: "POST", body }),
     {
-      success: link ? "Link saved" : "Link created",
+      success: link ? "关系已保存" : "关系已创建",
       onSuccess: () => {
         refresh();
         onClose();
@@ -84,13 +84,13 @@ export function LinkEditor({
     if (!link) return;
     try {
       await api(`/links/${link.id}`, { method: "DELETE", params: { confirm } });
-      message.success("Link deleted (traceable in the change log)");
+      message.success("关系已删除（可在变更日志中追溯）");
       refresh();
       onClose();
     } catch (err) {
       if (err instanceof ApiError && err.code === "CONFLICT" && !confirm) {
         modal.confirm({
-          title: "Link still referenced",
+          title: "关系仍被引用",
           content: (
             <>
               <p>{err.message}</p>
@@ -101,7 +101,7 @@ export function LinkEditor({
               </ul>
             </>
           ),
-          okText: "Delete anyway",
+          okText: "仍然删除",
           okButtonProps: { danger: true },
           onOk: () => remove(true),
         });
@@ -128,11 +128,11 @@ export function LinkEditor({
     forward_name: v?.forward_name || "…",
     reverse_name: v?.reverse_name || "…",
   };
-  const apiRule = { pattern: API_NAME, message: "Starts with a lowercase letter; letters, digits and underscores only (e.g. supplier, purchaseOrders)" };
+  const apiRule = { pattern: API_NAME, message: "以小写字母开头；只能包含字母、数字和下划线（例如 supplier、purchaseOrders）" };
 
   return (
     <Modal
-      title={link ? "Edit link" : "New link"}
+      title={link ? "编辑关系" : "新建关系"}
       open={open}
       onCancel={onClose}
       width={720}
@@ -141,12 +141,12 @@ export function LinkEditor({
         <Space>
           {link && (
             <Button danger onClick={() => remove(false)}>
-              Delete
+              删除
             </Button>
           )}
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>取消</Button>
           <Button type="primary" loading={save.isPending} onClick={() => form.submit()}>
-            Save
+            保存
           </Button>
         </Space>
       }
@@ -160,7 +160,7 @@ export function LinkEditor({
             {forwardText(sides)} / {reverseText(sides)} <Tag>{CARD_SHORT[card]}</Tag>
           </span>
         }
-        description="A link must read both ways: describe “who is what to whom” with a preposition/verb, e.g. PurchaseOrder belongs to Supplier / Supplier supplies PurchaseOrder."
+        description="关系需要双向可读：用介词/动词描述“谁对谁是什么关系”，例如 PurchaseOrder belongs to Supplier / Supplier supplies PurchaseOrder。"
       />
       <Form
         form={form}
@@ -178,46 +178,46 @@ export function LinkEditor({
         }
       >
         <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }} align="start">
-          <Form.Item name="from_node_id" label="Source entity" rules={[{ required: true }]}>
+          <Form.Item name="from_node_id" label="源实体" rules={[{ required: true }]}>
             <Select showSearch optionFilterProp="label" options={entityOptions} />
           </Form.Item>
-          <Form.Item name="forward_name" label="Forward name (source → target)" rules={[{ required: true, max: 50 }]}>
-            <Input placeholder="e.g. belongs to, pays" />
+          <Form.Item name="forward_name" label="正向名称（源 → 目标）" rules={[{ required: true, max: 50 }]}>
+            <Input placeholder="例如 belongs to、pays" />
           </Form.Item>
-          <Form.Item name="to_node_id" label="Target entity" rules={[{ required: true }]}>
+          <Form.Item name="to_node_id" label="目标实体" rules={[{ required: true }]}>
             <Select showSearch optionFilterProp="label" options={entityOptions} />
           </Form.Item>
         </Space>
         <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }} align="start">
-          <Form.Item name="reverse_name" label="Reverse name (target → source)" rules={[{ required: true, max: 50 }]}>
-            <Input placeholder="e.g. supplies, receives" />
+          <Form.Item name="reverse_name" label="反向名称（目标 → 源）" rules={[{ required: true, max: 50 }]}>
+            <Input placeholder="例如 supplies、receives" />
           </Form.Item>
-          <Form.Item name="forward_api_name" label="Forward API name (property on the source)" rules={[apiRule]}>
-            <Input placeholder="e.g. supplier" />
+          <Form.Item name="forward_api_name" label="正向 API 名称（源上的属性）" rules={[apiRule]}>
+            <Input placeholder="例如 supplier" />
           </Form.Item>
-          <Form.Item name="reverse_api_name" label="Reverse API name (property on the target)" rules={[apiRule]}>
-            <Input placeholder="e.g. purchaseOrders" />
+          <Form.Item name="reverse_api_name" label="反向 API 名称（目标上的属性）" rules={[apiRule]}>
+            <Input placeholder="例如 purchaseOrders" />
           </Form.Item>
         </Space>
         <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }} align="start">
-          <Form.Item name="cardinality" label="Cardinality" rules={[{ required: true }]}>
+          <Form.Item name="cardinality" label="基数" rules={[{ required: true }]}>
             <Select options={Object.entries(CARD_LABEL).map(([value, label]) => ({ value, label }))} />
           </Form.Item>
-          <Form.Item name="required" label="Required (the source must link to one target)" valuePropName="checked">
+          <Form.Item name="required" label="必填（源必须关联到一个目标）" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Space>
         {card !== "many_to_many" ? (
           <Form.Item
             name="fk_attribute_id"
-            label="Foreign-key field (same name as the API/code field, e.g. supplier_id, order_id)"
-            extra="When empty, the field of type “reference” pointing to the other side is chosen automatically"
+            label="外键字段（与 API/代码字段同名，例如 supplier_id、order_id）"
+            extra="为空时，会自动选择指向另一端、类型为“引用”的字段"
           >
             <Select allowClear showSearch optionFilterProp="label" options={fieldsOf(fkOwners)} />
           </Form.Item>
         ) : (
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }} align="start">
-            <Form.Item name="via_node_id" label="Junction entity (optional, e.g. OrderLine)">
+            <Form.Item name="via_node_id" label="中间实体（可选，例如 OrderLine）">
               <Select allowClear showSearch optionFilterProp="label" options={entityOptions} />
             </Form.Item>
             <Form.Item name="via_from_attribute_id" label={`Junction entity → ${sides.from_name} foreign key`}>
@@ -229,7 +229,7 @@ export function LinkEditor({
           </Space>
         )}
         <Form.Item name="description" label="description">
-          <Input.TextArea rows={2} placeholder="e.g. Each purchase order has exactly one supplier" />
+          <Input.TextArea rows={2} placeholder="例如：每个采购订单恰好对应一个供应商" />
         </Form.Item>
       </Form>
     </Modal>
@@ -242,31 +242,31 @@ export function LinksTable({ links, loading, onOpen, error, onRetry }: { links?:
     <ListTable<Link>
       error={error}
       onRetry={onRetry}
-      label="Model links"
+      label="模型关系"
       size="small"
       rowKey="id"
       loading={loading}
       dataSource={links}
-      locale={{ emptyText: "No links yet; click “New link”, or choose “reference” for an entity field and accept the suggestion" }}
+      locale={{ emptyText: "还没有关系；请点击“新建关系”，或把实体字段类型设为“引用”并接受建议" }}
       onRow={(row) => ({ onClick: () => onOpen(row), style: { cursor: "pointer" } })}
       columns={[
-        { title: "Forward", render: (_, l) => forwardText(l) },
-        { title: "Reverse", render: (_, l) => reverseText(l) },
-        { title: "Cardinality", width: 70, render: (_, l) => <Tag color="purple">{CARD_SHORT[l.cardinality]}</Tag> },
+        { title: "正向", render: (_, l) => forwardText(l) },
+        { title: "反向", render: (_, l) => reverseText(l) },
+        { title: "基数", width: 70, render: (_, l) => <Tag color="purple">{CARD_SHORT[l.cardinality]}</Tag> },
         {
-          title: "Foreign key / junction entity",
+          title: "外键 / 中间实体",
           render: (_, l) =>
             l.via_name ? (
               `${l.via_name} (${l.via_from_field || "?"} / ${l.via_to_field || "?"})`
             ) : l.fk_field ? (
               l.fk_field
             ) : (
-              <Typography.Text type="secondary">Not set</Typography.Text>
+              <Typography.Text type="secondary">未设置</Typography.Text>
             ),
         },
-        { title: "Required", width: 60, render: (_, l) => (l.required ? "yes" : "no") },
+        { title: "必填", width: 60, render: (_, l) => (l.required ? "yes" : "no") },
         {
-          title: "API name",
+          title: "API 名称",
           render: (_, l) => [l.forward_api_name, l.reverse_api_name].filter(Boolean).join(" / ") || "—",
         },
         { title: "description", dataIndex: "description", ellipsis: true },

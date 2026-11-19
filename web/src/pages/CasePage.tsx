@@ -42,28 +42,28 @@ export function CasePage() {
   };
   const save = useApiMutation((body: Record<string, unknown>) => api<TestCase>(`/cases/${caseId}`, { method: "PATCH", body }), {
     onSuccess: (c) => {
-      message.success(c.revision !== tc.data?.revision ? `Saved as revision ${c.revision}` : "No changes");
+      message.success(c.revision !== tc.data?.revision ? `Saved as revision ${c.revision}` : "没有变更");
       refresh();
     },
   });
   const complete = useApiMutation(() => api<AiOutcome>(`/cases/${caseId}/ai-complete`, { method: "POST" }), {
     onSuccess: (out) => {
       refresh();
-      if (out.status === "succeeded") message.success("AI completion suggestion generated; review it item by item and accept");
-      else message.warning(`AI completion not finished (${out.error_code || out.status}); see the trace`);
+      if (out.status === "succeeded") message.success("已生成 AI 补全建议；请逐项评审并接受");
+      else message.warning(`AI 补全未完成（${out.error_code || out.status}）；请查看追踪`);
     },
   });
   const accept = useApiMutation(
     (fields: string[]) => api<TestCase>(`/cases/${caseId}/ai-complete/accept`, { method: "POST", body: { fields } }),
-    { onSuccess: refresh, success: "Accepted; a new revision was created" },
+    { onSuccess: refresh, success: "已接受；已创建新修订" },
   );
   const reject = useApiMutation(() => api<TestCase>(`/cases/${caseId}/ai-complete/reject`, { method: "POST" }), {
     onSuccess: refresh,
-    success: "Suggestion dismissed",
+    success: "已忽略建议",
   });
   const suggestion = useApiMutation((accept: boolean) => api<TestCase>(`/cases/${caseId}/category-suggestion`, { method: "POST", body: { accept } }), {
     onSuccess: refresh,
-    success: "Category handled",
+    success: "类别已处理",
   });
   const setStatus = useApiMutation((status: string) => api<TestCase>(`/cases/${caseId}/status`, { method: "POST", body: { status } }), {
     onSuccess: (updated) => {
@@ -71,7 +71,7 @@ export function CasePage() {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       refresh();
     },
-    success: "Status updated",
+    success: "状态已更新",
   });
 
   const c = tc.data;
@@ -85,30 +85,30 @@ export function CasePage() {
           title={
             <Space>
               {c.code} {c.title} <CaseStatusTag status={c.status} /> <ScenarioTag value={c.scenario} />
-              {c.source === "agent" && <Tag color="purple">AI generated</Tag>}
+              {c.source === "agent" && <Tag color="purple">AI 生成</Tag>}
             </Space>
           }
           extra={
             <Space>
-              {c.agent_run_id && <Button onClick={() => setRunId(c.agent_run_id!)}>View AI trace</Button>}
+              {c.agent_run_id && <Button onClick={() => setRunId(c.agent_run_id!)}>查看 AI 追踪</Button>}
               {!readOnly && (
-                <Tooltip title="Let the AI complete steps, expected result and test data, and link requirements / model nodes / fields; the result is a suggestion you accept item by item">
+                <Tooltip title="让 AI 补全步骤、预期结果和测试数据，并关联需求 / 模型节点 / 字段；结果是建议，需你逐项接受">
                   <Button icon={<RobotOutlined />} loading={complete.isPending} onClick={() => complete.mutate(undefined)}>
-                    AI completion
+                    AI 补全
                   </Button>
                 </Tooltip>
               )}
               <CorrectionButton targetType="case" targetId={c.id} />
               {c.status === "draft" && (
-                <Popconfirm title="Reviewed: set ready? Only ready cases are run by tasks." onConfirm={() => setStatus.mutate("ready")}>
-                  <Button type="primary">Set ready</Button>
+                <Popconfirm title="已评审：要设为就绪吗？只有就绪用例会被任务执行。" onConfirm={() => setStatus.mutate("ready")}>
+                  <Button type="primary">设为就绪</Button>
                 </Popconfirm>
               )}
               {c.status === "ready" && (
                 <>
-                  <Button onClick={() => setStatus.mutate("draft")}>Back to draft</Button>
-                  <Popconfirm title="A deprecated case can no longer be edited or run. Continue?" onConfirm={() => setStatus.mutate("deprecated")}>
-                    <Button danger>Deprecate</Button>
+                  <Button onClick={() => setStatus.mutate("draft")}>退回草稿</Button>
+                  <Popconfirm title="已废弃的用例不能再编辑或执行。要继续吗？" onConfirm={() => setStatus.mutate("deprecated")}>
+                    <Button danger>废弃</Button>
                   </Popconfirm>
                 </>
               )}
@@ -119,7 +119,7 @@ export function CasePage() {
             <div style={{ marginBottom: 12 }}><ReadyTaskFeedback feedback={c.task_binding} onNavigate={navigate} /></div>
           )}
           {c.status === "draft" && c.source === "agent" && (
-            <Alert type="info" showIcon style={{ marginBottom: 12 }} title="Case drafted by the AI: review, edit and set it ready; if you see a recurring problem click “Correct” and the agent will improve later generations." />
+            <Alert type="info" showIcon style={{ marginBottom: 12 }} title="这是 AI 起草的用例：请评审、编辑并设为就绪；如果发现反复出现的问题，点击“纠正”，Agent 会改进后续生成。" />
           )}
           {c.ai_proposal && !readOnly && (
             <ProposalDiff
@@ -139,23 +139,23 @@ export function CasePage() {
               type="warning"
               showIcon
               style={{ marginBottom: 12 }}
-              title={`Category to confirm: suggested change from “${CATEGORY_LABEL[c.category || "requirement"]}” to “${CATEGORY_LABEL[c.category_suggestion.category]}”${
+              title={`待确认类别：建议从“${CATEGORY_LABEL[c.category || "requirement"]}”改为“${CATEGORY_LABEL[c.category_suggestion.category]}”${
                 c.category_suggestion.quality_tags?.length ? ` (${c.category_suggestion.quality_tags.map((t) => QUALITY_TAGS[t] || t).join(", ")})` : ""
               }`}
               description={c.category_suggestion.reason}
               action={
                 <Space orientation="vertical">
                   <Button size="small" type="primary" loading={suggestion.isPending} onClick={() => suggestion.mutate(true)}>
-                    Accept
+                    接受
                   </Button>
                   <Button size="small" loading={suggestion.isPending} onClick={() => suggestion.mutate(false)}>
-                    Keep as is
+                    保持原样
                   </Button>
                 </Space>
               }
             />
           )}
-          {readOnly && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title="The case is deprecated and read-only." />}
+          {readOnly && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title="该用例已废弃且只读。" />}
           <CaseForm
             form={form}
             sutId={c.sut_id}
@@ -169,19 +169,19 @@ export function CasePage() {
           />
           {!readOnly && (
             <Button type="primary" loading={save.isPending} onClick={() => form.submit()}>
-              Save
+              保存
             </Button>
           )}
         </Card>
         <CaseExecutionPanel tc={c} onAgentRun={setRunId} />
       </Col>
       <Col span={7}>
-        <Card size="small" title="Trace" style={{ marginBottom: 16 }}>
+        <Card size="small" title="追踪" style={{ marginBottom: 16 }}>
           <Descriptions column={1} size="small">
-            <Descriptions.Item label="Requirement">
+            <Descriptions.Item label="需求">
               {c.requirements.length ? c.requirements.map((r) => <Tag key={r.id}><Link to={`/versions/${r.version_id}?req=${r.id}`}>{objLabel(r.title, r.code)}</Link></Tag>) : "-"}
             </Descriptions.Item>
-            <Descriptions.Item label="Coverage">
+            <Descriptions.Item label="覆盖">
               <CaseCoverageTags
                 sutId={c.sut_id}
                 coverage={{
@@ -192,13 +192,13 @@ export function CasePage() {
                 }}
               />
             </Descriptions.Item>
-            <Descriptions.Item label="Tasks">
+            <Descriptions.Item label="任务">
               {c.tasks.length ? c.tasks.map((t) => <Tag key={t.id}><Link to={`/tasks/${t.id}`}>{`${t.name} (#${t.seq} )`}</Link></Tag>) : "-"}
             </Descriptions.Item>
-            <Descriptions.Item label="Local test repo">
+            <Descriptions.Item label="本地测试仓库">
               <PathText path={c.repo_path} />
             </Descriptions.Item>
-            <Descriptions.Item label="Code">
+            <Descriptions.Item label="编号">
               {c.code_path ? (
                 <Typography.Text code copyable={{ text: c.code_abs_path || c.code_path }}>
                   {c.code_abs_path || c.code_path}
@@ -210,7 +210,7 @@ export function CasePage() {
                 "-"
               )}
             </Descriptions.Item>
-            <Descriptions.Item label="Model snapshot">{c.snapshot_id ? <Tag color="purple">Recorded</Tag> : "-"}</Descriptions.Item>
+            <Descriptions.Item label="模型快照">{c.snapshot_id ? <Tag color="purple">已记录</Tag> : "-"}</Descriptions.Item>
           </Descriptions>
         </Card>
         <Card size="small" title={`Revision history (current ${c.revision})`}>

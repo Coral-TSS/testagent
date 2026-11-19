@@ -9,10 +9,10 @@ import { fmtTime } from "../utils/time";
 import { ListSection } from "./ListView";
 
 export const CORRECTION_STATUS: Record<string, [string, string]> = {
-  pending: ["Pending", "default"],
-  processing: ["Processing", "processing"],
-  processed: ["Processed", "green"],
-  failed: ["Processing failed", "red"],
+  pending: ["待处理", "default"],
+  processing: ["处理中", "processing"],
+  processed: ["已处理", "green"],
+  failed: ["处理失败", "red"],
 };
 
 export function CorrectionStatusTag({ status }: { status: string }) {
@@ -43,44 +43,44 @@ export function CorrectionButton({ targetType, targetId, kind, label, placeholde
   });
   const save = useApiMutation(
     () => api("/corrections", { method: "POST", body: { target_type: targetType, target_id: targetId, content: text, ...(kind ? { kind } : {}) } }),
-    { invalidate: [key, ["corrections"]], success: "Text saved; the agent processes it in the background and later generations will use it", onSuccess: () => setText("") },
+    { invalidate: [key, ["corrections"]], success: "文本已保存；Agent 会在后台处理，后续生成将使用它", onSuccess: () => setText("") },
   );
-  const title = label || (omission ? "Report missed test" : "Correct");
+  const title = label || (omission ? "报告漏测" : "纠正");
   return (
     <>
       <Button onClick={() => setOpen(true)}>{title}</Button>
       <Modal
-        title={omission ? "Report missed test: a problem found after execution that was not tested" : "Point out the problem"}
+        title={omission ? "报告漏测：执行后发现但未被测试覆盖的问题" : "指出问题"}
         open={open}
         onCancel={() => setOpen(false)}
-        okText={omission ? "Submit missed test" : "Submit correction"}
+        okText={omission ? "提交漏测" : "提交纠正"}
         okButtonProps={{ disabled: !text.trim() }}
         confirmLoading={save.isPending}
         onOk={() => save.mutate()}
         width={640}
       >
         <Input.TextArea
-          aria-label="Correction"
+          aria-label="纠正"
           rows={5}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={placeholder || (omission ? "e.g. This time we did not test an approver approving a purchase order they submitted" : "e.g. Boundary values should include 0.01 and the maximum amount; the expected result should state the message text")}
+          placeholder={placeholder || (omission ? "例如：这次没有测试审批人审批自己提交的采购订单" : "例如：边界值应包含 0.01 和最大金额；预期结果应写明提示文案")}
         />
-        <Typography.Text type="secondary">The text is stored verbatim; results (memories / new prompt versions) can be viewed, disabled or rolled back on the “Agent tools” page.</Typography.Text>
+        <Typography.Text type="secondary">文本会原文保存；结果（记忆 / 新的提示词版本）可在“Agent 工具”页查看、停用或回滚。</Typography.Text>
         <Typography.Title level={5} style={{ marginTop: 16 }}>
-          History
+          历史
         </Typography.Title>
-        <ListSection label="Correction history" count={list.data?.length} error={list.isError} onRetry={() => list.refetch()} recordLimit={200}>
+        <ListSection label="纠正历史" count={list.data?.length} error={list.isError} onRetry={() => list.refetch()} recordLimit={200}>
         <List
           size="small"
           dataSource={list.data || []}
-          locale={{ emptyText: "None yet" }}
+          locale={{ emptyText: "暂无" }}
           renderItem={(c) => (
             <List.Item>
               <Space direction="vertical" size={2} style={{ width: "100%" }}>
                 <Space>
                   <CorrectionStatusTag status={c.status} />
-                  {c.kind === "omission" && <Tag color="orange">Missed test</Tag>}
+                  {c.kind === "omission" && <Tag color="orange">漏测</Tag>}
                   <Typography.Text type="secondary">{fmtTime(c.created_at)}</Typography.Text>
                 </Space>
                 <Typography.Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{c.content}</Typography.Paragraph>

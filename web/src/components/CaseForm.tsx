@@ -54,10 +54,10 @@ export function formToBody(v: CaseFormValues): { body?: Record<string, unknown>;
     try {
       testData = JSON.parse(raw);
     } catch {
-      return { error: "Test data is not valid JSON" };
+      return { error: "测试数据不是合法 JSON" };
     }
     if (typeof testData !== "object" || Array.isArray(testData) || testData === null) {
-      return { error: "Test data must be a JSON object, e.g. {\"amount\": 0}" };
+      return { error: "测试数据必须是 JSON 对象，例如 {\"amount\": 0}" };
     }
   }
   const blank = (s?: string) => (s && s.trim() ? s.trim() : null);
@@ -106,32 +106,32 @@ export function CaseForm({
     <Form form={form} layout="vertical" disabled={disabled} onFinish={onFinish} initialValues={{ priority: "P1", type_tag: "functional", category: "requirement", quality_tags: [], mode: "manual", steps: [] }}>
       <Row gutter={12}>
         <Col span={16}>
-          <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+          <Form.Item name="title" label="标题" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item name="scenario" label="Scenario">
+          <Form.Item name="scenario" label="场景">
             <Select allowClear options={Object.entries(SCENARIO).map(([value, [label]]) => ({ value, label }))} />
           </Form.Item>
         </Col>
         <Col span={24}>
-          <Form.Item name="test_point" label="Test point">
+          <Form.Item name="test_point" label="测试点">
             <Input />
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item name="priority" label="Priority">
+          <Form.Item name="priority" label="优先级">
             <Select options={["P0", "P1", "P2"].map((p) => ({ value: p, label: p }))} />
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item name="type_tag" label="Type" rules={[{ pattern: /^[a-z][a-z0-9_-]{0,31}$/, message: "starts with a lowercase letter" }]}>
+          <Form.Item name="type_tag" label="类型" rules={[{ pattern: /^[a-z][a-z0-9_-]{0,31}$/, message: "以小写字母开头" }]}>
             <Input />
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item name="category" label="category" tooltip="Requirement validation: the business rules in the requirement (incl. input validation/error codes); General quality: idempotency, concurrency, repeatability/data reset; Regression smoke: guards the main path">
+          <Form.Item name="category" label="category" tooltip="需求验证：需求中的业务规则（含输入校验/错误码）；通用质量：幂等、并发、可重复性/数据重置；回归冒烟：守护主路径">
             <Select options={categoryOptions} />
           </Form.Item>
         </Col>
@@ -139,7 +139,7 @@ export function CaseForm({
           <Form.Item noStyle shouldUpdate={(a, b) => a.category !== b.category}>
             {({ getFieldValue }) =>
               getFieldValue("category") === "quality" ? (
-                <Form.Item name="quality_tags" label="Quality attributes">
+                <Form.Item name="quality_tags" label="质量属性">
                   <Select mode="tags" options={qualityTagOptions} />
                 </Form.Item>
               ) : null
@@ -147,12 +147,12 @@ export function CaseForm({
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item name="mode" label="Mode">
-            <Select options={[{ value: "manual", label: "Manual" }, { value: "automated", label: "Automated" }]} />
+          <Form.Item name="mode" label="模式">
+            <Select options={[{ value: "manual", label: "手工" }, { value: "automated", label: "已自动化" }]} />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="requirement_ids" label="Requirements">
+          <Form.Item name="requirement_ids" label="需求">
             <Select
               mode="multiple"
               optionFilterProp="label"
@@ -161,7 +161,7 @@ export function CaseForm({
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="node_ids" label="Linked model nodes">
+          <Form.Item name="node_ids" label="关联的模型节点">
             <Select
               mode="multiple"
               optionFilterProp="label"
@@ -170,25 +170,25 @@ export function CaseForm({
           </Form.Item>
         </Col>
         <Col span={24}>
-          <Form.Item name="preconditions" label="Preconditions">
+          <Form.Item name="preconditions" label="前置条件">
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Form.Item label="Steps">
+          <Form.Item label="步骤">
             <StepsEditor disabled={disabled} />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="test_data" label="Test data (JSON object)">
+          <Form.Item name="test_data" label="测试数据（JSON 对象）">
             <Input.TextArea rows={4} style={{ fontFamily: "monospace" }} placeholder='{"amount": 0}' />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item name="expected" label="Expected result">
+          <Form.Item name="expected" label="预期结果">
             <Input.TextArea rows={4} />
           </Form.Item>
         </Col>
         <Col span={24}>
-          <Form.Item name="code_path" label="Automation code path (optional)">
+          <Form.Item name="code_path" label="自动化代码路径（可选）">
             <Input placeholder="tests/REQ-001/test_TC-001.py" />
           </Form.Item>
         </Col>

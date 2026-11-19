@@ -43,11 +43,11 @@ export function ApisPage() {
   const apis = useQuery({ queryKey: key, queryFn: () => api<ApiEndpoint[]>(`/suts/${sutId}/apis`) });
   const create = useApiMutation((body: Record<string, unknown>) => api(`/suts/${sutId}/apis`, { method: "POST", body }), {
     invalidate: [key],
-    success: "Saved",
+    success: "已保存",
   });
   const update = useApiMutation(
     ({ id, body }: { id: string; body: Record<string, unknown> }) => api(`/apis/${id}`, { method: "PATCH", body }),
-    { invalidate: [key], success: "Saved" },
+    { invalidate: [key], success: "已保存" },
   );
   const remove = useApiMutation((id: string) => api(`/apis/${id}`, { method: "DELETE" }), { invalidate: [key] });
   const envs = useQuery({ queryKey: ["environments", sutId], queryFn: () => api<Environment[]>(`/suts/${sutId}/environments`) });
@@ -60,7 +60,7 @@ export function ApisPage() {
       invalidate: [key],
       onSuccess: (r) => {
         setImportOpen(false);
-        Modal.success({ title: "OpenAPI import finished", content:
+        Modal.success({ title: "OpenAPI 导入完成", content:
             `Total ${r.total} API(s): new ${r.created}, schema updated ${r.updated}` +
             (r.field_suggestions ? `; entity field suggestions from API fields ${r.field_suggestions} (rename/add; review them under “Model suggestions” on the version page)` : "") +
             (r.link_suggestions ? `; link suggestions from foreign-key fields ${r.link_suggestions} (review them under “Links” on the model page)` : ""),
@@ -96,8 +96,8 @@ export function ApisPage() {
       const resp = parseJson(v.response_schema);
       if (!req.ok || !resp.ok) {
         schemaForm.setFields([
-          ...(!req.ok ? [{ name: "request_schema" as const, errors: ["is not valid JSON"] }] : []),
-          ...(!resp.ok ? [{ name: "response_schema" as const, errors: ["is not valid JSON"] }] : []),
+          ...(!req.ok ? [{ name: "request_schema" as const, errors: ["不是合法 JSON"] }] : []),
+          ...(!resp.ok ? [{ name: "response_schema" as const, errors: ["不是合法 JSON"] }] : []),
         ]);
         return;
       }
@@ -113,7 +113,7 @@ export function ApisPage() {
     <Card>
       <Space style={{ width: "100%", justifyContent: "space-between" }}>
         <Typography.Title level={3} style={{ marginTop: 0 }}>
-          API registry
+          API 注册表
         </Typography.Title>
         <Button
           icon={<CloudDownloadOutlined />}
@@ -122,7 +122,7 @@ export function ApisPage() {
             setImportOpen(true);
           }}
         >
-          Import from OpenAPI
+          从 OpenAPI 导入
         </Button>
       </Space>
       <Typography.Paragraph type="secondary">
@@ -133,17 +133,17 @@ export function ApisPage() {
         error={apis.isError}
         onRetry={() => apis.refetch()}
         title="API"
-        emptyTitle="No APIs registered yet"
-        emptyHint="Add one by hand, or click “Import from OpenAPI” above to import the SUT's /openapi.json in one go (with fields; field and link suggestions are generated automatically)."
+        emptyTitle="尚未登记 API"
+        emptyHint="可手工添加，或点击上方“从 OpenAPI 导入”，一次性导入被测系统的 /openapi.json（含字段；字段和关系建议会自动生成）。"
         rows={apis.data}
         loading={apis.isLoading}
         columns={[
-          { title: "Method", dataIndex: "method", width: 90, render: (m) => <Tag>{m}</Tag> },
-          { title: "Path", dataIndex: "path", render: (p) => <code style={{ whiteSpace: "nowrap" }}>{p}</code> },
-          { title: "Name", dataIndex: "name" },
-          { title: "Purpose", dataIndex: "description", ellipsis: true, render: (d) => d || <Typography.Text type="secondary">Not filled in</Typography.Text> },
+          { title: "方法", dataIndex: "method", width: 90, render: (m) => <Tag>{m}</Tag> },
+          { title: "路径", dataIndex: "path", render: (p) => <code style={{ whiteSpace: "nowrap" }}>{p}</code> },
+          { title: "名称", dataIndex: "name" },
+          { title: "用途", dataIndex: "description", ellipsis: true, render: (d) => d || <Typography.Text type="secondary">未填写</Typography.Text> },
           {
-            title: "Inputs / outputs",
+            title: "输入 / 输出",
             width: 110,
             render: (_, row) =>
               row.io && (row.io.inputs.length || row.io.outputs.length) ? (
@@ -155,13 +155,13 @@ export function ApisPage() {
               ),
           },
           {
-            title: "Code location",
+            title: "代码位置",
             dataIndex: "code_ref",
             render: (r) =>
               r ? (
                 /^https?:\/\//.test(r) ? (
                   <a href={r} target="_blank" rel="noreferrer">
-                    Link
+                    关系
                   </a>
                 ) : (
                   <code>{r}</code>
@@ -170,31 +170,31 @@ export function ApisPage() {
                 "-"
               ),
           },
-          { title: "Bound actions", dataIndex: "node_names", render: (names: string[] = []) => names.map((x) => <Tag key={x}>{x}</Tag>) },
+          { title: "绑定的动作", dataIndex: "node_names", render: (names: string[] = []) => names.map((x) => <Tag key={x}>{x}</Tag>) },
           {
-            title: "Schema",
+            title: "模式",
             width: 90,
             render: (_, row) =>
-              row.request_schema || row.response_schema ? <Tag color="green">Registered</Tag> : <Tag>not registered</Tag>,
+              row.request_schema || row.response_schema ? <Tag color="green">已登记</Tag> : <Tag>未登记</Tag>,
           },
         ]}
         expandable={{ expandedRowRender: (row) => <ApiSchemaView api={row} /> }}
-        extraActions={(row) => <a onClick={() => openDoc(row)}>Edit description & fields</a>}
+        extraActions={(row) => <a onClick={() => openDoc(row)}>编辑描述和字段</a>}
         fields={
           <>
-            <Form.Item name="method" label="Method" rules={[{ required: true }]} initialValue="GET">
+            <Form.Item name="method" label="方法" rules={[{ required: true }]} initialValue="GET">
               <Select options={METHODS.map((m) => ({ value: m, label: m }))} />
             </Form.Item>
-            <Form.Item name="path" label="Path" rules={[{ required: true, pattern: /^\//, message: "Starts with /" }]}>
+            <Form.Item name="path" label="路径" rules={[{ required: true, pattern: /^\//, message: "以 / 开头" }]}>
               <Input placeholder="/api/orders/{id}" />
             </Form.Item>
-            <Form.Item name="name" label="Name">
+            <Form.Item name="name" label="名称">
               <Input />
             </Form.Item>
-            <Form.Item name="code_ref" label="Code location (link)">
+            <Form.Item name="code_ref" label="代码位置（链接）">
               <Input />
             </Form.Item>
-            <Form.Item name="description" label="Purpose (what this API does)">
+            <Form.Item name="description" label="用途（该 API 做什么）">
               <Input.TextArea rows={2} />
             </Form.Item>
           </>
@@ -210,7 +210,7 @@ export function ApisPage() {
       />
       <Modal
         open={importOpen}
-        title="Import APIs and schemas from the SUT's OpenAPI"
+        title="从被测系统的 OpenAPI 导入 API 和模式"
         onCancel={() => setImportOpen(false)}
         onOk={() => importForm.submit()}
         confirmLoading={importer.isPending}
@@ -220,13 +220,13 @@ export function ApisPage() {
           layout="vertical"
           onFinish={(v) => importer.mutate({ environment_id: v.environment_id || undefined, url: v.url || undefined })}
         >
-          <Form.Item name="environment_id" label="Environment (reads {base_url}/openapi.json)">
+          <Form.Item name="environment_id" label="环境（读取 {base_url}/openapi.json）">
             <Select allowClear options={(envs.data || []).map((e) => ({ value: e.id, label: `${e.name} · ${e.base_url}` }))} />
           </Form.Item>
-          <Form.Item name="url" label="Or enter the OpenAPI address directly">
+          <Form.Item name="url" label="或直接输入 OpenAPI 地址">
             <Input placeholder="http://127.0.0.1:8766/openapi.json" />
           </Form.Item>
-          <Typography.Text type="secondary">Existing APIs are matched by “method + path”; only the schema is updated, names and action bindings stay.</Typography.Text>
+          <Typography.Text type="secondary">已有 API 按“方法 + 路径”匹配；只更新模式，名称和动作绑定保持不变。</Typography.Text>
         </Form>
       </Modal>
       <Modal
@@ -239,14 +239,14 @@ export function ApisPage() {
         forceRender
       >
         <Form form={schemaForm} layout="vertical" onFinish={saveSchema}>
-          <Form.Item name="description" label="Purpose (what this API does)">
-            <Input.TextArea rows={2} placeholder="e.g. Create a purchase order and decide by amount and currency whether approval is required" />
+          <Form.Item name="description" label="用途（该 API 做什么）">
+            <Input.TextArea rows={2} placeholder="例如：创建采购订单，并根据金额和币种决定是否需要审批" />
           </Form.Item>
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }}>
-            <Form.Item name="request_content_type" label="Input format (request body type)">
+            <Form.Item name="request_content_type" label="输入格式（请求体类型）">
               <AutoComplete options={CONTENT_TYPES} placeholder="application/json" />
             </Form.Item>
-            <Form.Item name="response_content_type" label="Output format (response type)">
+            <Form.Item name="response_content_type" label="输出格式（响应类型）">
               <AutoComplete options={CONTENT_TYPES} placeholder="application/json" />
             </Form.Item>
           </Space>
@@ -256,14 +256,14 @@ export function ApisPage() {
             items={[
               {
                 key: "fields",
-                label: "Field table",
+                label: "字段表",
                 children: (
                   <>
-                    <Form.Item name="request_fields" label="Inputs: parameters and body fields">
-                      <IoParamsTable label="Input parameters" showLocation locations={["body", "path", "query", "header", "form"]} addLabel="Add input field" />
+                    <Form.Item name="request_fields" label="输入：参数和请求体字段">
+                      <IoParamsTable label="输入参数" showLocation locations={["body", "path", "query", "header", "form"]} addLabel="添加输入字段" />
                     </Form.Item>
-                    <Form.Item name="response_fields" label="Outputs: success response fields">
-                      <IoParamsTable label="Output parameters" addLabel="Add output field" />
+                    <Form.Item name="response_fields" label="输出：成功响应字段">
+                      <IoParamsTable label="输出参数" addLabel="添加输出字段" />
                     </Form.Item>
                     <Typography.Text type="secondary">
                       Saving writes back to the API schema (existing constraints such as ranges are kept); switch to the “JSON (advanced)” tab to edit the schema directly.
@@ -273,13 +273,13 @@ export function ApisPage() {
               },
               {
                 key: "json",
-                label: "JSON (advanced)",
+                label: "JSON（高级）",
                 children: (
                   <>
-                    <Form.Item name="request_schema" label='Request schema (JSON, e.g. {"body": {"type": "object", "properties": {...}}})'>
+                    <Form.Item name="request_schema" label='请求模式（JSON，例如 {"body": {"type": "object", "properties": {...}}}）'>
                       <Input.TextArea rows={10} style={{ fontFamily: "monospace" }} />
                     </Form.Item>
-                    <Form.Item name="response_schema" label='Response schema (JSON, e.g. {"201": {"description": "Created", "schema": {...}}})'>
+                    <Form.Item name="response_schema" label='响应模式（JSON，例如 {"201": {"description": "Created", "schema": {...}}}）'>
                       <Input.TextArea rows={6} style={{ fontFamily: "monospace" }} />
                     </Form.Item>
                   </>

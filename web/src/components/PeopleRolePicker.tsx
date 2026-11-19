@@ -6,9 +6,9 @@ import { api } from "../api/client";
 import type { Person, RequirementPerson, Role } from "../api/types";
 
 export const ROLES: [Role, string][] = [
-  ["owner", "Owner"],
-  ["developer", "Developer"],
-  ["tester", "Tester"],
+  ["owner", "负责人"],
+  ["developer", "开发"],
+  ["tester", "测试"],
 ];
 
 /** Picks owner/developer/tester people for a requirement (BR: confirm requires an owner). */
@@ -45,7 +45,7 @@ export function PeopleRolePicker({
         </Form.Item>
       ))}
       <Button size="small" htmlType="submit" loading={saving}>
-        Save people
+        保存人员
       </Button>
     </Form>
   );

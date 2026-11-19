@@ -8,10 +8,10 @@ export const CARD_SHORT: Record<Cardinality, string> = {
   many_to_many: "M:N",
 };
 export const CARD_LABEL: Record<Cardinality, string> = {
-  one_to_one: "One-to-one (1:1)",
-  many_to_one: "Many-to-one (N:1, foreign key on the source)",
-  one_to_many: "One-to-many (1:N, foreign key on the target)",
-  many_to_many: "Many-to-many (M:N, junction entity optional)",
+  one_to_one: "一对一（1:1）",
+  many_to_one: "多对一（N:1，外键在源上）",
+  one_to_many: "一对多（1:N，外键在目标上）",
+  many_to_many: "多对多（M:N，中间实体可选）",
 };
 
 type Sides = Pick<Link, "from_name" | "to_name" | "forward_name" | "reverse_name">;
@@ -21,8 +21,8 @@ export const reverseText = (l: Sides) => `${l.to_name} ${l.reverse_name} ${l.fro
 /** "PurchaseOrder belongs to Supplier (N:1, foreign key PurchaseOrder.supplier_id)" */
 export function linkText(l: Link): string {
   const extra = [CARD_SHORT[l.cardinality]];
-  if (l.fk_field) extra.push(`foreign key ${l.fk_field}`);
-  if (l.via_name) extra.push(`junction entity ${l.via_name}`);
+  if (l.fk_field) extra.push(`外键 ${l.fk_field}`);
+  if (l.via_name) extra.push(`中间实体 ${l.via_name}`);
   return `${forwardText(l)} (${extra.join(", ")})`;
 }
 
@@ -35,15 +35,15 @@ export const OP_TEXT: Record<PreconditionOp, string> = {
   gte: ">=",
   lt: "<",
   lte: "<=",
-  is_null: "is empty",
-  not_null: "is not empty",
+  is_null: "为空",
+  not_null: "不为空",
 };
 export const EFFECT_LABEL: Record<Effect["kind"], string> = {
-  set_field: "Set field",
-  create_object: "Create object",
-  delete_object: "Delete object",
-  create_link: "Create link",
-  delete_link: "Remove link",
+  set_field: "设置字段",
+  create_object: "创建对象",
+  delete_object: "删除对象",
+  create_link: "创建关系",
+  delete_link: "移除关系",
 };
 
 export function preconditionText(p: Precondition): string {

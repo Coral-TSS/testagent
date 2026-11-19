@@ -78,7 +78,7 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
         ? api(`/fields/${editing.id}`, { method: "PATCH", body })
         : api(`/nodes/${nodeId}/fields`, { method: "POST", body });
     },
-    { success: "Field saved", onSuccess: () => { setEditing(null); refresh(); } },
+    { success: "字段已保存", onSuccess: () => { setEditing(null); refresh(); } },
   );
 
   const open = (f: EntityField | "new") => {
@@ -108,14 +108,14 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
   const remove = async (f: EntityField, confirm = false) => {
     try {
       await api(`/fields/${f.id}`, { method: "DELETE", params: { confirm } });
-      message.success("Field archived");
+      message.success("字段已归档");
       refresh();
     } catch (err) {
       if (err instanceof ApiError && err.code === "CONFLICT" && !confirm) {
         modal.confirm({
-          title: "Field still referenced",
+          title: "字段仍被引用",
           content: err.message,
-          okText: "Archive anyway",
+          okText: "仍然归档",
           okButtonProps: { danger: true },
           onOk: () => remove(f, true),
         });
@@ -128,7 +128,7 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
   return (
     <>
       <ListTable<EntityField>
-        label="Entity fields"
+        label="实体字段"
         error={fields.isError}
         onRetry={() => fields.refetch()}
         size="small"
@@ -136,10 +136,10 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
 
         loading={fields.isLoading}
         dataSource={fields.data}
-        locale={{ emptyText: "No fields yet (e.g. amount amount_minor)" }}
+        locale={{ emptyText: "还没有字段（例如 amount amount_minor）" }}
         columns={[
           {
-            title: "Field",
+            title: "字段",
             render: (_, f) => (
               <Space orientation="vertical" size={0}>
                 <Typography.Text code>{f.name}</Typography.Text>
@@ -149,7 +149,7 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
             ),
           },
           {
-            title: "Type",
+            title: "类型",
             width: 160,
             render: (_, f) => (
               <Space orientation="vertical" size={0}>
@@ -162,12 +162,12 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
             ),
           },
           {
-            title: "Required",
+            title: "必填",
             width: 56,
-            render: (_, f) => (f.required ? <Tag color="red">Required</Tag> : <Typography.Text type="secondary">no</Typography.Text>),
+            render: (_, f) => (f.required ? <Tag color="red">必填</Tag> : <Typography.Text type="secondary">否</Typography.Text>),
           },
           {
-            title: "Format / constraints",
+            title: "格式 / 约束",
             render: (_, f) => (
               <Space orientation="vertical" size={0}>
                 {f.format && <span>{f.format}</span>}
@@ -182,9 +182,9 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
             width: 96,
             render: (_, f) => (
               <Space>
-                <a onClick={() => open(f)}>Edit</a>
-                <Popconfirm title="Archive this field?" onConfirm={() => remove(f)}>
-                  <a>Archive</a>
+                <a onClick={() => open(f)}>编辑</a>
+                <Popconfirm title="要归档该字段吗？" onConfirm={() => remove(f)}>
+                  <a>归档</a>
                 </Popconfirm>
               </Space>
             ),
@@ -192,60 +192,60 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
         ]}
       />
       <Button size="small" style={{ marginTop: 8 }} onClick={() => open("new")}>
-        Add field
+        添加字段
       </Button>
       <Modal
         open={editing !== null}
-        title={editing === "new" ? "Add field" : "Edit field"}
+        title={editing === "new" ? "添加字段" : "编辑字段"}
         onCancel={() => setEditing(null)}
         onOk={() => form.submit()}
         confirmLoading={save.isPending}
         forceRender
       >
         <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)}>
-          <Form.Item name="name" label="Field name (same as the API field, e.g. amount_minor)" rules={[{ required: true }]}>
+          <Form.Item name="name" label="字段名（与 API 字段相同，例如 amount_minor）" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="display_name" label="Display name">
-            <Input placeholder="e.g. Amount" />
+          <Form.Item name="display_name" label="显示名">
+            <Input placeholder="例如 Amount" />
           </Form.Item>
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }}>
-            <Form.Item name="data_type" label="Type (required)" rules={[{ required: true, message: "Type is required" }]}>
+            <Form.Item name="data_type" label="类型（必填）" rules={[{ required: true, message: "必须填写类型" }]}>
               <Select style={{ minWidth: 150 }} options={DATA_TYPE_OPTIONS} />
             </Form.Item>
-            <Form.Item name="unit" label="Unit">
-              <Input placeholder="e.g. cents, CNY" />
+            <Form.Item name="unit" label="单位">
+              <Input placeholder="例如 cents、CNY" />
             </Form.Item>
-            <Form.Item name="position" label="Order">
+            <Form.Item name="position" label="顺序">
               <InputNumber min={0} />
             </Form.Item>
-            <Form.Item name="required" label="Required" valuePropName="checked">
+            <Form.Item name="required" label="必填" valuePropName="checked">
               <Switch />
             </Form.Item>
           </Space>
           {dataType === "enum" && (
-            <Form.Item name="enum_values" label="Enum values (Enter to add)" rules={[{ required: true, message: "An enum field needs its values" }]}>
-              <Select mode="tags" tokenSeparators={[",", ", "]} placeholder="e.g. pending, approved, rejected" />
+            <Form.Item name="enum_values" label="枚举值（回车添加）" rules={[{ required: true, message: "枚举字段需要填写取值" }]}>
+              <Select mode="tags" tokenSeparators={[",", ", "]} placeholder="例如 pending、approved、rejected" />
             </Form.Item>
           )}
           {dataType === "reference" && (
-            <Form.Item name="ref_node_id" label="Referenced entity" rules={[{ required: true, message: "Choose the referenced entity" }]}>
+            <Form.Item name="ref_node_id" label="被引用实体" rules={[{ required: true, message: "选择被引用的实体" }]}>
               <Select showSearch optionFilterProp="label" options={entityOptions} />
             </Form.Item>
           )}
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }}>
             <Form.Item name="format" label="format">
-              <Input placeholder="e.g. integer in cents, YYYY-MM-DD, uuid" />
+              <Input placeholder="例如：以分为单位的整数、YYYY-MM-DD、uuid" />
             </Form.Item>
-            <Form.Item name="example" label="Example">
+            <Form.Item name="example" label="示例">
               <Input placeholder="e.g. 5000000" />
             </Form.Item>
-            <Form.Item name="storage_name" label="DB column name (if different from the field name)">
-              <Input placeholder="e.g. amount" />
+            <Form.Item name="storage_name" label="数据库列名（如与字段名不同）">
+              <Input placeholder="例如 amount" />
             </Form.Item>
           </Space>
-          <Form.Item name="constraints_text" label="Constraints (one per line)">
-            <Input.TextArea rows={3} placeholder="e.g. at least 0" />
+          <Form.Item name="constraints_text" label="约束（每行一条）">
+            <Input.TextArea rows={3} placeholder="例如至少为 0" />
           </Form.Item>
           <Form.Item name="description" label="description">
             <Input.TextArea rows={2} />

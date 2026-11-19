@@ -60,7 +60,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     const onAuth = () => {
       setCsrfToken(null);
       setMe(null);
-      setNotice("Your session has ended. Please sign in again.");
+      setNotice("会话已结束，请重新登录。");
       setPhase("signed-out");
     };
     const onPassword = () => setMe((m) => (m ? { ...m, must_change_password: true } : m));
@@ -96,14 +96,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
       <Centered>
         <Card style={{ width: 400 }}>
           <Typography.Title level={4} style={{ marginTop: 0 }}>
-            Choose a new password
+            请设置新密码
           </Typography.Title>
           <Typography.Paragraph type="secondary">
-            Signed in as {me.username}. Replace the initial password before you continue.
+            当前登录为 {me.username}。请先替换初始密码后再继续。
           </Typography.Paragraph>
           <ChangePasswordForm onDone={accept} />
           <Button type="link" style={{ padding: 0 }} onClick={signOut}>
-            Sign out
+            退出登录
           </Button>
         </Card>
       </Centered>
@@ -142,26 +142,26 @@ export function LoginPage({ notice, onSignedIn }: { notice?: string | null; onSi
         <Typography.Title level={3} style={{ marginTop: 0 }}>
           TestAgent
         </Typography.Title>
-        <Typography.Paragraph type="secondary">Sign in to continue</Typography.Paragraph>
+        <Typography.Paragraph type="secondary">请登录后继续</Typography.Paragraph>
         {!hasUsers && (
           <Result
             status="info"
             style={{ padding: "8px 0" }}
-            title="No account yet"
-            subTitle="Set TESTAGENT_ADMIN_USER and TESTAGENT_ADMIN_PASSWORD in .env and restart, or run: testagent user add <name> --admin"
+            title="还没有账号"
+            subTitle="请在 .env 中设置 TESTAGENT_ADMIN_USER 和 TESTAGENT_ADMIN_PASSWORD 并重启，或运行：testagent user add <name> --admin"
           />
         )}
         {notice && <Alert type="info" showIcon style={{ marginBottom: 12 }} title={notice} />}
         {error && <Alert type="error" showIcon style={{ marginBottom: 12 }} title={error} />}
         <Form layout="vertical" onFinish={onFinish} requiredMark={false}>
-          <Form.Item name="username" label="User name" rules={[{ required: true, message: "Enter your user name" }]}>
+          <Form.Item name="username" label="用户名" rules={[{ required: true, message: "请输入用户名" }]}>
             <Input autoComplete="username" autoFocus />
           </Form.Item>
-          <Form.Item name="password" label="Password" rules={[{ required: true, message: "Enter your password" }]}>
+          <Form.Item name="password" label="密码" rules={[{ required: true, message: "请输入密码" }]}>
             <Input.Password autoComplete="current-password" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block loading={busy}>
-            Sign in
+          <Button type="primary" htmlType="submit" block loading={busy} aria-label="登录">
+            登录
           </Button>
         </Form>
       </Card>
@@ -186,27 +186,27 @@ export function ChangePasswordForm({ onDone }: { onDone: (me: Me) => void }) {
   return (
     <Form layout="vertical" onFinish={onFinish} requiredMark={false}>
       {error && <Alert type="error" showIcon style={{ marginBottom: 12 }} title={error} />}
-      <Form.Item name="current_password" label="Current password" rules={[{ required: true }]}>
+      <Form.Item name="current_password" label="当前密码" rules={[{ required: true }]}>
         <Input.Password autoComplete="current-password" />
       </Form.Item>
-      <Form.Item name="new_password" label="New password (at least 10 characters)" rules={[{ required: true }, { min: 10, message: "At least 10 characters" }]}>
+      <Form.Item name="new_password" label="新密码（至少 10 个字符）" rules={[{ required: true }, { min: 10, message: "至少 10 个字符" }]}>
         <Input.Password autoComplete="new-password" />
       </Form.Item>
       <Form.Item
         name="confirm"
-        label="Repeat new password"
+        label="再次输入新密码"
         dependencies={["new_password"]}
         rules={[
           { required: true },
           ({ getFieldValue }) => ({
-            validator: (_, value) => (!value || value === getFieldValue("new_password") ? Promise.resolve() : Promise.reject(new Error("The passwords do not match"))),
+            validator: (_, value) => (!value || value === getFieldValue("new_password") ? Promise.resolve() : Promise.reject(new Error("两次输入的密码不一致"))),
           }),
         ]}
       >
         <Input.Password autoComplete="new-password" />
       </Form.Item>
       <Button type="primary" htmlType="submit" block loading={busy}>
-        Save new password
+        保存新密码
       </Button>
     </Form>
   );

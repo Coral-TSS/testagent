@@ -197,8 +197,8 @@ Details: [docs/deployment.md](docs/deployment.md).
 
 ## Roadmap
 
-- Chinese (zh-CN) UI and agent output as an option (i18n); the agent output language is already
-  configurable with `TESTAGENT_AGENT_LANGUAGE`
+- The UI and agent output default to Simplified Chinese; override the agent language with
+  `TESTAGENT_AGENT_LANGUAGE` (for example `English`)
 - Multi-user mode with accounts and roles (today: single user, local)
 - More executors and integrations (CI trigger, issue trackers, test management export)
 - Non-functional tests (performance, security) beyond marking them as skipped

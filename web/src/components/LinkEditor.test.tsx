@@ -39,7 +39,7 @@ describe("LinkEditor", () => {
     expect(screen.getByTestId("link-preview").textContent).toContain("N:1");
     fireEvent.change(screen.getByDisplayValue("supplies"), { target: { value: "provides" } });
     await waitFor(() => expect(screen.getByTestId("link-preview").textContent).toContain("Supplier provides PurchaseOrder"));
-    fireEvent.click(screen.getByText("Save"));
+    fireEvent.click(screen.getByText("保存"));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const body = calls.find((c) => c.method === "PATCH")!.body as Record<string, unknown>;
     expect(Object.keys(body)).not.toContain("from_name");

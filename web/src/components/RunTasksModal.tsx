@@ -8,20 +8,20 @@ import { api, describeError } from "../api/client";
 import type { RunVersionResult, RunnableTask } from "../api/types";
 
 export const REASON_LABEL: Record<NonNullable<RunnableTask["reason"]>, string> = {
-  running: "Already running",
-  no_cases: "No cases",
-  not_ready: "Not set ready",
-  no_environment: "No environment",
-  no_ready_cases: "No ready cases",
+  running: "已在运行",
+  no_cases: "暂无用例",
+  not_ready: "未设为就绪",
+  no_environment: "无环境",
+  no_ready_cases: "没有就绪用例",
 };
-const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "Automated", human: "Manual" };
+const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "已自动化", human: "手工" };
 
-/** Which rows can be ticked: runnable ones, plus drafts when "set ready first" is on. */
+/** Which rows can be ticked: runnable ones, plus drafts when "请先设为就绪" is on. */
 export function selectable(t: RunnableTask, setReady: boolean): boolean {
   return t.runnable || (setReady && t.reason === "not_ready" && t.case_count > 0 && !t.active_run_id);
 }
 
-/** #13: start every runnable task of a version in one go ("Run tasks" / "Start testing"). */
+/** #13: start every runnable task of a version in one go ("执行任务" / "开始测试"). */
 export function RunTasksModal({
   open,
   versionId,
@@ -31,7 +31,7 @@ export function RunTasksModal({
 }: {
   open: boolean;
   versionId: string;
-  /** opened from "Start testing": also move the version to testing, and offer "only change status" */
+  /** opened from "Start testing": also move the version to testing, and offer "仅变更状态" */
   startTesting?: boolean;
   onClose: () => void;
   onDone?: (r: RunVersionResult | null) => void;
@@ -62,7 +62,7 @@ export function RunTasksModal({
     try {
       if (onlyStatus) {
         await api(`/versions/${versionId}/status`, { method: "POST", body: { status: "testing" } });
-        message.success("Version moved to testing; no task was started");
+        message.success("版本已进入测试中；没有启动任务");
         refresh();
         onDone?.(null);
         onClose();
@@ -74,18 +74,18 @@ export function RunTasksModal({
       });
       notification.open({
         type: out.skipped.length ? "warning" : "success",
-        title: `Started ${out.started.length} task(s)${out.skipped.length ? `, ${out.skipped.length} not started` : ""}`,
+        title: `已启动 ${out.started.length} 个任务${out.skipped.length ? `，${out.skipped.length} 个未启动` : ""}`,
         description: (
           <Space orientation="vertical" size={2}>
             {/* the notification renders outside the router: navigate by hand */}
             {out.started.map((s) => (
               <a key={s.run_id} href={`/runs/${s.run_id}`} onClick={(e) => (e.preventDefault(), navigate(`/runs/${s.run_id}`))}>
-                {s.name}: view run
+                {s.name}：查看执行
               </a>
             ))}
             {out.skipped.map((s) => (
               <span key={s.task_id}>
-                {s.name || s.task_id}: {s.code === "MISSING_SCRIPTS" ? `cases without script (${(s.related || []).join(", ")})` : s.message}
+                {s.name || s.task_id}: {s.code === "MISSING_SCRIPTS" ? `无脚本的用例（${(s.related || []).join("、")}）` : s.message}
               </span>
             ))}
           </Space>
@@ -103,7 +103,7 @@ export function RunTasksModal({
   const generate = async () => {
     try {
       const out = await api<{ queued: number }>(`/versions/${versionId}/automate`, { method: "POST", body: { case_ids: gapIds } });
-      message.success(`AI automation queued for ${out.queued} case(s)`);
+      message.success(`已为 ${out.queued} 条用例排队 AI 自动化`);
     } catch (err) {
       message.error(describeError(err));
     }
@@ -114,28 +114,28 @@ export function RunTasksModal({
       open={open}
       onCancel={onClose}
       width={760}
-      title={startTesting ? "Start testing: run the version's tasks" : "Run tasks"}
+      title={startTesting ? "开始测试：执行该版本的任务" : "执行任务"}
       destroyOnHidden
       footer={
         <Space>
           {startTesting && (
             <Button onClick={() => submit(true)} disabled={busy}>
-              Only change status
+              仅变更状态
             </Button>
           )}
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose}>取消</Button>
           <Button type="primary" loading={busy} disabled={!picked.length} onClick={() => submit()}>
-            Run {picked.length} task(s)
+            执行 {picked.length} 个任务
           </Button>
         </Space>
       }
     >
       <Space style={{ marginBottom: 8 }}>
-        <Switch size="small" checked={setReady} onChange={setSetReady} aria-label="Set draft tasks ready first" />
-        <Typography.Text>Also set draft tasks ready first</Typography.Text>
+        <Switch size="small" checked={setReady} onChange={setSetReady} aria-label="先把草稿任务设为就绪" />
+        <Typography.Text>同时先把草稿任务设为就绪</Typography.Text>
       </Space>
       <ListTable<RunnableTask>
-        label="Task selection"
+        label="任务选择"
         error={q.isError}
         onRetry={() => q.refetch()}
         size="small"
@@ -149,10 +149,10 @@ export function RunTasksModal({
           getCheckboxProps: (t) => ({ disabled: !selectable(t, setReady) }),
         }}
         columns={[
-          { title: "Task", dataIndex: "name", render: (n: string, t) => <Link to={`/tasks/${t.id}`}>{n}</Link> },
-          { title: "Actor", dataIndex: "executor", render: (e: string) => EXECUTOR[e] || e },
-          { title: "Ready cases", render: (_: unknown, t) => `${t.ready_cases}/${t.case_count}` },
-          { title: "Environment", dataIndex: "environment_name", render: (e: string | null) => e || "-" },
+          { title: "测试任务", dataIndex: "name", render: (n: string, t) => <Link to={`/tasks/${t.id}`}>{n}</Link> },
+          { title: "执行者", dataIndex: "executor", render: (e: string) => EXECUTOR[e] || e },
+          { title: "就绪用例", render: (_: unknown, t) => `${t.ready_cases}/${t.case_count}` },
+          { title: "环境", dataIndex: "environment_name", render: (e: string | null) => e || "-" },
           {
             title: "",
             render: (_: unknown, t) => (
@@ -160,7 +160,7 @@ export function RunTasksModal({
                 {t.reason && !selectable(t, setReady) && <Tag>{REASON_LABEL[t.reason]}</Tag>}
                 {t.script_gaps.length > 0 && (
                   <Tooltip title={t.script_gaps.join(", ")}>
-                    <Tag color="orange">{t.script_gaps.length} without script</Tag>
+                    <Tag color="orange">{t.script_gaps.length} 个无脚本</Tag>
                   </Tooltip>
                 )}
               </Space>
@@ -174,19 +174,19 @@ export function RunTasksModal({
           showIcon
           style={{ marginTop: 12 }}
           data-testid="run-tasks-gaps"
-          title={`${gapCount} case(s) in the chosen automated tasks have no automation script`}
+          title={`所选自动化任务中有 ${gapCount} 条用例尚无自动化脚本`}
           description={
             <Space orientation="vertical" size={4}>
               <Checkbox checked={allowMissing} onChange={(e) => setAllowMissing(e.target.checked)}>
-                Run anyway: those cases are skipped (not executed, not counted as passed)
+                仍要执行：这些用例会被跳过（未执行，不计为通过）
               </Checkbox>
               <Space wrap>
                 <Button size="small" onClick={generate}>
-                  Generate scripts (AI automation)
+                  生成脚本（AI 自动化）
                 </Button>
-                <Typography.Text type="secondary">To move cases to an agent task, open the task.</Typography.Text>
+                <Typography.Text type="secondary">要把用例移到 Agent 任务，请打开该任务。</Typography.Text>
               </Space>
-              {!allowMissing && <Typography.Text type="secondary">Without “run anyway”, those tasks are not started.</Typography.Text>}
+              {!allowMissing && <Typography.Text type="secondary">若不选择“仍然执行”，这些任务不会启动。</Typography.Text>}
             </Space>
           }
         />

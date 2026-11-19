@@ -37,7 +37,7 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
     onSuccess: (out) => setPreview(out.cases),
   });
   const save = useApiMutation((selector: TaskSelector | null) => api(`/tasks/${task.id}/selector`, { method: "PUT", body: { selector } }), {
-    success: "Rule saved; cases synced to the rule",
+    success: "规则已保存；用例已按规则同步",
     onSuccess: () => {
       setPreview(null);
       onChanged();
@@ -45,14 +45,14 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
   });
   const sync = useApiMutation(() => api<{ added: string[]; removed: string[] }>(`/tasks/${task.id}/sync`, { method: "POST" }), {
     onSuccess: (out) => {
-      message.success(out.added.length || out.removed.length ? `Synced: added ${out.added.join(", ") || "None"}; removed ${out.removed.join(", ") || "None"}` : "Already up to date, no change");
+      message.success(out.added.length || out.removed.length ? `Synced: added ${out.added.join(", ") || "无"}; removed ${out.removed.join(", ") || "无"}` : "已是最新，没有变更");
       onChanged();
     },
   });
-  const restore = useApiMutation((caseId: string) => api(`/tasks/${task.id}/exclusions/${caseId}`, { method: "DELETE" }), { success: "Restored; it will be added again when the rule matches", onSuccess: onChanged });
+  const restore = useApiMutation((caseId: string) => api(`/tasks/${task.id}/exclusions/${caseId}`, { method: "DELETE" }), { success: "已恢复；规则匹配时会再次加入", onSuccess: onChanged });
   const stats = task.rule_stats;
   return (
-    <Card size="small" title="Case selection rule" style={{ marginBottom: 16 }} data-testid="task-rule">
+    <Card size="small" title="用例选择规则" style={{ marginBottom: 16 }} data-testid="task-rule">
       <Typography.Paragraph style={{ marginBottom: 8 }}>
         Current rule: <b data-testid="rule-text">{describeSelector(task.selector, reqCode)}</b>
       </Typography.Paragraph>
@@ -63,68 +63,68 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
       )}
       <Form form={form} layout="vertical" disabled={!editable}>
         <Space wrap align="start">
-          <Form.Item name="requirement_ids" label="Requirement">
+          <Form.Item name="requirement_ids" label="需求">
             <Select mode="multiple" style={{ minWidth: 220 }} optionFilterProp="label" options={(reqs.data || []).map((r) => ({ value: r.id, label: `${r.code} ${r.title}` }))} />
           </Form.Item>
-          <Form.Item name="categories" label="Case category">
+          <Form.Item name="categories" label="用例类别">
             <Select mode="multiple" style={{ minWidth: 200 }} options={categoryOptions} />
           </Form.Item>
-          <Form.Item name="priorities" label="Priority">
+          <Form.Item name="priorities" label="优先级">
             <Select mode="multiple" style={{ minWidth: 120 }} options={["P0", "P1", "P2"].map((p) => ({ value: p, label: p }))} />
           </Form.Item>
-          <Form.Item name="scenarios" label="Scenario">
+          <Form.Item name="scenarios" label="场景">
             <Select mode="multiple" style={{ minWidth: 140 }} options={Object.entries(SCENARIO_LABEL).map(([value, label]) => ({ value, label }))} />
           </Form.Item>
-          <Form.Item name="quality_tags" label="Quality attributes">
+          <Form.Item name="quality_tags" label="质量属性">
             <Select mode="tags" style={{ minWidth: 160 }} options={qualityTagOptions} />
           </Form.Item>
         </Space>
         <Space wrap>
           <Button onClick={() => runPreview.mutate(undefined)} loading={runPreview.isPending}>
-            Preview matches
+            预览匹配
           </Button>
           <Button type="primary" onClick={() => save.mutate(body().selector)} loading={save.isPending}>
-            Save rule and sync
+            保存规则并同步
           </Button>
           {task.selector && (
             <Button onClick={() => sync.mutate(undefined)} loading={sync.isPending}>
-              Sync now
+              立即同步
             </Button>
           )}
           {task.selector && (
-            <Popconfirm title="Clear the rule? Existing cases stay; afterwards cases can only be added by hand." onConfirm={() => save.mutate(null)}>
-              <Button>Clear rule</Button>
+            <Popconfirm title="要清除规则吗？已有用例会保留；之后只能手工添加用例。" onConfirm={() => save.mutate(null)}>
+              <Button>清除规则</Button>
             </Popconfirm>
           )}
         </Space>
       </Form>
       {preview && (
         <ListTable<PreviewCase>
-          label="Rule preview"
+          label="规则预览"
           style={{ marginTop: 12 }}
           size="small"
           rowKey="id"
 
           dataSource={preview}
-          title={() => `The rule matches ${preview.length} ready case(s)${preview.some((c) => c.excluded) ? " (those marked “removed manually” are not added)" : ""}`}
-          locale={{ emptyText: "No matching ready cases" }}
+          title={() => `该规则匹配 ${preview.length} 条就绪用例${preview.some((c) => c.excluded) ? "（标记为“已手工移除”的不会加入）" : ""}`}
+          locale={{ emptyText: "没有匹配的就绪用例" }}
           columns={[
-            { title: "Case", render: (_: unknown, c) => <Link to={`/cases/${c.id}`}>{`${c.title} (${c.code})`}</Link> },
+            { title: "用例", render: (_: unknown, c) => <Link to={`/cases/${c.id}`}>{`${c.title} (${c.code})`}</Link> },
             { title: "category", dataIndex: "category", render: (c: CaseCategory) => <Tag color={CATEGORY_COLOR[c]}>{CATEGORY_LABEL[c]}</Tag> },
-            { title: "Reason", dataIndex: "reason" },
-            { title: "", dataIndex: "excluded", render: (x: boolean) => (x ? <Tag>Removed manually</Tag> : null) },
+            { title: "原因", dataIndex: "reason" },
+            { title: "", dataIndex: "excluded", render: (x: boolean) => (x ? <Tag>已手工移除</Tag> : null) },
           ]}
         />
       )}
       {(task.exclusions?.length ?? 0) > 0 && (
         <>
-          <Alert style={{ marginTop: 12 }} type="info" showIcon title="Cases removed by hand (the rule will not add them back)" />
-          <ListSection label="Excluded cases" count={task.exclusions?.length ?? 0}>
+          <Alert style={{ marginTop: 12 }} type="info" showIcon title="已手工移除的用例（规则不会再把它们加回来）" />
+          <ListSection label="排除的用例" count={task.exclusions?.length ?? 0}>
           <List
             size="small"
             dataSource={task.exclusions}
             renderItem={(e) => (
-              <List.Item actions={editable ? [<a key="restore" onClick={() => restore.mutate(e.case_id)}>Restore</a>] : []}>
+              <List.Item actions={editable ? [<a key="restore" onClick={() => restore.mutate(e.case_id)}>恢复</a>] : []}>
                 <Link to={`/cases/${e.case_id}`}>{`${e.title} (${e.code})`}</Link>
                 <Typography.Text type="secondary">
                   {e.removed_by} at {fmtTime(e.created_at)} Remove

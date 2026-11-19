@@ -21,8 +21,8 @@ export interface UserRow {
 }
 
 const ROLE_OPTIONS = [
-  { value: "member", label: "Member" },
-  { value: "admin", label: "Admin" },
+  { value: "member", label: "成员" },
+  { value: "admin", label: "管理员" },
 ];
 
 /** Admin: platform accounts (create, role, reset password, unlock, disable). */
@@ -35,28 +35,28 @@ export function UsersPage() {
   const [resetForm] = Form.useForm();
   const create = useApiMutation((body: Record<string, unknown>) => api<UserRow>("/users", { method: "POST", body }), {
     invalidate: [["users"]],
-    success: "Account created: the user must choose a new password at first sign-in",
+    success: "账号已创建：用户首次登录时必须设置新密码",
   });
   const patch = useApiMutation(({ id, body }: { id: string; body: Record<string, unknown> }) => api<UserRow>(`/users/${id}`, { method: "PATCH", body }), {
     invalidate: [["users"]],
-    success: "Saved",
+    success: "已保存",
   });
 
   if (me && me.role !== "admin") {
-    return <Alert type="warning" showIcon title="Only an admin can manage accounts." />;
+    return <Alert type="warning" showIcon title="只有管理员可以管理账号。" />;
   }
   return (
     <Card>
       <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 16 }}>
         <Typography.Title level={3} style={{ margin: 0 }}>
-          Users {users.data ? `(${users.data.length})` : ""}
+          用户 {users.data ? `(${users.data.length})` : ""}
         </Typography.Title>
         <Button type="primary" onClick={() => setCreating(true)}>
-          New user
+          新建用户
         </Button>
       </Space>
       <ListTable<UserRow>
-        label="Users"
+        label="用户"
         error={users.isError}
         onRetry={() => users.refetch()}
         rowKey="id"
@@ -65,18 +65,18 @@ export function UsersPage() {
 
         columns={[
           {
-            title: "User name",
+            title: "用户名",
             dataIndex: "username",
             render: (v: string, u) => (
               <Space>
                 {v}
-                {u.id === me?.id && <Tag>you</Tag>}
+                {u.id === me?.id && <Tag>我</Tag>}
               </Space>
             ),
           },
-          { title: "Display name", dataIndex: "display_name" },
+          { title: "显示名", dataIndex: "display_name" },
           {
-            title: "Role",
+            title: "角色",
             dataIndex: "role",
             render: (v: string, u) => (
               <Select
@@ -90,38 +90,38 @@ export function UsersPage() {
             ),
           },
           {
-            title: "Status",
+            title: "状态",
             render: (_, u) => (
               <Space size={4} wrap>
                 {u.is_active ? <Tag color="green">active</Tag> : <Tag>disabled</Tag>}
                 {u.locked && <Tag color="red">locked</Tag>}
-                {u.must_change_password && <Tag color="orange">must change password</Tag>}
+                {u.must_change_password && <Tag color="orange">必须修改密码</Tag>}
               </Space>
             ),
           },
-          { title: "Last sign-in", dataIndex: "last_login_at", render: (v: string | null) => (v ? new Date(v).toLocaleString() : "—") },
+          { title: "上次登录", dataIndex: "last_login_at", render: (v: string | null) => (v ? new Date(v).toLocaleString() : "—") },
           {
-            title: "Action",
+            title: "动作",
             render: (_, u) => (
               <Space size={4} wrap>
                 <Button size="small" onClick={() => setResetting(u)}>
-                  Reset password
+                  重置密码
                 </Button>
                 {u.locked && (
                   <Button size="small" onClick={() => patch.mutate({ id: u.id, body: { unlock: true } })}>
-                    Unlock
+                    解锁
                   </Button>
                 )}
                 {u.id !== me?.id &&
                   (u.is_active ? (
-                    <Popconfirm title={`Disable ${u.username}? They are signed out everywhere.`} onConfirm={() => patch.mutate({ id: u.id, body: { is_active: false } })}>
+                    <Popconfirm title={`停用 ${u.username}？该用户将在所有登录处退出。`} onConfirm={() => patch.mutate({ id: u.id, body: { is_active: false } })}>
                       <Button size="small" danger>
-                        Disable
+                        停用
                       </Button>
                     </Popconfirm>
                   ) : (
                     <Button size="small" onClick={() => patch.mutate({ id: u.id, body: { is_active: true } })}>
-                      Enable
+                      启用
                     </Button>
                   ))}
               </Space>
@@ -130,9 +130,9 @@ export function UsersPage() {
         ]}
       />
       <Modal
-        title="New user"
+        title="新建用户"
         open={creating}
-        okText="Create"
+        okText="创建"
         confirmLoading={create.isPending}
         onCancel={() => setCreating(false)}
         onOk={() =>
@@ -148,24 +148,24 @@ export function UsersPage() {
         destroyOnHidden
       >
         <Form form={createForm} layout="vertical" initialValues={{ role: "member" }}>
-          <Form.Item name="username" label="User name" rules={[{ required: true }, { pattern: /^[A-Za-z0-9][A-Za-z0-9._-]{1,31}$/, message: "2–32 letters, digits, . _ -" }]}>
+          <Form.Item name="username" label="用户名" rules={[{ required: true }, { pattern: /^[A-Za-z0-9][A-Za-z0-9._-]{1,31}$/, message: "2–32 个字母、数字、. _ -" }]}>
             <Input autoComplete="off" />
           </Form.Item>
-          <Form.Item name="display_name" label="Display name">
+          <Form.Item name="display_name" label="显示名">
             <Input />
           </Form.Item>
-          <Form.Item name="role" label="Role">
+          <Form.Item name="role" label="角色">
             <Select options={ROLE_OPTIONS} />
           </Form.Item>
-          <Form.Item name="password" label="Initial password (at least 10 characters)" rules={[{ required: true }, { min: 10, message: "At least 10 characters" }]} extra="Tell the user in person; they must change it at first sign-in.">
+          <Form.Item name="password" label="初始密码（至少 10 个字符）" rules={[{ required: true }, { min: 10, message: "至少 10 个字符" }]} extra="请当面告知该用户；他们必须在首次登录时修改。">
             <Input.Password autoComplete="new-password" />
           </Form.Item>
         </Form>
       </Modal>
       <Modal
-        title={`Reset password: ${resetting?.username || ""}`}
+        title={`重置密码：${resetting?.username || ""}`}
         open={Boolean(resetting)}
-        okText="Reset"
+        okText="重置"
         confirmLoading={patch.isPending}
         onCancel={() => setResetting(null)}
         onOk={() =>
@@ -184,7 +184,7 @@ export function UsersPage() {
         destroyOnHidden
       >
         <Form form={resetForm} layout="vertical">
-          <Form.Item name="password" label="New initial password" rules={[{ required: true }, { min: 10, message: "At least 10 characters" }]} extra="The user is signed out everywhere and must change it at the next sign-in.">
+          <Form.Item name="password" label="新的初始密码" rules={[{ required: true }, { min: 10, message: "至少 10 个字符" }]} extra="该用户已在各处退出，下次登录时必须修改密码。">
             <Input.Password autoComplete="new-password" />
           </Form.Item>
         </Form>

@@ -9,17 +9,17 @@ import re
 UUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 PURPOSE_LABEL = {
-    "structure_requirement": "Requirement structuring",
-    "complete_model": "Model completion",
-    "generate_strategy": "Strategy generation",
-    "generate_cases": "Case generation",
-    "complete_case": "Case AI completion",
-    "automate_case": "Case automation",
-    "execute_case_browser": "Browser execution",
-    "execute_case_api": "API execution",
-    "analyze_failure": "Failure analysis",
-    "summarize_report": "Report summary",
-    "digest_correction": "Correction processing",
+    "structure_requirement": "需求结构化",
+    "complete_model": "模型补全",
+    "generate_strategy": "策略生成",
+    "generate_cases": "用例生成",
+    "complete_case": "用例 AI 补全",
+    "automate_case": "用例自动化",
+    "execute_case_browser": "浏览器执行",
+    "execute_case_api": "API 执行",
+    "analyze_failure": "失败分析",
+    "summarize_report": "报告摘要",
+    "digest_correction": "纠正处理",
 }
 
 # (kind, SQL returning id, label, path) — tried in order until every id is resolved
@@ -31,7 +31,7 @@ QUERIES = (
     ),
     (
         "Version",
-        "SELECT id::text AS id, 'Version ' || name AS label, '/versions/' || id AS path"
+        "SELECT id::text AS id, '版本 ' || name AS label, '/versions/' || id AS path"
         " FROM version WHERE id = ANY(%(ids)s)",
     ),
     (
@@ -68,8 +68,8 @@ QUERIES = (
     ),
     (
         "Report",
-        "SELECT id::text AS id, CASE scope_type WHEN 'task_run' THEN 'Run report'"
-        " ELSE 'Version report' END AS label, '/reports/' || id AS path FROM report"
+        "SELECT id::text AS id, CASE scope_type WHEN 'task_run' THEN '任务报告'"
+        " ELSE '版本报告' END AS label, '/reports/' || id AS path FROM report"
         " WHERE id = ANY(%(ids)s)",
     ),
     (
@@ -79,7 +79,7 @@ QUERIES = (
     ),
     (
         "Model node",
-        "SELECT id::text AS id, name || CASE WHEN deleted_at IS NULL THEN '' ELSE ' (archived)'"
+        "SELECT id::text AS id, name || CASE WHEN deleted_at IS NULL THEN '' ELSE '（已归档）'"
         " END AS label, '/suts/' || sut_id || '/model?node=' || id AS path FROM model_node"
         " WHERE id = ANY(%(ids)s)",
     ),
@@ -103,12 +103,12 @@ QUERIES = (
     ),
     (
         "Environment",
-        "SELECT id::text AS id, 'Environment ' || name AS label, '/suts/' || sut_id AS path"
+        "SELECT id::text AS id, '环境 ' || name AS label, '/suts/' || sut_id AS path"
         " FROM environment WHERE id = ANY(%(ids)s)",
     ),
     (
         "Test strategy",
-        "SELECT s.id::text AS id, 'Test strategy · version ' || v.name AS label,"
+        "SELECT s.id::text AS id, '测试策略 · 版本 ' || v.name AS label,"
         " '/versions/' || v.id || '?tab=strategy' AS path FROM test_strategy s"
         " JOIN version v ON v.id=s.version_id WHERE s.id = ANY(%(ids)s)",
     ),

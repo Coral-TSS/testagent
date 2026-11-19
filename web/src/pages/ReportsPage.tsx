@@ -8,13 +8,13 @@ import { api } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 import type { ReportRow, ReportSummary, Sut, Version } from "../api/types";
 
-export const SCOPE_LABEL: Record<string, string> = { task_run: "Task report", version: "Version report" };
+export const SCOPE_LABEL: Record<string, string> = { task_run: "任务报告", version: "版本报告" };
 export const pct = (v: number | null) => (v === null ? "-" : `${Math.round(v * 1000) / 10}%`);
 
 export function SummaryText({ s }: { s: ReportSummary }) {
   return (
     <span>
-      Total {s.total}: passed {s.passed} · failed {s.failed} · error {s.error} · blocked {s.blocked} · skipped {s.skipped ?? 0} · not run {s.not_executed}
+      共 {s.total}：通过 {s.passed} · 失败 {s.failed} · 错误 {s.error} · 阻塞 {s.blocked} · 跳过 {s.skipped ?? 0} · 未跑 {s.not_executed}
     </span>
   );
 }
@@ -25,8 +25,8 @@ export function nothingExecuted(s: ReportSummary): boolean {
   return executed === 0;
 }
 
-/** Pass-rate cell: "Not executed" instead of "-" when nothing could run. */
-export const passRateText = (s: ReportSummary) => (nothingExecuted(s) ? "Not executed" : pct(s.pass_rate));
+/** Pass-rate cell: "未执行" instead of "-" when nothing could run. */
+export const passRateText = (s: ReportSummary) => (nothingExecuted(s) ? "未执行" : pct(s.pass_rate));
 
 /** skipped / blocked / not run never count as passed — say so next to every pass rate. */
 export function passRateNote(s: ReportSummary): string | null {
@@ -34,19 +34,19 @@ export function passRateNote(s: ReportSummary): string | null {
   const noScript = s.skipped_no_script || 0;
   if (nothingExecuted(s)) {
     const reasons = [
-      noScript ? `${noScript} without an automation script` : "",
-      s.skipped > noScript ? `${s.skipped - noScript} skipped` : "",
-      s.blocked ? `${s.blocked} awaiting manual` : "",
-      s.not_executed ? `${s.not_executed} not run` : "",
+      noScript ? `${noScript} 个无自动化脚本` : "",
+      s.skipped > noScript ? `${s.skipped - noScript} 个已跳过` : "",
+      s.blocked ? `${s.blocked} 个等待手工执行` : "",
+      s.not_executed ? `${s.not_executed} 个未跑` : "",
     ].filter(Boolean);
-    return `Not executed: no case ran${reasons.length ? ` (${reasons.join(", ")})` : ""}, so there is no pass rate`;
+    return `未执行：没有用例真正跑过${reasons.length ? `（${reasons.join("，")}）` : ""}，因此没有通过率`;
   }
   const left = [
-    s.skipped ? (noScript ? `${s.skipped} skipped (${noScript} without an automation script)` : `${s.skipped} skipped`) : "",
-    s.blocked ? `${s.blocked} awaiting manual` : "",
-    s.not_executed ? `${s.not_executed} not run` : "",
+    s.skipped ? (noScript ? `${s.skipped} 个已跳过（${noScript} 个无自动化脚本）` : `${s.skipped} 个已跳过`) : "",
+    s.blocked ? `${s.blocked} 个等待手工执行` : "",
+    s.not_executed ? `${s.not_executed} 个未跑` : "",
   ].filter(Boolean);
-  return `Pass rate = passed ${s.passed} / executed ${executed}${left.length ? `; ${left.join(", ")} do not count as passed` : ""}`;
+  return `通过率 = 通过 ${s.passed} / 已执行 ${executed}${left.length ? `；${left.join("，")}不计为通过` : ""}`;
 }
 
 /** P11 report list: task reports (generated automatically at run end) and version reports; reports are immutable once generated */
@@ -73,14 +73,14 @@ export function ReportsPage() {
     queryFn: () => api<ReportRow[]>("/reports", { params: { sut_id: sutId, version_id: versionId, scope_type: scopeType } }),
   });
   return (
-    <Card title="Test reports">
+    <Card title="测试报告">
       <Space wrap style={{ marginBottom: 12 }}>
-        <Select allowClear placeholder="SUT" style={{ width: 150 }} value={sutId} onChange={(v) => set("sut_id", v)} options={(suts.data || []).map((s) => ({ value: s.id, label: s.code }))} />
-        <Select allowClear placeholder="Version" style={{ width: 130 }} disabled={!sutId} value={versionId} onChange={(v) => set("version_id", v)} options={(versions.data || []).map((v) => ({ value: v.id, label: v.name }))} />
-        <Select allowClear placeholder="Type" style={{ width: 120 }} value={scopeType} onChange={(v) => set("scope_type", v)} options={Object.entries(SCOPE_LABEL).map(([value, label]) => ({ value, label }))} />
+        <Select allowClear placeholder="被测系统" style={{ width: 150 }} value={sutId} onChange={(v) => set("sut_id", v)} options={(suts.data || []).map((s) => ({ value: s.id, label: s.code }))} />
+        <Select allowClear placeholder="版本" style={{ width: 130 }} disabled={!sutId} value={versionId} onChange={(v) => set("version_id", v)} options={(versions.data || []).map((v) => ({ value: v.id, label: v.name }))} />
+        <Select allowClear placeholder="类型" style={{ width: 120 }} value={scopeType} onChange={(v) => set("scope_type", v)} options={Object.entries(SCOPE_LABEL).map(([value, label]) => ({ value, label }))} />
       </Space>
       <ListTable<ReportRow>
-        label="Reports"
+        label="报告"
         error={rows.isError}
         onRetry={() => rows.refetch()}
         recordLimit={200}
@@ -90,23 +90,23 @@ export function ReportsPage() {
         dataSource={rows.data}
         locale={{
           emptyText: (
-            <EmptyState title="No reports yet" hint="A task report is generated automatically when a task run ends; once a version is in testing, click “Generate version report” on the version page. Reports cannot be changed once generated." />
+            <EmptyState title="暂无报告" hint="任务执行结束后会自动生成任务报告；版本进入测试中后，可在版本页点击“生成版本报告”。报告一经生成不可更改。" />
           ),
         }}
         columns={[
           {
-            title: "Report",
+            title: "报告",
             key: "name",
             render: (_: unknown, r) => (
-              <Link to={`/reports/${r.id}`}>{r.scope_type === "version" ? `Version ${r.version_name ?? ""} report` : `${r.task_name ?? "Task"} report`}</Link>
+              <Link to={`/reports/${r.id}`}>{r.scope_type === "version" ? `版本 ${r.version_name ?? ""} 报告` : `${r.task_name ?? "测试任务"} 报告`}</Link>
             ),
           },
-          { title: "Type", dataIndex: "scope_type", width: 100, render: (v: string) => <Tag color={v === "version" ? "blue" : "default"}>{SCOPE_LABEL[v] || v}</Tag> },
-          { title: "Version", dataIndex: "version_name", width: 100, render: (v: string | null) => v || "-" },
-          { title: "Result", dataIndex: "summary", render: (s: ReportSummary) => <SummaryText s={s} /> },
-          { title: "Pass rate", dataIndex: "summary", key: "rate", width: 80, render: (s: ReportSummary) => <span title={passRateNote(s) || undefined}>{passRateText(s)}{(s.skipped || s.not_executed) && !nothingExecuted(s) ? "*" : ""}</span> },
-          { title: "AI summary", dataIndex: "has_ai_summary", width: 80, render: (v: boolean) => (v ? <Tag color="purple">has</Tag> : "-") },
-          { title: "Generated at", dataIndex: "created_at", width: 130, render: (v: string) => dayjs(v).format("MM-DD HH:mm") },
+          { title: "类型", dataIndex: "scope_type", width: 100, render: (v: string) => <Tag color={v === "version" ? "blue" : "default"}>{SCOPE_LABEL[v] || v}</Tag> },
+          { title: "版本", dataIndex: "version_name", width: 100, render: (v: string | null) => v || "-" },
+          { title: "结果", dataIndex: "summary", render: (s: ReportSummary) => <SummaryText s={s} /> },
+          { title: "通过率", dataIndex: "summary", key: "rate", width: 80, render: (s: ReportSummary) => <span title={passRateNote(s) || undefined}>{passRateText(s)}{(s.skipped || s.not_executed) && !nothingExecuted(s) ? "*" : ""}</span> },
+          { title: "AI 摘要", dataIndex: "has_ai_summary", width: 80, render: (v: boolean) => (v ? <Tag color="purple">有</Tag> : "-") },
+          { title: "生成于", dataIndex: "created_at", width: 130, render: (v: string) => dayjs(v).format("MM-DD HH:mm") },
         ]}
       />
     </Card>

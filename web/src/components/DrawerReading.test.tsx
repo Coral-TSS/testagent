@@ -10,7 +10,7 @@ import { ExpandableDescription } from "./ExpandableDescription";
 import { VersionPage } from "../pages/VersionPage";
 import { ModelPage } from "../pages/ModelPage";
 
-const requirement = { id: "req1", code: "REQ-001", title: "Example requirement", priority: "P1", status: "draft", raw_text: "Original requirement", structured: {}, people: [], fields: [], links: [], cases: [], suggestions: [] };
+const requirement = { id: "req1", code: "REQ-001", title: "Example requirement", priority: "P1", status: "draft", raw_text: "原始需求", structured: {}, people: [], fields: [], links: [], cases: [], suggestions: [] };
 const node = { id: "n1", name: "Submit request", kind: "action", description: "Full description", module_id: null, attributes: {}, apis: [], edges: [], links: [], inputs: [], outputs: [], preconditions: [], effects: [] };
 const storageKey = "testagent:drawer-width:requirement";
 
@@ -43,16 +43,16 @@ it.each([
   fixtures(); renderPage(component(), { motion: false });
   await screen.findByRole("dialog");
   expect(panelWidth()).toBe("864px");
-  expect(screen.getByRole("separator", { name: "Resize drawer" }).getAttribute("aria-orientation")).toBe("vertical");
+  expect(screen.getByRole("separator", { name: "调整抽屉宽度" }).getAttribute("aria-orientation")).toBe("vertical");
 });
 
 it("remembers keyboard resizing when reopened without saving the requirement", async () => {
   const calls = fixtures(); const first = requirementPage();
-  await screen.findByDisplayValue("Original requirement");
-  fireEvent.change(screen.getByLabelText("Requirement text"), { target: { value: "Unsaved requirement edits" } });
-  fireEvent.keyDown(screen.getByRole("separator", { name: "Resize drawer" }), { key: "ArrowLeft" });
+  await screen.findByDisplayValue("原始需求");
+  fireEvent.change(screen.getByLabelText("需求正文"), { target: { value: "未保存的需求编辑" } });
+  fireEvent.keyDown(screen.getByRole("separator", { name: "调整抽屉宽度" }), { key: "ArrowLeft" });
   expect(panelWidth()).toBe("896px");
-  expect(screen.getByDisplayValue("Unsaved requirement edits")).toBeTruthy();
+  expect(screen.getByDisplayValue("未保存的需求编辑")).toBeTruthy();
   expect(calls.some((c) => c.method !== "GET")).toBe(false);
   first.unmount(); requirementPage();
   await screen.findByRole("dialog");
@@ -63,13 +63,13 @@ it("clamps to the viewport on small screens and restores the desktop preference"
   window.localStorage.setItem(storageKey, "1000"); fixtures(); requirementPage();
   await screen.findByRole("dialog"); expect(panelWidth()).toBe("1000px");
   viewport(360); await waitFor(() => expect(panelWidth()).toBe("360px"));
-  expect(screen.queryByRole("separator", { name: "Resize drawer" })).toBeNull();
+  expect(screen.queryByRole("separator", { name: "调整抽屉宽度" })).toBeNull();
   viewport(1440); await waitFor(() => expect(panelWidth()).toBe("1000px"));
 });
 
 it("bounds keyboard resizing and can restore the responsive default", async () => {
   fixtures(); requirementPage(); await screen.findByRole("dialog");
-  const handle = screen.getByRole("separator", { name: "Resize drawer" });
+  const handle = screen.getByRole("separator", { name: "调整抽屉宽度" });
   fireEvent.keyDown(handle, { key: "Home" }); fireEvent.keyDown(handle, { key: "ArrowRight" }); expect(panelWidth()).toBe("480px");
   fireEvent.keyDown(handle, { key: "End" }); fireEvent.keyDown(handle, { key: "ArrowLeft" }); expect(panelWidth()).toBe("1392px");
   fireEvent.keyDown(handle, { key: "Enter" }); expect(panelWidth()).toBe("864px");
@@ -79,7 +79,7 @@ it("ignores invalid preferences and survives unavailable browser storage", async
   window.localStorage.setItem(storageKey, "NaN"); fixtures(); requirementPage();
   await screen.findByRole("dialog"); expect(panelWidth()).toBe("864px");
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("Storage unavailable"); });
-  fireEvent.keyDown(screen.getByRole("separator", { name: "Resize drawer" }), { key: "ArrowLeft" });
+  fireEvent.keyDown(screen.getByRole("separator", { name: "调整抽屉宽度" }), { key: "ArrowLeft" });
   expect(panelWidth()).toBe("896px");
 });
 
@@ -91,13 +91,13 @@ it("expands and collapses a model description without opening its drawer", async
     "GET /suts/s1/links": () => ({ body: [] }), "GET /suts/s1/suggestions": () => ({ body: [] }),
   });
   renderPage(<ModelPage />, { path: "/suts/:sutId/model", route: "/suts/s1/model?view=list" });
-  const expand = await screen.findByRole("button", { name: "Expand description of Submit request" });
+  const expand = await screen.findByRole("button", { name: "展开 Submit request 的描述" });
   const row = expand.closest("tr")!;
   expect(within(row).queryByText(/FULL DESCRIPTION END/)).toBeNull();
   fireEvent.click(expand);
   expect(within(row).getByText(description)).toBeTruthy();
   expect(screen.queryByRole("dialog")).toBeNull();
-  const collapse = screen.getByRole("button", { name: "Collapse description of Submit request" });
+  const collapse = screen.getByRole("button", { name: "收起 Submit request 的描述" });
   expect(collapse.getAttribute("aria-expanded")).toBe("true");
   fireEvent.click(collapse);
   expect(within(row).queryByText(/FULL DESCRIPTION END/)).toBeNull();
@@ -106,8 +106,8 @@ it("expands and collapses a model description without opening its drawer", async
 
 it("closes with Escape when the resize handle has focus", async () => {
   const onClose = vi.fn();
-  renderPage(<ReadingDrawer kind="requirement" open onClose={onClose} title="Example">Body</ReadingDrawer>, { motion: false });
-  const handle = await screen.findByRole("separator", { name: "Resize drawer" });
+  renderPage(<ReadingDrawer kind="requirement" open onClose={onClose} title="示例">正文</ReadingDrawer>, { motion: false });
+  const handle = await screen.findByRole("separator", { name: "调整抽屉宽度" });
   handle.focus(); fireEvent.keyDown(handle, { key: "Escape", keyCode: 27 });
   expect(onClose).toHaveBeenCalledOnce();
 });
@@ -122,24 +122,24 @@ it("keeps different drawer types' width preferences separate", async () => {
 it("opens and adjusts even when browser storage cannot be read", async () => {
   vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("Storage blocked"); });
   fixtures(); requirementPage(); await screen.findByRole("dialog");
-  fireEvent.keyDown(screen.getByRole("separator", { name: "Resize drawer" }), { key: "ArrowRight" });
+  fireEvent.keyDown(screen.getByRole("separator", { name: "调整抽屉宽度" }), { key: "ArrowRight" });
   expect(panelWidth()).toBe("832px");
 });
 
 it("collapses changed descriptions and does not offer expansion for short or empty text", () => {
   function Page() {
     const [text, setText] = useState("Long description ".repeat(25));
-    return <><ExpandableDescription name="Example" text={text} /><button onClick={() => setText("Other description ".repeat(25))}>Change text</button><button onClick={() => setText("Short")}>Short text</button><button onClick={() => setText("")}>Empty text</button></>;
+    return <><ExpandableDescription name="示例" text={text} /><button onClick={() => setText("Other description ".repeat(25))}>修改文本</button><button onClick={() => setText("Short")}>短文本</button><button onClick={() => setText("")}>空文本</button></>;
   }
   renderPage(<Page />);
-  fireEvent.click(screen.getByRole("button", { name: "Expand description of Example" }));
-  expect(screen.getByRole("button", { name: "Collapse description of Example" })).toBeTruthy();
-  fireEvent.click(screen.getByText("Change text"));
-  expect(screen.getByRole("button", { name: "Expand description of Example" }).getAttribute("aria-expanded")).toBe("false");
-  fireEvent.click(screen.getByText("Short text"));
+  fireEvent.click(screen.getByRole("button", { name: "展开 示例 的描述" }));
+  expect(screen.getByRole("button", { name: "收起 示例 的描述" })).toBeTruthy();
+  fireEvent.click(screen.getByText("修改文本"));
+  expect(screen.getByRole("button", { name: "展开 示例 的描述" }).getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(screen.getByText("短文本"));
   expect(screen.queryByRole("button", { name: /description of Example/ })).toBeNull();
   expect(screen.getByText("Short")).toBeTruthy();
-  fireEvent.click(screen.getByText("Empty text"));
+  fireEvent.click(screen.getByText("空文本"));
   expect(screen.queryByRole("button", { name: /description of Example/ })).toBeNull();
   expect(screen.getByText("—")).toBeTruthy();
 });
@@ -154,6 +154,6 @@ it("associates the detail text label with its visible field when the create form
   });
   renderPage(<VersionPage />, { path: "/versions/:versionId", route: "/versions/v1?req=req1", motion: false });
   const dialog = await screen.findByRole("dialog");
-  const label = await within(dialog).findByText("Requirement text", { selector: "label" });
+  const label = await within(dialog).findByText("需求正文", { selector: "label" });
   expect((label as HTMLLabelElement).control?.closest('[role="dialog"]')).toBe(dialog);
 });

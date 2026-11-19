@@ -11,17 +11,17 @@ import { AgentRunDrawer, PURPOSE } from "../components/AgentRunDrawer";
 import { CorrectionStatusTag } from "../components/CorrectionButton";
 import { fmtTime } from "../utils/time";
 
-const promptLabel = (name: string) => (name === "system" ? "System prompt (all entries)" : `${PURPOSE[name] || name} (${name})`);
-const byLabel = (by: string) => (by.startsWith("agent:") ? <Tag color="purple">AI processed</Tag> : by === "system" ? <Tag>Built-in</Tag> : <Tag color="blue">{by}</Tag>);
+const promptLabel = (name: string) => (name === "system" ? "系统提示词（全部条目）" : `${PURPOSE[name] || name} (${name})`);
+const byLabel = (by: string) => (by.startsWith("agent:") ? <Tag color="purple">AI 已处理</Tag> : by === "system" ? <Tag>内置</Tag> : <Tag color="blue">{by}</Tag>);
 const TARGET_LABEL: Record<string, string> = {
-  case: "Case",
-  strategy: "Strategy",
-  requirement: "Requirement",
-  execution: "Execution",
-  report: "Report",
-  agent_run: "Agent run",
-  task_run: "Run",
-  version: "Version",
+  case: "用例",
+  strategy: "策略",
+  requirement: "需求",
+  execution: "执行",
+  report: "报告",
+  agent_run: "Agent 运行",
+  task_run: "执行",
+  version: "版本",
 };
 const TARGET_LINK: Record<string, (id: string) => string> = {
   case: (id) => `/cases/${id}`,
@@ -50,9 +50,9 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
     qc.invalidateQueries({ queryKey: ["prompts"] });
     qc.invalidateQueries({ queryKey: ["prompt", selected] });
   };
-  const activate = useApiMutation((v: number) => api(`/agent/prompts/${selected}/versions/${v}/activate`, { method: "POST" }), { success: "Active version switched", onSuccess: refresh });
+  const activate = useApiMutation((v: number) => api(`/agent/prompts/${selected}/versions/${v}/activate`, { method: "POST" }), { success: "已切换活动版本", onSuccess: refresh });
   const create = useApiMutation(() => api(`/agent/prompts/${selected}/versions`, { method: "POST", body: { content: editing, note: note || null } }), {
-    success: "Saved as a new version and activated",
+    success: "已另存为新版本并启用",
     onSuccess: () => {
       setEditing(null);
       setNote("");
@@ -64,7 +64,7 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
     <Row gutter={16}>
       <Col span={8}>
         <ListTable<PromptSummary>
-          label="Prompts"
+          label="提示词"
           error={list.isError}
           onRetry={() => list.refetch()}
           size="small"
@@ -74,8 +74,8 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
           dataSource={list.data}
           onRow={(p) => ({ onClick: () => setSelected(p.name), style: { cursor: "pointer", background: p.name === selected ? "#e6f4ff" : undefined } })}
           columns={[
-            { title: "Prompt", dataIndex: "name", render: (v: string) => promptLabel(v) },
-            { title: "Active version", dataIndex: "active_version", width: 90, render: (v: number | null, p) => (p.is_default ? <Tag>Built-in default</Tag> : `v${v}`) },
+            { title: "提示词", dataIndex: "name", render: (v: string) => promptLabel(v) },
+            { title: "当前版本", dataIndex: "active_version", width: 90, render: (v: number | null, p) => (p.is_default ? <Tag>内置默认</Tag> : `v${v}`) },
           ]}
         />
       </Col>
@@ -85,7 +85,7 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
           title={promptLabel(selected)}
           extra={
             <Button onClick={() => setEditing(current?.content ?? "")} disabled={!current}>
-              Edit as new version
+              编辑为新版本
             </Button>
           }
         >
@@ -93,33 +93,33 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
             Assembly order: system prompt → entry description → extra guidance for this entry → enabled memories → context. Patches from corrections create a new version that takes effect immediately; you can switch back to any older version at any time (roll back).
           </Typography.Paragraph>
           <ListTable<PromptVersion>
-            label="Prompt versions"
+            label="提示词版本"
             error={versions.isError}
             onRetry={() => versions.refetch()}
             size="small"
             rowKey="id"
             loading={versions.isLoading}
             dataSource={versions.data}
-            locale={{ emptyText: "No versions yet: using the built-in default" }}
-            expandable={{ expandedRowRender: (v) => <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{v.content || "(empty: no extra guidance)"}</pre> }}
+            locale={{ emptyText: "尚无版本：正在使用内置默认" }}
+            expandable={{ expandedRowRender: (v) => <pre style={{ whiteSpace: "pre-wrap", margin: 0 }}>{v.content || "（空：没有额外指引）"}</pre> }}
             columns={[
-              { title: "Version", dataIndex: "version", width: 70, render: (v: number, r) => <Space>v{v}{r.active && <Tag color="green">Active</Tag>}</Space> },
-              { title: "Source", dataIndex: "created_by", width: 100, render: byLabel },
+              { title: "版本", dataIndex: "version", width: 70, render: (v: number, r) => <Space>v{v}{r.active && <Tag color="green">正常</Tag>}</Space> },
+              { title: "来源", dataIndex: "created_by", width: 100, render: byLabel },
               { title: "description", dataIndex: "note", render: (v: string | null, r) => <Space>{v || "-"}{r.source_correction_ids.length > 0 && <Tag>From {r.source_correction_ids.length} correction(s)</Tag>}</Space> },
-              { title: "Time", dataIndex: "created_at", width: 140, render: (v: string) => fmtTime(v) },
+              { title: "时间", dataIndex: "created_at", width: 140, render: (v: string) => fmtTime(v) },
               {
                 title: "",
                 key: "ops",
                 width: 170,
                 render: (_: unknown, r) => (
                   <Space>
-                    {r.agent_run_id && <Button size="small" type="link" onClick={() => onOpenRun(r.agent_run_id!)}>Trace</Button>}
+                    {r.agent_run_id && <Button size="small" type="link" onClick={() => onOpenRun(r.agent_run_id!)}>追踪</Button>}
                     {!r.active && (
                       <Button
                         size="small"
-                        onClick={() => modal.confirm({ title: `Switch to v${r.version}? `, content: "Later agent runs will use this version.", onOk: () => activate.mutateAsync(r.version) })}
+                        onClick={() => modal.confirm({ title: `Switch to v${r.version}? `, content: "后续 Agent 运行将使用此版本。", onOk: () => activate.mutateAsync(r.version) })}
                       >
-                        Roll back to this version
+                        回滚到此版本
                       </Button>
                     )}
                   </Space>
@@ -129,9 +129,9 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
           />
         </Card>
       </Col>
-      <Modal title={`Edit ${promptLabel(selected)}`} open={editing !== null} onCancel={() => setEditing(null)} onOk={() => create.mutate()} okText="Save as new version" confirmLoading={create.isPending} width={720}>
-        <Input.TextArea aria-label="Prompt content" rows={14} value={editing ?? ""} onChange={(e) => setEditing(e.target.value)} />
-        <Input aria-label="Version note" style={{ marginTop: 8 }} placeholder="Version note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+      <Modal title={`Edit ${promptLabel(selected)}`} open={editing !== null} onCancel={() => setEditing(null)} onOk={() => create.mutate()} okText="另存为新版本" confirmLoading={create.isPending} width={720}>
+        <Input.TextArea aria-label="提示词内容" rows={14} value={editing ?? ""} onChange={(e) => setEditing(e.target.value)} />
+        <Input aria-label="版本说明" style={{ marginTop: 8 }} placeholder="版本说明（可选）" value={note} onChange={(e) => setNote(e.target.value)} />
       </Modal>
     </Row>
   );
@@ -144,16 +144,16 @@ function MemoriesTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; 
   useTabCount(q.data?.length, onCount);
   const toggle = useApiMutation((v: { id: string; enabled: boolean }) => api(`/agent/memories/${v.id}`, { method: "PATCH", body: { enabled: v.enabled } }), {
     invalidate: [["memories"]],
-    success: "Updated",
+    success: "已更新",
   });
   return (
     <>
       <Space style={{ marginBottom: 12 }}>
-        <Select allowClear placeholder="All states" style={{ width: 120 }} value={enabled} onChange={setEnabled} options={[{ value: "true", label: "Enable" }, { value: "false", label: "Disabled" }]} />
-        <Typography.Text type="secondary">Enabled memories are injected into later agent runs for the matching entries (global + current system, at most 20); disabled ones are no longer injected.</Typography.Text>
+        <Select allowClear placeholder="全部状态" style={{ width: 120 }} value={enabled} onChange={setEnabled} options={[{ value: "true", label: "启用" }, { value: "false", label: "已停用" }]} />
+        <Typography.Text type="secondary">已启用的记忆会在后续匹配的 Agent 运行中注入（全局 + 当前系统，最多 20 条）；已停用的不再注入。</Typography.Text>
       </Space>
       <ListTable<AgentMemory>
-        label="Memories"
+        label="记忆"
         error={q.isError}
         onRetry={() => q.refetch()}
         recordLimit={500}
@@ -161,26 +161,26 @@ function MemoriesTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; 
         rowKey="id"
         loading={q.isLoading}
         dataSource={q.data}
-        locale={{ emptyText: "No memories yet: the agent creates them automatically after you submit corrections" }}
+        locale={{ emptyText: "还没有记忆：提交纠正后，Agent 会自动创建" }}
         columns={[
-          { title: "Content", dataIndex: "content", render: (v: string) => <Typography.Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{v}</Typography.Paragraph> },
-          { title: "Scope", dataIndex: "scope", width: 110, render: (v: string, m) => (v === "global" ? <Tag>Global</Tag> : <Tag color="blue">{m.sut_code || "System"}</Tag>) },
-          { title: "Entries", dataIndex: "tags", width: 160, render: (v: string[]) => (v.length ? v.map((t) => <Tag key={t}>{PURPOSE[t] || t}</Tag>) : "All") },
+          { title: "内容", dataIndex: "content", render: (v: string) => <Typography.Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{v}</Typography.Paragraph> },
+          { title: "范围", dataIndex: "scope", width: 110, render: (v: string, m) => (v === "global" ? <Tag>全局</Tag> : <Tag color="blue">{m.sut_code || "系统"}</Tag>) },
+          { title: "条目", dataIndex: "tags", width: 160, render: (v: string[]) => (v.length ? v.map((t) => <Tag key={t}>{PURPOSE[t] || t}</Tag>) : "全部") },
           {
-            title: "Source",
+            title: "来源",
             key: "src",
             width: 150,
             render: (_: unknown, m) => (
               <Space>
                 {byLabel(m.created_by)}
-                {m.source_correction_ids.length > 0 && <Link to={`/agent/tools?tab=corrections&id=${m.source_correction_ids[0]}`}>Correct</Link>}
-                {m.agent_run_id && <Button size="small" type="link" onClick={() => onOpenRun(m.agent_run_id!)}>Trace</Button>}
+                {m.source_correction_ids.length > 0 && <Link to={`/agent/tools?tab=corrections&id=${m.source_correction_ids[0]}`}>纠正</Link>}
+                {m.agent_run_id && <Button size="small" type="link" onClick={() => onOpenRun(m.agent_run_id!)}>追踪</Button>}
               </Space>
             ),
           },
-          { title: "Time", dataIndex: "created_at", width: 130, render: (v: string) => fmtTime(v) },
+          { title: "时间", dataIndex: "created_at", width: 130, render: (v: string) => fmtTime(v) },
           {
-            title: "Enable",
+            title: "启用",
             dataIndex: "enabled",
             width: 70,
             render: (v: boolean, m) => <Switch aria-label={`Enable memory ${m.content.slice(0, 10)}`} size="small" checked={v} onChange={(checked) => toggle.mutate({ id: m.id, enabled: checked })} />,
@@ -201,15 +201,15 @@ function CorrectionsTab({ onOpenRun, highlight, onCount }: { onOpenRun: (id: str
     refetchInterval: (query) => (query.state.data?.some((c) => c.status === "pending" || c.status === "processing") ? 3000 : false),
   });
   useTabCount(q.data?.length, onCount);
-  const reprocess = useApiMutation((id: string) => api(`/corrections/${id}/reprocess`, { method: "POST" }), { invalidate: [["corrections"]], success: "Resubmitted for processing" });
+  const reprocess = useApiMutation((id: string) => api(`/corrections/${id}/reprocess`, { method: "POST" }), { invalidate: [["corrections"]], success: "已重新提交处理" });
   return (
     <>
       <Space style={{ marginBottom: 12 }}>
-        <Select allowClear placeholder="All states" style={{ width: 120 }} value={status} onChange={setStatus} options={["pending", "processing", "processed", "failed"].map((v) => ({ value: v, label: <CorrectionStatusTag status={v} /> }))} />
-        <Select allowClear placeholder="All types" style={{ width: 120 }} value={kind} onChange={setKind} options={[{ value: "correction", label: "Correct" }, { value: "omission", label: "Missed test" }]} />
+        <Select allowClear placeholder="全部状态" style={{ width: 120 }} value={status} onChange={setStatus} options={["pending", "processing", "processed", "failed"].map((v) => ({ value: v, label: <CorrectionStatusTag status={v} /> }))} />
+        <Select allowClear placeholder="全部类型" style={{ width: 120 }} value={kind} onChange={setKind} options={[{ value: "correction", label: "纠正" }, { value: "omission", label: "漏测" }]} />
       </Space>
       <ListTable<Correction>
-        label="Corrections"
+        label="纠正"
         error={q.isError}
         onRetry={() => q.refetch()}
         recordLimit={200}
@@ -218,11 +218,11 @@ function CorrectionsTab({ onOpenRun, highlight, onCount }: { onOpenRun: (id: str
         loading={q.isLoading}
         dataSource={q.data}
         rowClassName={(c) => (c.id === highlight ? "ant-table-row-selected" : "")}
-        locale={{ emptyText: "No corrections yet: click “Correct” on a case, strategy, execution or report page, or “Report missed test” on a run page" }}
+        locale={{ emptyText: "还没有纠正：请在用例、策略、执行或报告页点击“纠正”，或在执行页点击“报告漏测”" }}
         columns={[
-          { title: "Original text", dataIndex: "content", render: (v: string) => <Typography.Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{v}</Typography.Paragraph> },
+          { title: "原文", dataIndex: "content", render: (v: string) => <Typography.Paragraph style={{ whiteSpace: "pre-wrap", marginBottom: 0 }}>{v}</Typography.Paragraph> },
           {
-            title: "object",
+            title: "对象",
             key: "target",
             width: 220,
             render: (_: unknown, c) => {
@@ -231,7 +231,7 @@ function CorrectionsTab({ onOpenRun, highlight, onCount }: { onOpenRun: (id: str
               return (
                 <Space direction="vertical" size={0}>
                   <Space size={4}>
-                    {c.kind === "omission" && <Tag color="orange">Missed test</Tag>}
+                    {c.kind === "omission" && <Tag color="orange">漏测</Tag>}
                     {link ? <Link to={link}>{text}</Link> : text}
                   </Space>
                   {c.sut_code && <Typography.Text type="secondary">{c.sut_code}</Typography.Text>}
@@ -240,7 +240,7 @@ function CorrectionsTab({ onOpenRun, highlight, onCount }: { onOpenRun: (id: str
             },
           },
           {
-            title: "Processing",
+            title: "处理中",
             key: "status",
             width: 220,
             render: (_: unknown, c) => (
@@ -251,7 +251,7 @@ function CorrectionsTab({ onOpenRun, highlight, onCount }: { onOpenRun: (id: str
                 </Space>
                 {c.status === "processed" && (
                   <Typography.Text type="secondary">
-                    {(c.outputs.memory_ids?.length || 0) > 0 && `Memory ${c.outputs.memory_ids!.length} item(s) `}
+                    {(c.outputs.memory_ids?.length || 0) > 0 && `记忆 ${c.outputs.memory_ids!.length} 项 `}
                     {(c.outputs.prompt_versions || []).map((p) => `${p.name} v${p.version}`).join(", ")}
                   </Typography.Text>
                 )}
@@ -259,17 +259,17 @@ function CorrectionsTab({ onOpenRun, highlight, onCount }: { onOpenRun: (id: str
               </Space>
             ),
           },
-          { title: "Submit", dataIndex: "created_at", width: 130, render: (v: string, c) => `${fmtTime(v)} ${c.author}` },
+          { title: "提交", dataIndex: "created_at", width: 130, render: (v: string, c) => `${fmtTime(v)} ${c.author}` },
           {
             title: "",
             key: "ops",
             width: 150,
             render: (_: unknown, c) => (
               <Space>
-                {c.agent_run_id && <Button size="small" type="link" onClick={() => onOpenRun(c.agent_run_id!)}>Trace</Button>}
+                {c.agent_run_id && <Button size="small" type="link" onClick={() => onOpenRun(c.agent_run_id!)}>追踪</Button>}
                 {c.status !== "processing" && (
                   <Button size="small" onClick={() => reprocess.mutate(c.id)}>
-                    Process again
+                    再次处理
                   </Button>
                 )}
               </Space>
@@ -290,7 +290,7 @@ function RegistryTab<T extends SkillItem | McpServer>({ path, kind, onCount }: {
   useTabCount(q.data?.length, onCount);
   const create = useApiMutation((body: Record<string, unknown>) => api(path, { method: "POST", body }), {
     invalidate: [key],
-    success: "Registered",
+    success: "已登记",
     onSuccess: () => {
       setOpen(false);
       form.resetFields();
@@ -299,50 +299,50 @@ function RegistryTab<T extends SkillItem | McpServer>({ path, kind, onCount }: {
   const toggle = useApiMutation((v: { id: string; enabled: boolean }) => api(`${path}/${v.id}`, { method: "PATCH", body: { enabled: v.enabled } }), { invalidate: [key] });
   return (
     <>
-      <Alert type="info" showIcon style={{ marginBottom: 12 }} message={`This version only registers and disables ${kind === "skill" ? "skills" : " MCP servers"}; they are never loaded or executed (C07). The agent's browser abilities come from the platform's built-in Playwright tools.`} />
+      <Alert type="info" showIcon style={{ marginBottom: 12 }} message={`This version only registers and disables ${kind === "skill" ? "skills" : " 个 MCP 服务器"}; they are never loaded or executed (C07). The agent'的浏览器能力来自平台's built-in Playwright tools.`} />
       <Button type="primary" style={{ marginBottom: 12 }} onClick={() => setOpen(true)}>
-        {kind === "skill" ? "Register skill" : "Register MCP server"}
+        {kind === "skill" ? "登记技能" : "登记 MCP 服务器"}
       </Button>
       <ListTable<T>
-        label={kind === "skill" ? "Skills" : "MCP servers"}
+        label={kind === "skill" ? "技能" : "MCP 服务器"}
         error={q.isError}
         onRetry={() => q.refetch()}
         size="small"
         rowKey="id"
         loading={q.isLoading}
         dataSource={q.data}
-        locale={{ emptyText: "Nothing registered" }}
+        locale={{ emptyText: "尚未登记" }}
         columns={[
-          { title: "Name", dataIndex: "name" },
+          { title: "名称", dataIndex: "name" },
           ...(kind === "mcp"
             ? [
-                { title: "Transport", dataIndex: "transport", width: 80 },
-                { title: "Command / URL", key: "cmd", render: (_: unknown, r: T) => (r as McpServer).command || (r as McpServer).url || "-" },
+                { title: "传输", dataIndex: "transport", width: 80 },
+                { title: "命令 / URL", key: "cmd", render: (_: unknown, r: T) => (r as McpServer).command || (r as McpServer).url || "-" },
               ]
-            : [{ title: "Source", dataIndex: "source", render: (v: string | null) => v || "-" }]),
+            : [{ title: "来源", dataIndex: "source", render: (v: string | null) => v || "-" }]),
           { title: "description", dataIndex: "description", render: (v: string | null) => v || "-" },
-          { title: "Enable", dataIndex: "enabled", width: 70, render: (v: boolean, r: T) => <Switch size="small" checked={v} onChange={(checked) => toggle.mutate({ id: r.id, enabled: checked })} /> },
+          { title: "启用", dataIndex: "enabled", width: 70, render: (v: boolean, r: T) => <Switch size="small" checked={v} onChange={(checked) => toggle.mutate({ id: r.id, enabled: checked })} /> },
         ]}
       />
-      <Modal title={kind === "skill" ? "Register skill" : "Register MCP server"} open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} confirmLoading={create.isPending}>
+      <Modal title={kind === "skill" ? "登记技能" : "登记 MCP 服务器"} open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()} confirmLoading={create.isPending}>
         <Form form={form} layout="vertical" initialValues={kind === "mcp" ? { transport: "stdio" } : {}} onFinish={(v) => create.mutate(v)}>
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: "Please enter a name" }]}>
+          <Form.Item name="name" label="名称" rules={[{ required: true, message: "请输入名称" }]}>
             <Input />
           </Form.Item>
           {kind === "mcp" ? (
             <>
-              <Form.Item name="transport" label="Transport">
+              <Form.Item name="transport" label="传输">
                 <Select options={[{ value: "stdio", label: "stdio" }, { value: "http", label: "http" }]} />
               </Form.Item>
-              <Form.Item name="command" label="Command (stdio)">
+              <Form.Item name="command" label="命令（stdio）">
                 <Input />
               </Form.Item>
-              <Form.Item name="url" label="URL (http)">
+              <Form.Item name="url" label="URL（http）">
                 <Input />
               </Form.Item>
             </>
           ) : (
-            <Form.Item name="source" label="Source (path or link)">
+            <Form.Item name="source" label="来源（路径或链接）">
               <Input />
             </Form.Item>
           )}
@@ -363,16 +363,16 @@ export function AgentToolsPage() {
   const countSinks = useMemo(() => Object.fromEntries(["prompts", "memories", "corrections", "skills", "mcp"].map((key) => [key, (count: number | undefined) => setCounts((old) => old[key] === count ? old : { ...old, [key]: count })])) as Record<string, CountSink>, []);
   const tab = params.get("tab") || "prompts";
   return (
-    <Card title="Agent tools" extra={<Link to="/agent/runs">All run traces</Link>}>
+    <Card title="Agent 工具" extra={<Link to="/agent/runs">全部运行追踪</Link>}>
       <Tabs
         activeKey={tab}
         onChange={(k) => setParams(k === "prompts" ? {} : { tab: k }, { replace: true })}
         items={[
-          { key: "prompts", label: listTitle("Prompt", counts.prompts), children: <PromptsTab onOpenRun={setRunId} onCount={countSinks.prompts} /> },
-          { key: "memories", label: listTitle("Memories", counts.memories), children: <MemoriesTab onOpenRun={setRunId} onCount={countSinks.memories} /> },
-          { key: "corrections", label: listTitle("Corrections", counts.corrections), children: <CorrectionsTab onOpenRun={setRunId} highlight={params.get("id")} onCount={countSinks.corrections} /> },
-          { key: "skills", label: listTitle("Skills (registry)", counts.skills), children: <RegistryTab<SkillItem> path="/agent/skills" kind="skill" onCount={countSinks.skills} /> },
-          { key: "mcp", label: listTitle("MCP (registry)", counts.mcp), children: <RegistryTab<McpServer> path="/agent/mcp-servers" kind="mcp" onCount={countSinks.mcp} /> },
+          { key: "prompts", label: listTitle("提示词", counts.prompts), children: <PromptsTab onOpenRun={setRunId} onCount={countSinks.prompts} /> },
+          { key: "memories", label: listTitle("记忆", counts.memories), children: <MemoriesTab onOpenRun={setRunId} onCount={countSinks.memories} /> },
+          { key: "corrections", label: listTitle("纠正", counts.corrections), children: <CorrectionsTab onOpenRun={setRunId} highlight={params.get("id")} onCount={countSinks.corrections} /> },
+          { key: "skills", label: listTitle("技能（注册表）", counts.skills), children: <RegistryTab<SkillItem> path="/agent/skills" kind="skill" onCount={countSinks.skills} /> },
+          { key: "mcp", label: listTitle("MCP（注册表）", counts.mcp), children: <RegistryTab<McpServer> path="/agent/mcp-servers" kind="mcp" onCount={countSinks.mcp} /> },
         ]}
       />
       <AgentRunDrawer runId={runId} onClose={() => setRunId(null)} />

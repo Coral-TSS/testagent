@@ -55,7 +55,7 @@ export function SimpleCrud<T extends { id: string }>(props: {
           {props.title}
         </Typography.Title>
         <Button size="small" icon={<PlusOutlined />} onClick={() => open(null)}>
-          Add
+          添加
         </Button>
       </Space>
       <ListTable<T>
@@ -78,15 +78,15 @@ export function SimpleCrud<T extends { id: string }>(props: {
         columns={[
           ...props.columns,
           {
-            title: "Action",
+            title: "动作",
             width: 200,
             render: (_, row) => (
               <Space>
                 {props.extraActions?.(row)}
-                {props.onUpdate && <a onClick={() => open(row)}>Edit</a>}
+                {props.onUpdate && <a onClick={() => open(row)}>编辑</a>}
                 {props.onDelete && (
-                  <Popconfirm title={`${props.deleteLabel || "Delete"}? `} onConfirm={() => props.onDelete!(row)}>
-                    <a>{props.deleteLabel || "Delete"}</a>
+                  <Popconfirm title={`${props.deleteLabel || "删除"}? `} onConfirm={() => props.onDelete!(row)}>
+                    <a>{props.deleteLabel || "删除"}</a>
                   </Popconfirm>
                 )}
               </Space>

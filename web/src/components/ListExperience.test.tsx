@@ -25,13 +25,13 @@ describe("list quantities and paging (#1/#2)", () => {
       "GET /suts/s1/environments": () => ({ body: [] }),
     });
     renderPage(<CaseList sutId="s1" />);
-    await waitFor(() => expect(screen.getByRole("status", { name: "Test cases count" }).textContent).toBe("Test cases (65)"));
-    expect(screen.getByRole("region", { name: "Test cases rows" }).tabIndex).toBe(0);
-    expect(screen.getByText("Total 65 items")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("status", { name: "测试用例数量" }).textContent).toBe("测试用例 (65)"));
+    expect(screen.getByRole("region", { name: "测试用例列表" }).tabIndex).toBe(0);
+    expect(screen.getByText("共 65 条")).toBeTruthy();
     expect(screen.queryByText("TC-065")).toBeNull();
     fireEvent.click(screen.getByTitle("2"));
     expect(await screen.findByText("TC-065")).toBeTruthy();
-    expect(screen.getByRole("status", { name: "Test cases count" }).textContent).toBe("Test cases (65)");
+    expect(screen.getByRole("status", { name: "测试用例数量" }).textContent).toBe("测试用例 (65)");
   });
 
   it("shows server search results against the unfiltered total, including zero matches", async () => {
@@ -40,17 +40,17 @@ describe("list quantities and paging (#1/#2)", () => {
       "GET /suts/s1/environments": () => ({ body: [] }),
     });
     renderPage(<CaseList sutId="s1" />);
-    await screen.findByText("Total 65 items");
-    const search = screen.getByPlaceholderText("Code/title/test point");
+    await screen.findByText("共 65 条");
+    const search = screen.getByPlaceholderText("编号/标题/测试点");
     fireEvent.change(search, { target: { value: "pair" } });
     fireEvent.keyDown(search, { key: "Enter", keyCode: 13 });
     fireEvent.keyUp(search, { key: "Enter", keyCode: 13 });
-    expect(await screen.findByText("2 / 65 total")).toBeTruthy();
+    expect(await screen.findByText("2 / 65 条")).toBeTruthy();
     fireEvent.change(search, { target: { value: "missing" } });
     fireEvent.keyDown(search, { key: "Enter", keyCode: 13 });
     fireEvent.keyUp(search, { key: "Enter", keyCode: 13 });
-    await waitFor(() => expect(screen.getByRole("status", { name: "Test cases total" }).textContent).toBe("0 / 65 total"));
-    expect(screen.getByText("No cases match the filters")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("status", { name: "测试用例共计" }).textContent).toBe("0 / 65 条"));
+    expect(screen.getByText("没有符合筛选条件的用例")).toBeTruthy();
   });
 
   it("keeps category counts correct when data refreshes under an active filter", async () => {
@@ -58,30 +58,30 @@ describe("list quantities and paging (#1/#2)", () => {
     mockFetch({ "GET /suts/s1/cases": () => ({ body: rows }), "GET /suts/s1/environments": () => ({ body: [] }) });
     function Page() {
       const client = useQueryClient();
-      return <><CaseList sutId="s1" /><button onClick={() => client.invalidateQueries({ queryKey: ["cases"] })}>Refresh data</button></>;
+      return <><CaseList sutId="s1" /><button onClick={() => client.invalidateQueries({ queryKey: ["cases"] })}>刷新数据</button></>;
     }
     renderPage(<Page />, { motion: false });
-    await screen.findByText("Total 3 items");
+    await screen.findByText("共 3 条");
     fireEvent.click(screen.getByRole("button", { name: "filter" }));
-    fireEvent.click(within(await screen.findByRole("menu")).getByText("General quality"));
-    fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(await screen.findByText("2 / 3 total")).toBeTruthy();
+    fireEvent.click(within(await screen.findByRole("menu")).getByText("通用质量"));
+    fireEvent.click(screen.getByRole("button", { name: "确定" }));
+    expect(await screen.findByText("2 / 3 条")).toBeTruthy();
     rows = cases(4);
-    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
-    expect(await screen.findByText("3 / 4 total")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "刷新数据" }));
+    expect(await screen.findByText("3 / 4 条")).toBeTruthy();
     expect(screen.queryByText("TC-001")).toBeNull();
   });
 
   it("updates suggestion quantities when only AI inferences are shown", async () => {
     const items = [
-      { id: "a", kind: "node", status: "pending", source: "requirement", payload: { name: "Account", node_kind: "entity" } },
+      { id: "a", kind: "node", status: "pending", source: "requirement", payload: { name: "账户", node_kind: "entity" } },
       { id: "b", kind: "node", status: "pending", source: "ai_inferred", payload: { name: "Balance", node_kind: "entity" } },
       { id: "c", kind: "node", status: "pending", source: "requirement", payload: { name: "Payment", node_kind: "entity" } },
     ] as Suggestion[];
     renderPage(<SuggestionList sutId="s1" items={items} onChanged={() => {}} />);
-    expect(screen.getByRole("status", { name: "Model suggestions count" }).textContent).toBe("Model suggestions (3)");
-    fireEvent.click(screen.getByRole("switch", { name: "Only AI inferences" }));
-    expect(screen.getByText("1 / 3 total")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "模型建议数量" }).textContent).toBe("模型建议 (3)");
+    fireEvent.click(screen.getByRole("switch", { name: "仅 AI 推断" }));
+    expect(screen.getByText("1 / 3 条")).toBeTruthy();
     expect(screen.queryByText(/“Account”/)).toBeNull();
   });
 
@@ -89,7 +89,7 @@ describe("list quantities and paging (#1/#2)", () => {
     const version = { id: "v1", sut_id: "s1", name: "V1", status: "requirements_frozen" } as Version;
     mockFetch({
       "GET /versions/v1": () => ({ body: version }),
-      "GET /versions/v1/requirements": () => ({ body: [{ id: "r1", code: "REQ-001", title: "Submit", status: "confirmed", priority: "P1" }, { id: "r2", code: "REQ-002", title: "Approve", status: "confirmed", priority: "P1" }] }),
+      "GET /versions/v1/requirements": () => ({ body: [{ id: "r1", code: "REQ-001", title: "提交", status: "confirmed", priority: "P1" }, { id: "r2", code: "REQ-002", title: "Approve", status: "confirmed", priority: "P1" }] }),
       "GET /versions/v1/history": () => ({ body: [] }),
       "GET /suts/s1/suggestions": () => ({ body: [] }),
       "GET /versions/v1/strategy": () => ({ status: 404, body: { code: "NOT_FOUND" } }),
@@ -98,24 +98,24 @@ describe("list quantities and paging (#1/#2)", () => {
       "GET /suts/s1/environments": () => ({ body: [] }),
     });
     renderPage(<><VersionPage /><StrategyTab version={version} onOpenRun={() => {}} /></>, { path: "/versions/:versionId", route: "/versions/v1" });
-    await waitFor(() => expect(screen.getByRole("status", { name: "Requirements count" }).textContent).toBe("Requirements (2)"));
-    expect(screen.getByRole("status", { name: "Tasks count" }).textContent).toBe("Tasks (1)");
-    expect(screen.getByText("Total 2 items")).toBeTruthy();
-    expect(screen.getByText("Total 1 item")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("status", { name: "需求数量" }).textContent).toBe("需求 (2)"));
+    expect(screen.getByRole("status", { name: "任务数量" }).textContent).toBe("任务 (1)");
+    expect(screen.getByText("共 2 条")).toBeTruthy();
+    expect(screen.getByText("共 1 条")).toBeTruthy();
   });
 
   it("shows a failed load as unavailable rather than an empty zero-count list, with retry", async () => {
     let failed = true;
     mockFetch({
-      "GET /suts/s1/cases": () => failed ? ({ status: 503, body: { code: "UNAVAILABLE", message: "Offline" } }) : ({ body: cases(2) }),
+      "GET /suts/s1/cases": () => failed ? ({ status: 503, body: { code: "UNAVAILABLE", message: "离线" } }) : ({ body: cases(2) }),
       "GET /suts/s1/environments": () => ({ body: [] }),
     });
     renderPage(<CaseList sutId="s1" />);
-    expect(await screen.findByText("Count unavailable")).toBeTruthy();
-    expect(screen.queryByText("No cases yet")).toBeNull();
-    expect(screen.queryByText("Total 0 items")).toBeNull();
+    expect(await screen.findByText("无法获取数量")).toBeTruthy();
+    expect(screen.queryByText("暂无测试用例")).toBeNull();
+    expect(screen.queryByText("共 0 条")).toBeNull();
     failed = false;
-    fireEvent.click(screen.getByRole("button", { name: "Retry Test cases" }));
-    expect(await screen.findByText("Total 2 items")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "重试测试用例" }));
+    expect(await screen.findByText("共 2 条")).toBeTruthy();
   });
 });

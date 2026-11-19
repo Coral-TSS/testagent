@@ -22,7 +22,7 @@ export function ArtifactImage({ sha, alt, width = 240 }: { sha: string; alt: str
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [sha]);
-  if (failed) return <span style={{ color: "#999" }}>Screenshot failed to load</span>;
+  if (failed) return <span style={{ color: "#999" }}>截图加载失败</span>;
   if (!url) return <Skeleton.Image active style={{ width, height: width * 0.6 }} />;
   return <Image src={url} alt={alt} width={width} />;
 }

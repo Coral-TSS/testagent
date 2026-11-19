@@ -18,9 +18,9 @@ const reqs = [
 describe("task–case binding", () => {
   it("describes rules in words and drops empty lists", () => {
     expect(describeSelector({ requirement_ids: ["r1"], categories: ["requirement"] }, (id) => (id === "r1" ? "REQ-001" : id))).toBe(
-      "Among ready cases: Requirement REQ-001; Category Requirement validation",
+      "在就绪用例中：需求 REQ-001；类别 需求验证",
     );
-    expect(describeSelector(null)).toBe("No rule: only manually added cases");
+    expect(describeSelector(null)).toBe("无规则：仅手工添加的用例");
     expect(cleanSelector({ categories: ["quality"], priorities: [], requirement_ids: undefined })).toEqual({ categories: ["quality"] });
   });
 
@@ -35,10 +35,10 @@ describe("task–case binding", () => {
       sut_id: "s1",
       selector: { requirement_ids: ["r1"], categories: ["requirement"] },
       cases: [
-        { seq: 1, id: "c1", code: "TC-001", title: "Large-amount approval", status: "ready", mode: "automated", type_tag: "functional", category: "requirement", source: "manual", reason: "Added manually" },
+        { seq: 1, id: "c1", code: "TC-001", title: "Large-amount approval", status: "ready", mode: "automated", type_tag: "functional", category: "requirement", source: "manual", reason: "已手工添加" },
         { seq: 2, id: "c2", code: "TC-002", title: "Threshold", status: "ready", mode: "manual", type_tag: "functional", category: "requirement", source: "rule", reason: "Case became ready, added automatically (rule match: requirement REQ-001 · Requirement validation)" },
       ],
-      exclusions: [{ case_id: "c3", code: "TC-003", title: "Idempotency", removed_by: "local-user", created_at: "2026-11-02T15:00:00+08:00" }],
+      exclusions: [{ case_id: "c3", code: "TC-003", title: "幂等", removed_by: "local-user", created_at: "2026-11-02T15:00:00+08:00" }],
       rule_stats: { rule: 1, manual: 1, excluded: 1 },
     };
     const calls = mockFetch({
@@ -54,17 +54,17 @@ describe("task–case binding", () => {
       }),
     });
     renderPage(<TaskPage />, { path: "/tasks/:taskId", route: "/tasks/t1" });
-    expect((await screen.findAllByText("Requirement validation", { selector: ".ant-tag" })).length).toBeGreaterThan(0);
-    await waitFor(() => expect(screen.getByTestId("rule-text").textContent).toBe("Among ready cases: Requirement REQ-001; Category Requirement validation"));
+    expect((await screen.findAllByText("需求验证", { selector: ".ant-tag" })).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByTestId("rule-text").textContent).toBe("在就绪用例中：需求 REQ-001；类别 需求验证"));
     expect(screen.getByTestId("rule-stats").textContent).toContain("By rule 1 · added manually 1 · removed manually 1");
-    expect(screen.getByText("Rule", { selector: ".ant-tag" })).toBeTruthy();
-    expect(screen.getByText("Manual", { selector: ".ant-tag" })).toBeTruthy();
+    expect(screen.getByText("规则", { selector: ".ant-tag" })).toBeTruthy();
+    expect(screen.getByText("手工", { selector: ".ant-tag" })).toBeTruthy();
     expect(screen.getByText(/Case became ready, added automatically/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Preview matches" }));
-    expect(await screen.findByText("The rule matches 1 ready case(s)")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "预览匹配" }));
+    expect(await screen.findByText("该规则匹配 1 条就绪用例")).toBeTruthy();
     const preview = calls.find((c) => c.path === "/tasks/t1/selector/preview")!;
     expect(preview.body).toEqual({ selector: { requirement_ids: ["r1"], categories: ["requirement"] } });
-    fireEvent.click(screen.getByText("Restore"));
+    fireEvent.click(screen.getByText("恢复"));
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/tasks/t1/exclusions/c3")).toBe(true));
   });
 
@@ -83,13 +83,13 @@ describe("task–case binding", () => {
     });
     renderPage(<StrategyTab version={version} onOpenRun={onOpenRun} />);
     expect(await screen.findByText("Payments (REQ-002)")).toBeTruthy();
-    expect(screen.getByText("2 to review")).toBeTruthy();
-    expect(screen.getByText("Category General quality")).toBeTruthy();
-    expect(screen.getAllByText("General quality").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /Generate draft cases/ }));
+    expect(screen.getByText("2 待评审")).toBeTruthy();
+    expect(screen.getByText("类别 通用质量")).toBeTruthy();
+    expect(screen.getAllByText("通用质量").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: /生成草稿用例/ }));
     await waitFor(() => expect(onOpenRun).toHaveBeenCalledWith("ar1"));
     expect(calls.find((c) => c.path === "/versions/v1/cases/generate")!.body).toEqual({ requirement_ids: ["r2"], automate: false });
-    fireEvent.click(screen.getByRole("button", { name: "Complete tasks per category" }));
+    fireEvent.click(screen.getByRole("button", { name: "按类别补全任务" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/versions/v1/tasks/ensure")).toBe(true));
   });
 
@@ -127,8 +127,8 @@ describe("task–case binding", () => {
     });
     renderPage(<CasePage />, { path: "/cases/:caseId", route: "/cases/c1" });
     const alert = await screen.findByTestId("category-suggestion");
-    expect(alert.textContent).toContain("suggested change from “Requirement validation” to “General quality” (Idempotency)");
-    fireEvent.click(screen.getByRole("button", { name: /Accept/ }));
+    expect(alert.textContent).toContain("建议从“需求验证”改为“通用质量” (幂等)");
+    fireEvent.click(screen.getByRole("button", { name: /接受/ }));
     await waitFor(() => expect(calls.find((c) => c.path === "/cases/c1/category-suggestion")?.body).toEqual({ accept: true }));
     await waitFor(() => expect(screen.queryByTestId("category-suggestion")).toBeNull());
   });
@@ -148,8 +148,8 @@ describe("task–case binding", () => {
             scope: { type: "task_run", task_run_id: "run1", task_name: "x", version_id: "v1", version_name: "V1.0", status: "failed" },
             summary,
             by_category: [
-              { category: "requirement", label: "Requirement validation", ...summary, total: 1, failed: 0, executed: 1, pass_rate: 1 },
-              { category: "quality", label: "General quality", ...summary, total: 1, passed: 0, executed: 1, pass_rate: 0 },
+              { category: "requirement", label: "需求验证", ...summary, total: 1, failed: 0, executed: 1, pass_rate: 1 },
+              { category: "quality", label: "通用质量", ...summary, total: 1, passed: 0, executed: 1, pass_rate: 0 },
             ],
             failures: [],
             by_requirement: [],
@@ -166,8 +166,8 @@ describe("task–case binding", () => {
     });
     renderPage(<ReportPage />, { path: "/reports/:reportId", route: "/reports/rp1" });
     const card = await screen.findByTestId("by-category");
-    expect(card.textContent).toContain("Requirement validation");
-    expect(card.textContent).toContain("General quality");
+    expect(card.textContent).toContain("需求验证");
+    expect(card.textContent).toContain("通用质量");
     expect(card.textContent).toContain("100%");
     expect(card.textContent).toContain("0%");
   });

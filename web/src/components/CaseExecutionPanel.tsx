@@ -14,10 +14,10 @@ import { EnvironmentStatus } from "./EnvironmentStatus";
 import { CauseTag, FailureSummary } from "./FailureSummary";
 
 const EXECUTORS = [
-  { value: "auto", label: "Auto (pytest when there is code; HTTP for API cases; otherwise browser)" },
-  { value: "agent_browser", label: "Agent browser" },
-  { value: "agent_api", label: "Agent API (HTTP requests)" },
-  { value: "pytest", label: "pytest script" },
+  { value: "auto", label: "自动（有代码时用 pytest；API 用例用 HTTP；否则用浏览器）" },
+  { value: "agent_browser", label: "Agent 浏览器" },
+  { value: "agent_api", label: "Agent API（HTTP 请求）" },
+  { value: "pytest", label: "pytest 脚本" },
 ];
 
 /** Read-only code viewer: the bound script or the needs_fix draft */
@@ -28,7 +28,7 @@ export function CodeViewer({ caseId, draft, open, onClose }: { caseId: string; d
     enabled: open,
   });
   return (
-    <Modal open={open} onCancel={onClose} footer={null} width={900} title={draft ? "Automation draft (needs fix, not bound)" : "Automation code (read-only)"}>
+    <Modal open={open} onCancel={onClose} footer={null} width={900} title={draft ? "自动化草稿（待修复，未绑定）" : "自动化代码（只读）"}>
       {code.isError && <Alert type="error" showIcon title={describeError(code.error)} />}
       {code.data && (
         <>
@@ -40,7 +40,7 @@ export function CodeViewer({ caseId, draft, open, onClose }: { caseId: string; d
           </Typography.Paragraph>
           <pre
             style={{ maxHeight: 520, overflow: "auto", background: "#f6f8fa", padding: 12, fontSize: 12, borderRadius: 6 }}
-            aria-label="Code"
+            aria-label="编号"
           >
             {code.data.content}
           </pre>
@@ -76,9 +76,9 @@ export async function manualBody(v: ManualValues, files: UploadFile[]): Promise<
     try {
       actual = JSON.parse(v.actual_data);
     } catch {
-      return { error: "Actual data is not valid JSON" };
+      return { error: "实际数据不是合法 JSON" };
     }
-    if (typeof actual !== "object" || actual === null || Array.isArray(actual)) return { error: "Actual data must be a JSON object" };
+    if (typeof actual !== "object" || actual === null || Array.isArray(actual)) return { error: "实际数据必须是 JSON 对象" };
   }
   const attachments = await Promise.all(
     files.filter((f) => f.originFileObj).map(async (f) => ({ name: f.name, content_base64: await toBase64(f.originFileObj as File) })),
@@ -97,15 +97,15 @@ export async function manualBody(v: ManualValues, files: UploadFile[]): Promise<
 export function fixHint(kind?: string | null): string {
   switch (kind) {
     case "locator":
-      return "An element was not found: check the page selectors and the case steps, then run “AI automation” again.";
+      return "未找到元素：请检查页面选择器和用例步骤，然后再次运行“AI 自动化”。";
     case "timeout":
-      return "It timed out: check that the environment responds in time, then run “AI automation” again.";
+      return "超时：请确认环境能及时响应，然后再次运行“AI 自动化”。";
     case "script_error":
-      return "The script itself failed: run “AI automation” again (fix the case steps or API schema first if they are unclear).";
+      return "脚本本身失败：请再次运行“AI 自动化”（如果用例步骤或 API 模式不清楚，请先修正）。";
     case "assertion":
-      return "Assertion failed and it is unclear whether the script or the system is wrong: compare with the requirement before regenerating.";
+      return "断言失败，且尚不清楚是脚本问题还是系统问题：重新生成前请先对照需求。";
     default:
-      return "Fix the case steps/API schema and run “AI automation” again.";
+      return "请修正用例步骤/API 模式，然后再次运行“AI 自动化”。";
   }
 }
 
@@ -141,7 +141,7 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
     },
   );
   const manual = useApiMutation((body: Record<string, unknown>) => api<CaseExecution>(`/cases/${tc.id}/executions/manual`, { method: "POST", body }), {
-    success: "Execution result recorded",
+    success: "已记录执行结果",
     onSuccess: () => {
       setManualOpen(false);
       setFiles([]);
@@ -154,25 +154,25 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
     {
       onSuccess: (r) => {
         refresh();
-        if (r.status === "succeeded") message.success(`Generated and committed ${r.code_path}@${(r.code_commit || "").slice(0, 8)}`);
+        if (r.status === "succeeded") message.success(`已生成并提交 ${r.code_path}@${(r.code_commit || "").slice(0, 8)}`);
         else if (r.status === "env_unavailable")
-          modal.warning({ title: "SUT environment unreachable; no script generated", content: `${r.reason || ""} (no self-check attempt used; retry after starting it)` });
+          modal.warning({ title: "被测系统环境不可达；未生成脚本", content: `${r.reason || ""}（未进行自检；请启动环境后重试）` });
         else if (r.status === "sut_mismatch")
           modal.warning({
-            title: "Suspected system issue: the system behaved differently from the expected result",
-            content: `${r.reason || ""} The script was not bound. Do not change the assertion to make it pass; review the result below.`,
+            title: "疑似系统问题：系统表现与预期结果不符",
+            content: `${r.reason || ""} 脚本未绑定。不要靠改断言让它通过；请查看下方结果。`,
           });
         else if (r.status === "needs_fix")
           modal.warning({
-            title: "Self-check failed, not bound (needs fix)",
-            content: r.reason || "The last self-check failed",
-            okText: "View AI trace",
+            title: "自检失败，未绑定（待修复）",
+            content: r.reason || "上次自检失败",
+            okText: "查看 AI 追踪",
             onOk: () => onAgentRun(r.agent_run_id),
           });
         else
           modal.warning({
-            title: "Automation not finished",
-            content: `${r.error_code || r.status}: open the AI trace to see why`,
+            title: "自动化未完成",
+            content: `${r.error_code || r.status}：打开 AI 追踪查看原因`,
             onOk: () => onAgentRun(r.agent_run_id),
           });
       },
@@ -184,17 +184,17 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
     {
       onSuccess: (r) => {
         refresh();
-        message.success(r.defect ? "Recorded as a failed execution and a defect was created" : "Recorded as a failed execution");
+        message.success(r.defect ? "已记录为失败执行，并创建了缺陷" : "已记录为失败执行");
         if (r.defect) navigate(`/defects/${r.defect.id}`);
       },
     },
   );
   const markScript = useApiMutation(() => api(`/cases/${tc.id}/automation/mark-script-issue`, { method: "POST" }), {
-    success: "Marked as a script / case issue",
+    success: "已标记为脚本 / 用例问题",
     onSuccess: refresh,
   });
   const bind = useApiMutation((body: { code_path: string }) => api(`/cases/${tc.id}/bind-code`, { method: "POST", body }), {
-    success: "Bound code",
+    success: "已绑定代码",
     onSuccess: () => {
       setBindOpen(false);
       refresh();
@@ -202,49 +202,49 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
   });
 
   return (
-    <Card size="small" title="Execution & automation" style={{ marginTop: 16 }}>
+    <Card size="small" title="执行与自动化" style={{ marginTop: 16 }}>
       <Space wrap style={{ marginBottom: 12 }}>
         <Select
-          aria-label="Environment"
+          aria-label="环境"
           style={{ width: 200 }}
-          placeholder="Choose environment"
+          placeholder="选择环境"
           value={environment}
           onChange={setEnvId}
           options={(envs.data || []).map((e) => ({ value: e.id, label: `${e.name} (${e.base_url})` }))}
         />
-        <Select aria-label="Executor" style={{ width: 300 }} value={executor} onChange={setExecutor} options={EXECUTORS} />
-        <Tooltip title={environment ? "Run once now in the chosen environment (not part of any task)" : "Add an environment to the SUT first"}>
+        <Select aria-label="执行器" style={{ width: 300 }} value={executor} onChange={setExecutor} options={EXECUTORS} />
+        <Tooltip title={environment ? "立即在选定环境中执行一次（不属于任何任务）" : "请先为被测系统添加环境"}>
           <Button type="primary" disabled={!environment || deprecated} loading={debug.isPending} onClick={() => debug.mutate(undefined)}>
-            Debug run
+            调试执行
           </Button>
         </Tooltip>
         <Button disabled={deprecated} onClick={() => setManualOpen(true)}>
-          Record manual execution
+          记录手工执行
         </Button>
-        <Tooltip title="The agent generates a pytest script and self-checks it in the chosen environment; when it passes it is written to this system's local test repo and bound; a failed self-check only leaves a draft">
+        <Tooltip title="Agent 会生成 pytest 脚本并在选定环境中自检；通过后写入该系统的本地测试仓库并绑定；自检失败则只留下草稿">
           <Button disabled={deprecated} loading={automate.isPending} onClick={() => automate.mutate(undefined)}>
-            AI automation
+            AI 自动化
           </Button>
         </Tooltip>
         <Button disabled={deprecated} onClick={() => setBindOpen(true)}>
-          Bind existing code
+          绑定已有代码
         </Button>
       </Space>
       {tc.code_path && (<>
         <Typography.Paragraph>
-          <Typography.Text type="secondary">Automation code: </Typography.Text>
+          <Typography.Text type="secondary">自动化代码： </Typography.Text>
           <Typography.Text code copyable={{ text: tc.code_abs_path || tc.code_path }}>
             {tc.code_abs_path || tc.code_path}
           </Typography.Text>
           {tc.code_commit && <Typography.Text type="secondary"> @ {tc.code_commit.slice(0, 8)} </Typography.Text>}
           <Button size="small" type="link" onClick={() => setViewer("code")}>
-            View code
+            查看代码
           </Button>
         </Typography.Paragraph>
         <Typography.Paragraph type="secondary">
           {tc.code_commit
-            ? "Runs the bound Git version, including its fixtures and helpers. Commit local changes and bind the code again to run a newer version."
-            : "No Git version is bound yet. Runs use the repository's committed version at the start; commit and bind changes before rerunning."}
+            ? "将运行已绑定的 Git 版本（含其中的夹具和辅助代码）。要跑更新的版本，请先提交本地更改并重新绑定代码。"
+            : "尚未绑定 Git 版本。执行会使用仓库开始时的已提交版本；重新执行前请先提交并绑定更改。"}
         </Typography.Paragraph>
       </>)}
       <EnvironmentStatus env={envs.data?.find((e) => e.id === environment)} />
@@ -253,8 +253,8 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
           type="warning"
           showIcon
           style={{ margin: "12px 0" }}
-          title="The SUT environment was unreachable during the last AI automation (not a script problem)"
-          description={`${tc.automation_note || ""}; start the environment and click “AI automation” again.`}
+          title="上次 AI 自动化时被测系统环境不可达（不是脚本问题）"
+          description={`${tc.automation_note || ""}；请启动环境后再次点击“AI 自动化”。`}
         />
       )}
       {tc.automation_status === "sut_mismatch" && (
@@ -263,16 +263,16 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
           showIcon
           style={{ marginBottom: 12 }}
           data-testid="sut-mismatch"
-          title="The self-check found the system behaving differently from the expected result (suspected system issue); the script was not bound"
+          title="自检发现系统表现与预期结果不符（疑似系统问题）；脚本未绑定"
           description={
             <Space orientation="vertical" size={6} style={{ width: "100%" }}>
               {tc.automation_failure ? (
                 <FailureSummary summary={tc.automation_failure} versionId={tc.origin_version_id} />
               ) : (
-                <span>Reason: {tc.automation_note || "unknown"}</span>
+                <span>原因：{tc.automation_note || "未知"}</span>
               )}
               <Typography.Text type="secondary">
-                Do not change the assertion to make the test pass. If the expectation is right, record it: binding keeps the script so later runs fail until the system is fixed.
+                不要靠改断言让测试通过。如果预期是对的，请先记录：绑定脚本后，在系统修复前再次执行仍会失败。
               </Typography.Text>
               <Space wrap>
                 <Button
@@ -280,21 +280,21 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
                   loading={confirmSut.isPending}
                   onClick={() => confirmSut.mutate({ action: "bind_and_record", create_defect: false })}
                 >
-                  Bind script and record failure
+                  绑定脚本并记录失败
                 </Button>
                 <Button loading={confirmSut.isPending} onClick={() => confirmSut.mutate({ action: "bind_and_record", create_defect: true })}>
-                  Bind, record and create defect
+                  绑定、记录并创建缺陷
                 </Button>
                 <Button loading={confirmSut.isPending} onClick={() => confirmSut.mutate({ action: "record_only", create_defect: false })}>
-                  Only record failure
+                  仅记录失败
                 </Button>
                 {tc.draft_abs_path && (
                   <Button type="link" onClick={() => setViewer("draft")}>
-                    View draft
+                    查看草稿
                   </Button>
                 )}
                 <Button type="link" danger loading={markScript.isPending} onClick={() => markScript.mutate(undefined)}>
-                  It is a script issue
+                  这是脚本问题
                 </Button>
               </Space>
             </Space>
@@ -306,36 +306,36 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          title="Automation needs fix: the last self-check failed and the script was not bound to the case"
+          title="自动化待修复：上次自检失败，脚本未绑定到用例"
           description={
             <Space orientation="vertical" size={2}>
               {tc.automation_failure ? (
                 <FailureSummary summary={tc.automation_failure} versionId={tc.origin_version_id} />
               ) : (
-                <span>Reason: {tc.automation_note || "unknown"}</span>
+                <span>原因：{tc.automation_note || "未知"}</span>
               )}
               <span>{fixHint(tc.automation_failure?.kind)}</span>
               {tc.draft_abs_path && (
                 <span>
-                  Draft: 
+                  草稿： 
                   <Typography.Text code copyable={{ text: tc.draft_abs_path }}>
                     {tc.draft_abs_path}
                   </Typography.Text>
                   <Button size="small" type="link" onClick={() => setViewer("draft")}>
-                    View draft
+                    查看草稿
                   </Button>
                 </span>
               )}
-              <span>Or fix the draft by hand and use “Bind existing code”.</span>
+              <span>或手工修正草稿并使用“绑定已有代码”。</span>
             </Space>
           }
         />
       )}
       {(debug.isPending || automate.isPending) && (
-        <Typography.Paragraph type="secondary">Running; browser actions may take a minute or two…</Typography.Paragraph>
+        <Typography.Paragraph type="secondary">正在运行；浏览器操作可能需要一两分钟…</Typography.Paragraph>
       )}
       <ListTable<ExecutionRow>
-        label="Case execution history"
+        label="用例执行历史"
         error={history.isError}
         onRetry={() => history.refetch()}
         recordLimit={100}
@@ -344,14 +344,14 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
         loading={history.isLoading}
         dataSource={history.data}
         pagination={{ pageSize: 10, hideOnSinglePage: true }}
-        locale={{ emptyText: "No executions yet" }}
+        locale={{ emptyText: "暂无执行记录" }}
         columns={[
-          { title: "Time", dataIndex: "created_at", render: (v: string, r) => <Link to={`/executions/${r.id}`}>{fmtTime(v, { seconds: true })}</Link> },
-          { title: "Result", dataIndex: "status", render: (v: string) => <ExecutionStatusTag status={v} /> },
-          { title: "Executor", dataIndex: "executor", render: (v: string) => EXECUTOR_LABEL[v] || v },
-          { title: "Environment", dataIndex: "environment_name", render: (v?: string) => v || "-" },
-          { title: "Source", dataIndex: "task_run_id", render: (v?: string) => (v ? "Task" : "Debug/manual") },
-          { title: "Cause", dataIndex: "suspected_cause", render: (v?: ExecutionRow["suspected_cause"]) => <CauseTag cause={v} /> },
+          { title: "时间", dataIndex: "created_at", render: (v: string, r) => <Link to={`/executions/${r.id}`}>{fmtTime(v, { seconds: true })}</Link> },
+          { title: "结果", dataIndex: "status", render: (v: string) => <ExecutionStatusTag status={v} /> },
+          { title: "执行器", dataIndex: "executor", render: (v: string) => EXECUTOR_LABEL[v] || v },
+          { title: "环境", dataIndex: "environment_name", render: (v?: string) => v || "-" },
+          { title: "来源", dataIndex: "task_run_id", render: (v?: string) => (v ? "测试任务" : "Debug/manual") },
+          { title: "原因", dataIndex: "suspected_cause", render: (v?: ExecutionRow["suspected_cause"]) => <CauseTag cause={v} /> },
           {
             title: "description",
             render: (_: unknown, r) => (
@@ -361,7 +361,7 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
         ]}
       />
       <Modal
-        title="Record manual execution result"
+        title="记录手工执行结果"
         open={manualOpen}
         onCancel={() => setManualOpen(false)}
         onOk={() => manualForm.submit()}
@@ -378,60 +378,60 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
             manual.mutate(body!);
           }}
         >
-          <Form.Item name="status" label="Result" rules={[{ required: true }]}>
+          <Form.Item name="status" label="结果" rules={[{ required: true }]}>
             <Select
               options={[
-                { value: "passed", label: "Passed" },
-                { value: "failed", label: "failed" },
-                { value: "blocked", label: "Blocked" },
-                { value: "skipped", label: "Skipped" },
+                { value: "passed", label: "通过" },
+                { value: "failed", label: "失败" },
+                { value: "blocked", label: "阻塞" },
+                { value: "skipped", label: "跳过" },
               ]}
             />
           </Form.Item>
-          <Form.Item name="environment_id" label="Environment">
+          <Form.Item name="environment_id" label="环境">
             <Select allowClear options={(envs.data || []).map((e) => ({ value: e.id, label: e.name }))} />
           </Form.Item>
-          <Form.Item name="result" label="Actual result">
+          <Form.Item name="result" label="实际结果">
             <Input.TextArea rows={2} />
           </Form.Item>
           <Form.Item noStyle shouldUpdate={(a, b) => a.status !== b.status}>
             {({ getFieldValue }) =>
               getFieldValue("status") === "failed" ? (
-                <Form.Item name="failed_assertion" label="Unmet expectation" rules={[{ required: true, message: "On failure, say which expectation was not met" }]}>
+                <Form.Item name="failed_assertion" label="未满足的预期" rules={[{ required: true, message: "失败时说明哪条预期未满足" }]}>
                   <Input.TextArea rows={2} />
                 </Form.Item>
               ) : getFieldValue("status") === "blocked" ? (
-                <Form.Item name="blocked_reason" label="Blocking reason" rules={[{ required: true, message: "Please give the blocking reason" }]}>
+                <Form.Item name="blocked_reason" label="阻塞原因" rules={[{ required: true, message: "请填写阻塞原因" }]}>
                   <Input />
                 </Form.Item>
               ) : null
             }
           </Form.Item>
-          <Form.Item name="actual_data" label="Test data actually used (JSON, optional)">
+          <Form.Item name="actual_data" label="实际使用的测试数据（JSON，可选）">
             <Input.TextArea rows={2} placeholder='{"amount": 0}' />
           </Form.Item>
-          <Form.Item name="duration_min" label="Duration (minutes)">
+          <Form.Item name="duration_min" label="耗时（分钟）">
             <InputNumber min={0} step={0.5} />
           </Form.Item>
-          <Form.Item label="Attachments (screenshots, logs)">
+          <Form.Item label="附件（截图、日志）">
             <Upload multiple fileList={files} beforeUpload={() => false} onChange={({ fileList }) => setFiles(fileList)}>
-              <Button>Choose files</Button>
+              <Button>选择文件</Button>
             </Upload>
           </Form.Item>
         </Form>
       </Modal>
       <CodeViewer caseId={tc.id} draft={viewer === "draft"} open={viewer !== null} onClose={() => setViewer(null)} />
       <Modal
-        title="Bind existing automation code"
+        title="绑定已有自动化代码"
         open={bindOpen}
         onCancel={() => setBindOpen(false)}
         onOk={() => bindForm.submit()}
         confirmLoading={bind.isPending}
         destroyOnHidden
       >
-        <Typography.Paragraph type="secondary">Enter the path of a committed file in the test repo (under tests/); the current commit is pinned.</Typography.Paragraph>
+        <Typography.Paragraph type="secondary">请输入测试仓库中已提交文件的路径（位于 tests/ 下）；会固定到当前提交。</Typography.Paragraph>
         <Form form={bindForm} layout="vertical" initialValues={{ code_path: tc.code_path || "" }} onFinish={(v) => bind.mutate(v)}>
-          <Form.Item name="code_path" label="Code path" rules={[{ required: true, pattern: /^tests\/.+\.py$/, message: "Must be a .py file under tests/" }]}>
+          <Form.Item name="code_path" label="代码路径" rules={[{ required: true, pattern: /^tests\/.+\.py$/, message: "必须是 tests/ 下的 .py 文件" }]}>
             <Input placeholder="tests/REQ-001/test_TC-001.py" />
           </Form.Item>
         </Form>

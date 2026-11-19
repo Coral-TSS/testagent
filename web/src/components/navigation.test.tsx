@@ -21,25 +21,25 @@ describe("navigation components", () => {
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     renderPage(<PathText path="D:/TestAgent/runtime/repos/PROC" />);
     expect(screen.getByText("D:/TestAgent/runtime/repos/PROC")).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Copy path"));
+    fireEvent.click(screen.getByLabelText("复制路径"));
     expect(writeText).toHaveBeenCalledWith("D:/TestAgent/runtime/repos/PROC");
   });
 
   it("renders an empty state with a primary action", () => {
     const onAction = vi.fn();
-    renderPage(<EmptyState title="No environment yet" hint="Add an environment first" actionLabel="Add environment" onAction={onAction} />);
-    expect(screen.getByText("No environment yet")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Add environment" }));
+    renderPage(<EmptyState title="暂无环境" hint="请先添加环境" actionLabel="添加环境" onAction={onAction} />);
+    expect(screen.getByText("暂无环境")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "添加环境" }));
     expect(onAction).toHaveBeenCalled();
   });
 
   it("shows the main flow with step states and the next action", () => {
     renderPage(<FlowSteps progress={progress} />);
     const bar = screen.getByTestId("flow-steps");
-    for (const t of ["SUT", "Model", "Requirements", "Strategy", "Tasks", "Cases", "Runs", "Results"]) {
+    for (const t of ["被测系统", "模型", "需求", "策略", "任务", "用例", "执行", "结果"]) {
       expect(bar.textContent).toContain(t);
     }
-    expect(screen.getByRole("button", { name: /Create\/confirm test strategy/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /创建\/确认测试策略/ })).toBeTruthy();
     expect(bar.querySelectorAll(".ant-steps-item-finish").length).toBe(3);
   });
 
@@ -51,6 +51,6 @@ describe("navigation components", () => {
       </>,
     );
     expect(screen.getByTestId("sut-explainer").textContent).toContain("D:/TestAgent/runtime/repos/PROC");
-    expect(screen.getByTestId("onboarding").textContent).toContain("2 requirements · frozen");
+    expect(screen.getByTestId("onboarding").textContent).toContain("2 个需求 · 已冻结");
   });
 });

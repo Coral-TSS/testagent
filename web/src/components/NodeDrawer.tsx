@@ -29,11 +29,11 @@ import { CARD_SHORT } from "./links";
 import { KIND_COLOR, KIND_LABEL } from "./StatusTags";
 
 const EDGE_ROLES = [
-  { value: "actor", label: "Actor" },
-  { value: "object", label: "object" },
-  { value: "ref", label: "References" },
+  { value: "actor", label: "执行者" },
+  { value: "object", label: "对象" },
+  { value: "ref", label: "引用" },
 ];
-const ROLE_LABEL: Record<string, string> = { source: "Source", target: "Target", actor: "Actor", object: "object", ref: "References" };
+const ROLE_LABEL: Record<string, string> = { source: "来源", target: "目标", actor: "执行者", object: "对象", ref: "引用" };
 
 /** P03 node detail: purpose, inputs/outputs (action), fields (entity), attributes, edges, API binding, references, delete */
 export function NodeDrawer(props: {
@@ -106,17 +106,17 @@ export function NodeDrawer(props: {
     qc.invalidateQueries({ queryKey: ["node-refs", nodeId] });
   };
   const save = useApiMutation((body: Record<string, unknown>) => api(`/nodes/${nodeId}`, { method: "PATCH", body }), {
-    success: "Saved",
+    success: "已保存",
     onSuccess: refresh,
   });
   const addEdge = useApiMutation(
     (body: Record<string, unknown>) => api(`/suts/${sutId}/edges`, { method: "POST", body }),
-    { success: "Connected", onSuccess: () => { setEdgeTarget(undefined); refresh(); } },
+    { success: "已连接", onSuccess: () => { setEdgeTarget(undefined); refresh(); } },
   );
   const removeEdge = useApiMutation((id: string) => api(`/edges/${id}`, { method: "DELETE" }), { onSuccess: refresh });
   const linkApis = useApiMutation(
     (ids: string[]) => api(`/nodes/${nodeId}/apis`, { method: "PUT", body: { api_ids: ids } }),
-    { success: "API binding updated", onSuccess: () => { refresh(); qc.invalidateQueries({ queryKey: ["apis", sutId] }); } },
+    { success: "API 绑定已更新", onSuccess: () => { refresh(); qc.invalidateQueries({ queryKey: ["apis", sutId] }); } },
   );
   const fromApis = useApiMutation(
     (replace: boolean) =>
@@ -127,7 +127,7 @@ export function NodeDrawer(props: {
     {
       onSuccess: (r) => {
         message.success(
-          `Filled from the bound API: inputs +${r.inputs_added}, outputs +${r.outputs_added}${r.purpose_filled ? ", and added the purpose" : ""}`,
+          `Filled from the bound API: inputs +${r.inputs_added}, outputs +${r.outputs_added}${r.purpose_filled ? "，并补充了用途" : ""}`,
         );
         refresh();
       },
@@ -141,7 +141,7 @@ export function NodeDrawer(props: {
       try {
         dataSchema = JSON.parse(raw);
       } catch {
-        form.setFields([{ name: "data_schema", errors: ["is not valid JSON"] }]);
+        form.setFields([{ name: "data_schema", errors: ["不是合法 JSON"] }]);
         return;
       }
     }
@@ -167,13 +167,13 @@ export function NodeDrawer(props: {
   const remove = async (confirm: boolean) => {
     try {
       await api(`/nodes/${nodeId}`, { method: "DELETE", params: { confirm } });
-      message.success("Node deleted (traceable in the change log)");
+      message.success("节点已删除（可在变更日志中追溯）");
       qc.invalidateQueries({ queryKey: ["graph", sutId] });
       props.onClose();
     } catch (err) {
       if (err instanceof ApiError && err.code === "CONFLICT" && !confirm) {
         modal.confirm({
-          title: "Node still referenced",
+          title: "节点仍被引用",
           content: (
             <>
               <p>{err.message}</p>
@@ -182,10 +182,10 @@ export function NodeDrawer(props: {
                   <li key={r}>{r.split(":").slice(2).join(":") || r}</li>
                 ))}
               </ul>
-              <p>Its edges and API bindings will stop working after deletion.</p>
+              <p>删除后，它的边和 API 绑定将失效。</p>
             </>
           ),
-          okText: "Delete anyway",
+          okText: "仍然删除",
           okButtonProps: { danger: true },
           onOk: () => remove(true),
         });
@@ -209,16 +209,16 @@ export function NodeDrawer(props: {
             {n.name}
           </Space>
         ) : (
-          "Node"
+          "节点"
         )
       }
       extra={
         <Space>
           <Button danger onClick={() => remove(false)}>
-            Delete
+            删除
           </Button>
           <Button type="primary" loading={save.isPending} onClick={() => form.submit()}>
-            Save
+            保存
           </Button>
         </Space>
       }
@@ -226,34 +226,34 @@ export function NodeDrawer(props: {
       {n && (
         <>
           <Form name="node-detail" form={form} layout="vertical" onFinish={onFinish}>
-            <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+            <Form.Item name="name" label="名称" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="module_id" label="Group">
+            <Form.Item name="module_id" label="分组">
               <Select allowClear options={props.modules.map((m) => ({ value: m.id, label: m.name }))} />
             </Form.Item>
             <Form.Item
               name="description"
-              label={n.kind === "action" ? "Purpose (what this action does)" : "description"}
+              label={n.kind === "action" ? "用途（该动作做什么）" : "description"}
             >
-              <Input.TextArea autoSize={{ minRows: 2 }} placeholder={n.kind === "action" ? "e.g. The requester submits a purchase order and the system decides by amount whether approval is needed" : undefined} />
+              <Input.TextArea autoSize={{ minRows: 2 }} placeholder={n.kind === "action" ? "例如：申请人提交采购订单，系统根据金额决定是否需要审批" : undefined} />
             </Form.Item>
-            <Form.Item name="code_ref" label="Code location (link)">
-              <Input placeholder="e.g. https://git.example/repo/blob/main/src/order.py#L10" />
+            <Form.Item name="code_ref" label="代码位置（链接）">
+              <Input placeholder="例如 https://git.example/repo/blob/main/src/order.py#L10" />
             </Form.Item>
             {n.kind === "action" && (
               <>
-                <Divider titlePlacement="start">Bound API</Divider>
+                <Divider titlePlacement="start">绑定的 API</Divider>
                 <Select
                   mode="multiple"
                   style={{ width: "100%" }}
-                  placeholder="Choose the APIs this action calls (empty inputs/outputs are filled from the API fields automatically)"
+                  placeholder="选择该动作调用的 API（空白的输入/输出会自动按 API 字段填充）"
                   value={n.apis.map((a) => a.id)}
                   loading={linkApis.isPending}
                   onChange={(ids) => linkApis.mutate(ids)}
                   options={(apis.data || []).map((a) => ({ value: a.id, label: `${a.method} ${a.path}${a.name ? ` · ${a.name}` : ""}` }))}
                 />
-                <Divider titlePlacement="start">Inputs / outputs</Divider>
+                <Divider titlePlacement="start">输入 / 输出</Divider>
                 <Space style={{ marginBottom: 8 }}>
                   <Button
                     size="small"
@@ -261,53 +261,53 @@ export function NodeDrawer(props: {
                     loading={fromApis.isPending}
                     onClick={() => fromApis.mutate(false)}
                   >
-                    Fill from bound API (merge)
+                    从已绑定 API 填充（合并）
                   </Button>
-                  <Popconfirm title="Rebuild inputs/outputs from the bound API fields? Manually added parameters will be replaced" onConfirm={() => fromApis.mutate(true)}>
+                  <Popconfirm title="要从绑定的 API 字段重建输入/输出吗？手工添加的参数将被替换" onConfirm={() => fromApis.mutate(true)}>
                     <Button size="small" disabled={!n.apis.length}>
-                      Rebuild from API
+                      根据 API 重建
                     </Button>
                   </Popconfirm>
-                  <Typography.Text type="secondary">Click “Save” at the top right after editing</Typography.Text>
+                  <Typography.Text type="secondary">编辑后请点击右上角的“保存”</Typography.Text>
                 </Space>
-                <Form.Item name="input_format" label="Input format">
-                  <Input placeholder="e.g. Request body JSON object (application/json); parameters: path parameters" />
+                <Form.Item name="input_format" label="输入格式">
+                  <Input placeholder="例如：请求体 JSON 对象（application/json）；参数：路径参数" />
                 </Form.Item>
-                <Form.Item name="inputs" label="Type">
+                <Form.Item name="inputs" label="类型">
                   <IoParamsTable
-                    label="Input parameters"
+                    label="输入参数"
                     showLocation
                     locations={["body", "path", "query", "header", "form", "ui"]}
                     fieldOptions={fieldOptions}
-                    emptyText="No inputs yet (can be filled from the bound API)"
-                    addLabel="Add input"
+                    emptyText="还没有输入（可从绑定的 API 填充）"
+                    addLabel="添加输入"
                   />
                 </Form.Item>
-                <Form.Item name="output_format" label="Output format">
-                  <Input placeholder="e.g. HTTP 201, JSON object (application/json)" />
+                <Form.Item name="output_format" label="输出格式">
+                  <Input placeholder="例如 HTTP 201，JSON 对象（application/json）" />
                 </Form.Item>
-                <Form.Item name="outputs" label="Outputs">
+                <Form.Item name="outputs" label="输出">
                   <IoParamsTable
-                    label="Output parameters"
+                    label="输出参数"
                     fieldOptions={fieldOptions}
-                    emptyText="No outputs yet (can be filled from the bound API)"
-                    addLabel="Add output"
+                    emptyText="还没有输出（可从绑定的 API 填充）"
+                    addLabel="添加输出"
                   />
                 </Form.Item>
-                <Divider titlePlacement="start">Preconditions & effects</Divider>
+                <Divider titlePlacement="start">前置条件与效果</Divider>
                 <ActionRulesEditor fields={sutFields.data || []} entities={props.allNodes} links={links.data || []} />
               </>
             )}
             {n.kind === "entity" && (
               <>
-                <Divider titlePlacement="start">Fields (name · type · required · format)</Divider>
+                <Divider titlePlacement="start">字段（名称 · 类型 · 必填 · 格式）</Divider>
                 <EntityFields nodeId={n.id} sutId={sutId} entities={props.allNodes} />
-                <Divider titlePlacement="start">Links (both readings · cardinality · foreign key)</Divider>
-                <ListSection label="Entity links" count={n.links?.length ?? 0}>
+                <Divider titlePlacement="start">关系（双向读法 · 基数 · 外键）</Divider>
+                <ListSection label="实体关系" count={n.links?.length ?? 0}>
                 <List
                   size="small"
                   dataSource={n.links || []}
-                  locale={{ emptyText: "No links yet" }}
+                  locale={{ emptyText: "暂无关系" }}
                   renderItem={(l) => {
                     const outgoing = l.from_node_id === n.id;
                     const viaOnly = l.via_node_id === n.id && !outgoing && l.to_node_id !== n.id;
@@ -317,12 +317,12 @@ export function NodeDrawer(props: {
                         ? `${n.name} ${l.forward_name} ${l.to_name}`
                         : `${n.name} ${l.reverse_name} ${l.from_name}`;
                     return (
-                      <List.Item actions={[<a key="e" onClick={() => setLinkEdit({ link: l })}>Edit</a>]}>
+                      <List.Item actions={[<a key="e" onClick={() => setLinkEdit({ link: l })}>编辑</a>]}>
                         <Space>
                           <span>{text}</span>
                           <Tag color="purple">{CARD_SHORT[l.cardinality]}</Tag>
                           {l.fk_field && <Typography.Text type="secondary">foreign key {l.fk_field}</Typography.Text>}
-                          {l.required && <Tag>Required</Tag>}
+                          {l.required && <Tag>必填</Tag>}
                         </Space>
                       </List.Item>
                     );
@@ -330,27 +330,27 @@ export function NodeDrawer(props: {
                 />
                 </ListSection>
                 <Button size="small" style={{ marginTop: 8 }} onClick={() => setLinkEdit({ from: n.id })}>
-                  New link
+                  新建关系
                 </Button>
                 <Form.Item
                   name="data_schema"
-                  label="Raw data schema JSON (old format, migrated to “Fields” above, may be empty)"
+                  label="原始数据模式 JSON（旧格式，已迁移到上方“字段”，可能为空）"
                   style={{ marginTop: 16 }}
                 >
                   <Input.TextArea rows={3} style={{ fontFamily: "monospace" }} />
                 </Form.Item>
               </>
             )}
-            <Divider titlePlacement="start">Attributes</Divider>
+            <Divider titlePlacement="start">属性</Divider>
             <AttributesEditor />
           </Form>
 
-          <Divider titlePlacement="start">Edges</Divider>
-          <ListSection label="Related edges" count={n.edges.filter((e) => e.role !== "source" && e.role !== "target").length}>
+          <Divider titlePlacement="start">边</Divider>
+          <ListSection label="相关边" count={n.edges.filter((e) => e.role !== "source" && e.role !== "target").length}>
           <List
             size="small"
             dataSource={n.edges.filter((e) => e.role !== "source" && e.role !== "target")}
-            locale={{ emptyText: "No edges" }}
+            locale={{ emptyText: "没有边" }}
             renderItem={(e) => {
               const outgoing = e.source_node_id === n.id;
               const otherId = outgoing ? e.target_node_id : e.source_node_id;
@@ -361,8 +361,8 @@ export function NodeDrawer(props: {
                     e.role === "source" || e.role === "target"
                       ? []
                       : [
-                          <Popconfirm key="d" title="Delete this edge?" onConfirm={() => removeEdge.mutate(e.id)}>
-                            <a>Delete</a>
+                          <Popconfirm key="d" title="要删除这条边吗？" onConfirm={() => removeEdge.mutate(e.id)}>
+                            <a>删除</a>
                           </Popconfirm>,
                         ]
                   }
@@ -379,7 +379,7 @@ export function NodeDrawer(props: {
             <Select
               showSearch
               optionFilterProp="label"
-              placeholder="Connect to node"
+              placeholder="连接到节点"
               style={{ width: 260 }}
               value={edgeTarget}
               onChange={setEdgeTarget}
@@ -390,11 +390,11 @@ export function NodeDrawer(props: {
               loading={addEdge.isPending}
               onClick={() => addEdge.mutate({ source_node_id: n.id, target_node_id: edgeTarget, role: edgeRole })}
             >
-              Add edge
+              添加边
             </Button>
           </Space>
 
-          <Divider titlePlacement="start">Referenced by</Divider>
+          <Divider titlePlacement="start">被引用</Divider>
           {refs.data?.length ? (
             <Descriptions column={1} size="small">
               {refs.data.map((r) => (
@@ -404,7 +404,7 @@ export function NodeDrawer(props: {
               ))}
             </Descriptions>
           ) : (
-            <Typography.Text type="secondary">No references</Typography.Text>
+            <Typography.Text type="secondary">没有引用</Typography.Text>
           )}
         </>
       )}

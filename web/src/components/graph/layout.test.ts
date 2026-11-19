@@ -65,6 +65,6 @@ describe("toFlow", () => {
     expect(l1.data).toMatchObject({ forward: "belongs to", reverse: "supplies", card: "N:1" });
     const l2 = edges.find((e) => e.id === "link:l2")!;
     expect(l2.data).toMatchObject({ forward: "pays", reverse: "receives", card: "N:1" });
-    expect(edges.find((e) => e.id === "e1")?.label).toBe("object");
+    expect(edges.find((e) => e.id === "e1")?.label).toBe("对象");
   });
 });

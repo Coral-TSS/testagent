@@ -16,8 +16,8 @@ import { CorrectionButton } from "./CorrectionButton";
 import { RunTasksModal } from "./RunTasksModal";
 import { ListTable } from "./ListView";
 
-const TEST_TYPES = ["Functional", "API", "UI", "Regression", "Smoke"];
-const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "Automated", human: "Manual" };
+const TEST_TYPES = ["功能", "API", "UI", "回归", "冒烟"];
+const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "已自动化", human: "手工" };
 
 /** Test strategy (human-confirmed) and test tasks */
 export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRun: (id: string) => void }) {
@@ -55,13 +55,13 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
   const keys = [["strategy", vid], ["tasks", vid], ["gaps", vid]];
   const qc = useQueryClient();
   const [taskSel, setTaskSel] = useState<string[]>([]);
-  const save = useApiMutation((body: Record<string, unknown>) => api(`/versions/${vid}/strategy`, { method: "PUT", body }), { invalidate: keys, success: "Strategy saved" });
+  const save = useApiMutation((body: Record<string, unknown>) => api(`/versions/${vid}/strategy`, { method: "PUT", body }), { invalidate: keys, success: "策略已保存" });
   const generate = useApiMutation(() => api<AiOutcome>(`/versions/${vid}/strategy/generate`, { method: "POST" }), {
     invalidate: keys,
     onSuccess: (out) => onOpenRun(out.agent_run_id),
   });
-  const confirm = useApiMutation(() => api(`/strategy/${strategy.data!.id}/confirm`, { method: "POST" }), { invalidate: keys, success: "Strategy confirmed" });
-  const createTask = useApiMutation((body: Record<string, unknown>) => api(`/versions/${vid}/tasks`, { method: "POST", body }), { invalidate: keys, success: "Task created" });
+  const confirm = useApiMutation(() => api(`/strategy/${strategy.data!.id}/confirm`, { method: "POST" }), { invalidate: keys, success: "策略已确认" });
+  const createTask = useApiMutation((body: Record<string, unknown>) => api(`/versions/${vid}/tasks`, { method: "POST", body }), { invalidate: keys, success: "任务已创建" });
   const navigate = useNavigate();
   /** #18: a task with cases lacking scripts opens its page with the three-way choice */
   const gapError = (id: string, action: "run" | "ready") => (err: unknown) => {
@@ -79,7 +79,7 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
   const removeTask = useApiMutation((id: string) => api(`/tasks/${id}`, { method: "DELETE" }), { invalidate: keys });
   const ensure = useApiMutation(() => api<{ created: { name: string }[] }>(`/versions/${vid}/tasks/ensure`, { method: "POST" }), {
     invalidate: keys,
-    success: "Tasks completed per category",
+    success: "已按类别补全任务",
   });
   const [gapBusy, setGapBusy] = useState<string | null>(null);
   const draftCases = useApiMutation(
@@ -89,7 +89,7 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
     },
     {
       invalidate: [...keys, ["cases"]],
-      success: "Draft cases generated: once reviewed and set ready they join the matching tasks automatically",
+      success: "已生成草稿用例：评审并设为就绪后会自动加入匹配的任务",
       onSuccess: (out) => {
         setGapBusy(null);
         onOpenRun(out.agent_run_id);
@@ -113,20 +113,20 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
         <Alert
           type="warning"
           showIcon
-          title="Task run information could not be refreshed"
-          description={tasks.data ? "Showing the last loaded task and run information. Retry to check the current state." : "Tasks could not be loaded. Retry to check their runs."}
-          action={<Button onClick={() => tasks.refetch()} loading={tasks.isFetching}>Retry tasks</Button>}
+          title="测试任务执行信息无法刷新"
+          description={tasks.data ? "正在显示上次加载的任务和执行信息。请重试以查看当前状态。" : "无法加载任务。请重试以查看其执行情况。"}
+          action={<Button onClick={() => tasks.refetch()} loading={tasks.isFetching}>重试任务</Button>}
         />
       )}
       {activeTasks.length > 0 && (
         <Alert
           type="info"
           showIcon
-          title={`${runningCount} task(s) running · ${queuedCount} task(s) queued`}
+          title={`${runningCount} 个任务运行中 · ${queuedCount} 个任务排队中`}
           description={
             <Space wrap>
               {activeTasks.map((t) => (
-                <Link key={t.id} to={`/runs/${t.latest_run!.id}`} aria-label={`View live run for ${t.name}`}>{t.name}: view run</Link>
+                <Link key={t.id} to={`/runs/${t.latest_run!.id}`} aria-label={`查看 ${t.name} 的现场执行`}>{t.name}：查看执行</Link>
               ))}
             </Space>
           }
@@ -136,65 +136,65 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
         size="small"
         title={
           <Space>
-            Test strategy
-            {s && <Tag color={s.status === "confirmed" ? "green" : "default"}>{s.status === "confirmed" ? "Confirmed" : "Draft"}</Tag>}
-            {s && <Tag>v{s.revision} · {s.source === "agent" ? "AI generated" : "Manual"}</Tag>}
+            测试策略
+            {s && <Tag color={s.status === "confirmed" ? "green" : "default"}>{s.status === "confirmed" ? "已确认" : "草稿"}</Tag>}
+            {s && <Tag>v{s.revision} · {s.source === "agent" ? "AI 生成" : "手工"}</Tag>}
           </Space>
         }
         extra={
           <Space>
-            {s?.agent_run_id && <Button onClick={() => onOpenRun(s.agent_run_id!)}>View AI trace</Button>}
+            {s?.agent_run_id && <Button onClick={() => onOpenRun(s.agent_run_id!)}>查看 AI 追踪</Button>}
             {s && <CorrectionButton targetType="strategy" targetId={s.id} />}
             <Button icon={<RobotOutlined />} loading={generate.isPending} onClick={() => generate.mutate()}>
-              AI generate strategy
+              AI 生成策略
             </Button>
             {s && s.status !== "confirmed" && (
-              <Popconfirm title="Confirm the strategy? Draft tasks will be created after confirmation." onConfirm={() => confirm.mutate()}>
-                <Button type="primary">Confirm strategy</Button>
+              <Popconfirm title="要确认该策略吗？确认后将创建草稿任务。" onConfirm={() => confirm.mutate()}>
+                <Button type="primary">确认策略</Button>
               </Popconfirm>
             )}
           </Space>
         }
       >
         <Form form={form} layout="vertical" onFinish={(vals) => save.mutate(vals)}>
-          <Form.Item name="scope" label="Scope">
+          <Form.Item name="scope" label="范围">
             <Input.TextArea rows={2} />
           </Form.Item>
           <Space wrap>
-            <Form.Item name="test_types" label="Test types">
+            <Form.Item name="test_types" label="测试类型">
               <Select mode="tags" style={{ minWidth: 260 }} options={TEST_TYPES.map((t) => ({ value: t, label: t }))} />
             </Form.Item>
-            <Form.Item name="intensity" label="Depth">
+            <Form.Item name="intensity" label="深度">
               <Select allowClear style={{ width: 140 }} options={["light", "standard", "thorough"].map((t) => ({ value: t, label: t }))} />
             </Form.Item>
           </Space>
-          <Form.Item name="notes" label="Notes">
+          <Form.Item name="notes" label="备注">
             <Input.TextArea rows={2} />
           </Form.Item>
           <Button htmlType="submit" loading={save.isPending}>
-            Save strategy
+            保存策略
           </Button>
         </Form>
       </Card>
       {(gaps.data?.length ?? 0) > 0 && (
-        <Card size="small" title="Requirement gap: no ready cases yet" data-testid="gaps">
+        <Card size="small" title="需求缺口：还没有就绪用例" data-testid="gaps">
           <Typography.Paragraph type="secondary">
-            Tasks only reference existing cases. The requirements below have no ready cases yet: click “Generate draft cases” to let the AI draft some (drafts only); after review set them ready and they join the matching tasks automatically.
+            任务只引用已有用例。以下需求还没有就绪用例：点击“生成草稿用例”，让 AI 起草若干（仅为草稿）；评审并设为就绪后，它们会自动加入匹配的任务。
           </Typography.Paragraph>
           <ListTable<RequirementGap>
-            label="Requirement gaps"
+            label="需求缺口"
             size="small"
             rowKey="requirement_id"
 
             dataSource={gaps.data}
             columns={[
-              { title: "Requirement", render: (_, g) => `${g.title} (${g.code})` },
-              { title: "Draft cases", dataIndex: "draft_count", render: (n: number) => (n ? <Tooltip title="Drafts exist: review them and set them ready">{n} to review</Tooltip> : 0) },
+              { title: "需求", render: (_, g) => `${g.title} (${g.code})` },
+              { title: "草稿用例", dataIndex: "draft_count", render: (n: number) => (n ? <Tooltip title="存在草稿：请评审并设为就绪">{n} 待评审</Tooltip> : 0) },
               {
-                title: "Action",
+                title: "动作",
                 render: (_, g) => (
                   <Button size="small" icon={<RobotOutlined />} loading={draftCases.isPending && gapBusy === g.requirement_id} disabled={draftCases.isPending} onClick={() => draftCases.mutate(g.requirement_id)}>
-                    Generate draft cases
+                    生成草稿用例
                   </Button>
                 ),
               },
@@ -204,18 +204,18 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
       )}
       <Card
         size="small"
-        title="Test tasks"
+        title="测试任务"
         id="strategy-tasks"
         extra={
           <Space>
-            <Tooltip title="One “requirement validation” task per requirement, one “general quality” task and one “regression/smoke” task; existing ones are not created again">
+            <Tooltip title="每个需求一个“需求验证”任务，外加一个“通用质量”任务和一个“回归/冒烟”任务；已有的不会再创建">
               <Button loading={ensure.isPending} onClick={() => ensure.mutate(undefined)}>
-                Complete tasks per category
+                按类别补全任务
               </Button>
             </Tooltip>
             {version.status !== "planning" && version.status !== "closed" && (
               <Button type="primary" onClick={() => setRunAll(true)} disabled={!tasks.data?.length}>
-                Run all runnable tasks
+                执行全部可运行任务
               </Button>
             )}
           </Space>
@@ -226,11 +226,11 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          title="Tasks only reference cases: ready cases are picked by rules (requirement, category, priority, …), and you can also add/remove cases by hand in the task; manual changes win. Cases join matching tasks automatically when set ready."
+          title="任务只引用用例：就绪用例按规则挑选（需求、类别、优先级等），也可以在任务中手工增删；手工变更优先。用例设为就绪时会自动加入匹配的任务。"
         />
         <Form form={taskForm} layout="inline" style={{ marginBottom: 12 }} initialValues={{ kind: "requirement", executor: "agent" }} onFinish={(vals) => createTask.mutate(vals, { onSuccess: () => taskForm.resetFields() })}>
-          <Form.Item name="name" rules={[{ required: true, message: "Required" }]}>
-            <Input placeholder="Task name" />
+          <Form.Item name="name" rules={[{ required: true, message: "必填" }]}>
+            <Input placeholder="任务名称" />
           </Form.Item>
           <Form.Item name="kind">
             <Select style={{ width: 120 }} options={(Object.keys(KIND_LABEL) as TaskKind[]).map((value) => ({ value, label: KIND_LABEL[value] }))} />
@@ -239,14 +239,14 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
             <Select style={{ width: 100 }} options={Object.entries(EXECUTOR).map(([value, label]) => ({ value, label }))} />
           </Form.Item>
           <Form.Item name="environment_id">
-            <Select allowClear placeholder="Environment" style={{ width: 140 }} options={(envs.data || []).map((e) => ({ value: e.id, label: e.name }))} />
+            <Select allowClear placeholder="环境" style={{ width: 140 }} options={(envs.data || []).map((e) => ({ value: e.id, label: e.name }))} />
           </Form.Item>
           <Button htmlType="submit" loading={createTask.isPending}>
-            New task
+            新建任务
           </Button>
         </Form>
         <BatchBar
-          noun=" task(s)"
+          noun=" 个任务"
           selected={taskSel}
           labelOf={(id) => tasks.data?.find((t) => t.id === id)?.name || id}
           onClear={() => setTaskSel([])}
@@ -255,14 +255,14 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
             setTaskSel((sel) => sel.filter((id) => !ok.includes(id)));
           }}
           actions={[
-            { key: "ready", label: "Set ready", primary: true, run: (id) => api(`/tasks/${id}/status`, { method: "POST", body: { status: "ready" } }) },
-            { key: "run", label: "Execution", confirm: `Start the ${taskSel.length} selected task(s) one after another?`, run: (id) => api(`/tasks/${id}/run`, { method: "POST" }) },
-            { key: "archive", label: "Archive", confirm: `Archive the ${taskSel.length} selected task(s)? Archived tasks can no longer run or change.`, run: (id) => api(`/tasks/${id}/status`, { method: "POST", body: { status: "archived" } }) },
-            { key: "delete", label: "Delete", danger: true, confirm: `Delete the ${taskSel.length} selected task(s)? Tasks with executions cannot be deleted (archive them instead).`, run: (id) => api(`/tasks/${id}`, { method: "DELETE" }) },
+            { key: "ready", label: "设为就绪", primary: true, run: (id) => api(`/tasks/${id}/status`, { method: "POST", body: { status: "ready" } }) },
+            { key: "run", label: "执行", confirm: `依次启动选中的 ${taskSel.length} 个任务？`, run: (id) => api(`/tasks/${id}/run`, { method: "POST" }) },
+            { key: "archive", label: "归档", confirm: `归档选中的 ${taskSel.length} 个任务？归档后不能再执行或修改。`, run: (id) => api(`/tasks/${id}/status`, { method: "POST", body: { status: "archived" } }) },
+            { key: "delete", label: "删除", danger: true, confirm: `删除选中的 ${taskSel.length} 个任务？已有执行记录的任务不能删除（请改为归档）。`, run: (id) => api(`/tasks/${id}`, { method: "DELETE" }) },
           ]}
         />
         <ListTable<Task>
-          label="Tasks"
+          label="任务"
           error={tasks.isError}
           size="small"
           rowKey="id"
@@ -272,59 +272,59 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
           scroll={{ x: "max-content" }}
           locale={{
             emptyText: (
-              tasks.isError ? "Task information unavailable" : tasks.isLoading ? "Loading tasks…" : <EmptyState
-                title="No tasks yet"
-                hint="A task runs a batch of cases: enter a task name above, choose the executor (agent browser/automation script/manual) and environment, click “New task”, then pick cases in the task detail."
+              tasks.isError ? "无法获取任务信息" : tasks.isLoading ? "正在加载任务…" : <EmptyState
+                title="暂无测试任务"
+                hint="测试任务用于批量执行用例：在上方输入任务名称，选择执行器（Agent 浏览器/自动化脚本/手工）和环境，点击“新建任务”，再在任务详情中挑选用例。"
               />
             ),
           }}
           columns={[
-            { title: "Task", dataIndex: "name", render: (n: string, t) => <Link to={`/tasks/${t.id}`}>{n}</Link> },
-            { title: "Type", dataIndex: "kind", render: (k: TaskKind) => KIND_LABEL[k] || k },
+            { title: "测试任务", dataIndex: "name", render: (n: string, t) => <Link to={`/tasks/${t.id}`}>{n}</Link> },
+            { title: "类型", dataIndex: "kind", render: (k: TaskKind) => KIND_LABEL[k] || k },
             {
-              title: "Case selection rule",
+              title: "用例选择规则",
               dataIndex: "selector",
-              render: (sel: Task["selector"]) => (sel ? <Tag color="cyan">{describeSelector(sel, reqCode).replace("Among ready cases: ", "")}</Tag> : <Tag>Manual</Tag>),
+              render: (sel: Task["selector"]) => (sel ? <Tag color="cyan">{describeSelector(sel, reqCode).replace("在就绪用例中：", "")}</Tag> : <Tag>手工</Tag>),
             },
-            { title: "Actor", dataIndex: "executor", render: (e) => EXECUTOR[e] || e },
+            { title: "执行者", dataIndex: "executor", render: (e) => EXECUTOR[e] || e },
             {
-              title: "Cases",
+              title: "用例",
               dataIndex: "case_count",
               render: (n: number, t) => (
                 <Space size={4}>
                   {n}
                   {(t.script_gap_count || 0) > 0 && (
-                    <Tooltip title="Cases without an automation script: skipped (not executed) when the task runs">
+                    <Tooltip title="没有自动化脚本的用例：任务执行时会跳过（不执行）">
                       <Tag color="orange">{t.script_gap_count} without script</Tag>
                     </Tooltip>
                   )}
                 </Space>
               ),
             },
-            { title: "Status", dataIndex: "status", render: (st) => <TaskStatusTag status={st} /> },
+            { title: "状态", dataIndex: "status", render: (st) => <TaskStatusTag status={st} /> },
             {
-              title: "Latest run",
+              title: "最近一次执行",
               render: (_, t) => t.latest_run ? (
                 <Space orientation="vertical" size={2}>
-                  <Link to={`/runs/${t.latest_run.id}`} aria-label={`Latest run for ${t.name}`}>{fmtTime(t.latest_run.created_at)}</Link>
+                  <Link to={`/runs/${t.latest_run.id}`} aria-label={`查看 ${t.name} 的最近一次执行`}>{fmtTime(t.latest_run.created_at)}</Link>
                   <TaskRunStatusTag status={t.latest_run.status} />
                   <Typography.Text type="secondary">
-                    {t.latest_run.status === "queued" ? "Awaiting start" : `${t.latest_run.counts.done}/${t.latest_run.counts.total} processed`}
+                    {t.latest_run.status === "queued" ? "等待启动" : `${t.latest_run.counts.done}/${t.latest_run.counts.total} 已处理`}
                   </Typography.Text>
                 </Space>
-              ) : <Typography.Text type="secondary">Never run yet</Typography.Text>,
+              ) : <Typography.Text type="secondary">尚未执行</Typography.Text>,
             },
-            { title: "Next run", dataIndex: "next_run_at", render: (t: string | null, row) => (t ? fmtTime(t, { tz: row.schedule?.tz }) : "-") },
+            { title: "下次执行", dataIndex: "next_run_at", render: (t: string | null, row) => (t ? fmtTime(t, { tz: row.schedule?.tz }) : "-") },
             {
-              title: "Action",
+              title: "动作",
               render: (_, t) => (
                 <Space>
-                  {t.status === "draft" && <a onClick={() => taskStatus.mutate({ id: t.id, status: "ready" })}>Set ready</a>}
-                  {["ready", "done", "cancelled"].includes(t.status) && <a onClick={() => runTask.mutate(t.id)}>Execution</a>}
-                  <Link to={`/tasks/${t.id}`}>Cases & schedule</Link>
-                  {!["archived", "running"].includes(t.status) && <a onClick={() => taskStatus.mutate({ id: t.id, status: "archived" })}>Archive</a>}
-                  <Popconfirm title="Delete the task?" onConfirm={() => removeTask.mutate(t.id)}>
-                    <a>Delete</a>
+                  {t.status === "draft" && <a onClick={() => taskStatus.mutate({ id: t.id, status: "ready" })}>设为就绪</a>}
+                  {["ready", "done", "cancelled"].includes(t.status) && <a onClick={() => runTask.mutate(t.id)}>执行</a>}
+                  <Link to={`/tasks/${t.id}`}>用例与调度</Link>
+                  {!["archived", "running"].includes(t.status) && <a onClick={() => taskStatus.mutate({ id: t.id, status: "archived" })}>归档</a>}
+                  <Popconfirm title="要删除该任务吗？" onConfirm={() => removeTask.mutate(t.id)}>
+                    <a>删除</a>
                   </Popconfirm>
                 </Space>
               ),

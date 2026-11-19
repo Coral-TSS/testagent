@@ -13,17 +13,17 @@ export function ApiSchemaView({ api }: { api: ApiEndpoint }) {
   return (
     <Space orientation="vertical" style={{ width: "100%" }} size="middle">
       <Descriptions column={1} size="small" bordered>
-        <Descriptions.Item label="Purpose">
-          {api.description || <Typography.Text type="secondary">Not filled in (click “Edit description & fields” to describe what this API does)</Typography.Text>}
+        <Descriptions.Item label="用途">
+          {api.description || <Typography.Text type="secondary">未填写（点击“编辑描述和字段”说明该 API 做什么）</Typography.Text>}
         </Descriptions.Item>
-        <Descriptions.Item label="Input format">
-          {io.input_format || (api.request_content_type ? api.request_content_type : <Typography.Text type="secondary">No request body</Typography.Text>)}
+        <Descriptions.Item label="输入格式">
+          {io.input_format || (api.request_content_type ? api.request_content_type : <Typography.Text type="secondary">没有请求体</Typography.Text>)}
         </Descriptions.Item>
-        <Descriptions.Item label="Output format">
-          {io.output_format || api.response_content_type || <Typography.Text type="secondary">not registered</Typography.Text>}
+        <Descriptions.Item label="输出格式">
+          {io.output_format || api.response_content_type || <Typography.Text type="secondary">未登记</Typography.Text>}
         </Descriptions.Item>
         {Object.keys(responses).length > 0 && (
-          <Descriptions.Item label="Status code">
+          <Descriptions.Item label="状态码">
             <Space wrap size={4}>
               {Object.entries(responses).map(([code, r]) => (
                 <span key={code}>
@@ -35,20 +35,20 @@ export function ApiSchemaView({ api }: { api: ApiEndpoint }) {
           </Descriptions.Item>
         )}
         {api.schema_source && (
-          <Descriptions.Item label="Source">{api.schema_source === "openapi" ? "OpenAPI import" : "Manual"}</Descriptions.Item>
+          <Descriptions.Item label="来源">{api.schema_source === "openapi" ? "OpenAPI 导入" : "手工"}</Descriptions.Item>
         )}
       </Descriptions>
       {noSchema ? (
-        <Typography.Text type="secondary">No schema registered. Use “Import from OpenAPI”, or click “Edit description & fields” to fill it in by hand.</Typography.Text>
+        <Typography.Text type="secondary">尚未登记模式。请使用“从 OpenAPI 导入”，或点击“编辑描述和字段”手工填写。</Typography.Text>
       ) : (
         <>
           <div>
-            <Typography.Text strong>Inputs (parameters and body fields)</Typography.Text>
-            <IoParamsTable value={io.inputs} showLocation emptyText="No input parameters" />
+            <Typography.Text strong>输入（参数和请求体字段）</Typography.Text>
+            <IoParamsTable value={io.inputs} showLocation emptyText="没有输入参数" />
           </div>
           <div>
-            <Typography.Text strong>Outputs (success response fields)</Typography.Text>
-            <IoParamsTable value={io.outputs} emptyText="No response fields registered" />
+            <Typography.Text strong>输出（成功响应字段）</Typography.Text>
+            <IoParamsTable value={io.outputs} emptyText="尚未登记响应字段" />
           </div>
         </>
       )}

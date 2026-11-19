@@ -69,9 +69,9 @@ export function TaskPage() {
     qc.invalidateQueries({ queryKey: ["task-runs", taskId] });
     qc.invalidateQueries({ queryKey: ["tasks"] });
   };
-  const patch = useApiMutation((body: Record<string, unknown>) => api(`/tasks/${taskId}`, { method: "PATCH", body }), { success: "Saved", onSuccess: refresh });
+  const patch = useApiMutation((body: Record<string, unknown>) => api(`/tasks/${taskId}`, { method: "PATCH", body }), { success: "已保存", onSuccess: refresh });
   const saveCases = useApiMutation((ids: string[]) => api(`/tasks/${taskId}/cases`, { method: "PUT", body: { case_ids: ids } }), {
-    success: "Case order saved",
+    success: "用例顺序已保存",
     onSuccess: () => {
       setCaseIds(null);
       refresh();
@@ -135,32 +135,32 @@ export function TaskPage() {
           }
           extra={
             <Space>
-              <Link to={`/versions/${t.version_id}?tab=strategy`}>{t.version_name ? `Test strategy & tasks (version ${t.version_name})` : "Test strategy & tasks"}</Link>
+              <Link to={`/versions/${t.version_id}?tab=strategy`}>{t.version_name ? `测试策略与任务（版本 ${t.version_name}）` : "测试策略与任务"}</Link>
               {(t.script_gaps?.length || 0) > 0 && (
-                <Tooltip title="Automated task cases with no automation script: they are skipped (not executed) when the task runs">
+                <Tooltip title="没有自动化脚本的自动化任务用例：任务执行时会被跳过（不执行）">
                   <Tag color="orange" data-testid="gap-tag" style={{ cursor: "pointer" }} onClick={() => setGapAction("run")}>
                     {t.script_gaps!.length} without script
                   </Tag>
                 </Tooltip>
               )}
-              {t.status === "draft" && <Button onClick={() => setStatus.mutate({ status: "ready" })}>Set ready</Button>}
+              {t.status === "draft" && <Button onClick={() => setStatus.mutate({ status: "ready" })}>设为就绪</Button>}
               <Button type="primary" disabled={!STARTABLE.has(t.status)} loading={start.isPending} onClick={() => start.mutate(false)}>
-                Run now
+                立即执行
               </Button>
             </Space>
           }
         >
           <Form layout="inline" style={{ marginBottom: 12 }}>
-            <Form.Item label="Actor">
+            <Form.Item label="执行者">
               <Select
                 style={{ width: 120 }}
                 value={t.executor}
                 disabled={!editable}
                 onChange={(executor) => patch.mutate({ executor })}
-                options={Object.entries({ agent: "Agent", automation: "Automated", human: "Manual" }).map(([value, label]) => ({ value, label }))}
+                options={Object.entries({ agent: "Agent", automation: "已自动化", human: "手工" }).map(([value, label]) => ({ value, label }))}
               />
             </Form.Item>
-            <Form.Item label="Environment">
+            <Form.Item label="环境">
               <Select
                 style={{ width: 220 }}
                 allowClear
@@ -172,10 +172,10 @@ export function TaskPage() {
             </Form.Item>
           </Form>
           <TaskRuleCard task={t} editable={editable} onChanged={refresh} />
-          <Typography.Paragraph type="secondary">Runs serially in the chosen order; only “Ready” cases run, and errors do not stop the following cases. Deleting a case in the box below = removing it by hand (the rule will not add it back); adding a case = adding it by hand.</Typography.Paragraph>
+          <Typography.Paragraph type="secondary">按选定顺序串行执行；只有“就绪”用例会跑，出错也不会停止后续用例。在下方框中删除用例 = 手工移除（规则不会再加回来）；添加用例 = 手工添加。</Typography.Paragraph>
           <Space.Compact style={{ width: "100%", marginBottom: 12 }}>
             <Select
-              aria-label="Task cases"
+              aria-label="任务用例"
               mode="multiple"
               style={{ width: "100%" }}
               value={selected}
@@ -185,60 +185,60 @@ export function TaskPage() {
               options={(cases.data || []).filter((c) => c.status !== "deprecated").map((c) => ({ value: c.id, label: `${c.code} ${c.title}` }))}
             />
             <Button disabled={caseIds === null} loading={saveCases.isPending} onClick={() => saveCases.mutate(selected)}>
-              Save order
+              保存顺序
             </Button>
           </Space.Compact>
           <ListTable
-            label="Task cases"
+            label="任务用例"
             size="small"
             rowKey="id"
 
             dataSource={t.cases}
             columns={[
               { title: "#", dataIndex: "seq", width: 50 },
-              { title: "Case", render: (_: unknown, c: TaskCaseRow) => <Link to={`/cases/${c.id}`}>{objLabel(c.title, c.code)}</Link> },
+              { title: "用例", render: (_: unknown, c: TaskCaseRow) => <Link to={`/cases/${c.id}`}>{objLabel(c.title, c.code)}</Link> },
               {
-                title: "Source",
+                title: "来源",
                 dataIndex: "source",
                 render: (src: string, c: TaskCaseRow) => (
                   <Tooltip title={c.reason || undefined}>
-                    <Tag color={src === "rule" ? "cyan" : "default"}>{src === "rule" ? "Rule" : "Manual"}</Tag>
+                    <Tag color={src === "rule" ? "cyan" : "default"}>{src === "rule" ? "规则" : "手工"}</Tag>
                   </Tooltip>
                 ),
               },
-              { title: "Reason", dataIndex: "reason", ellipsis: true, render: (r: string | null) => <Typography.Text type="secondary">{r || "-"}</Typography.Text> },
+              { title: "原因", dataIndex: "reason", ellipsis: true, render: (r: string | null) => <Typography.Text type="secondary">{r || "-"}</Typography.Text> },
               { title: "category", dataIndex: "category", render: (c: CaseCategory | undefined) => (c ? <Tag color={CATEGORY_COLOR[c]}>{CATEGORY_LABEL[c]}</Tag> : "-") },
-              { title: "Status", dataIndex: "status", render: (s: string) => <CaseStatusTag status={s} /> },
-              { title: "Mode", dataIndex: "mode", render: (m: string) => (m === "automated" ? "Automated" : "Manual") },
-              { title: "Type", dataIndex: "type_tag" },
+              { title: "状态", dataIndex: "status", render: (s: string) => <CaseStatusTag status={s} /> },
+              { title: "模式", dataIndex: "mode", render: (m: string) => (m === "automated" ? "已自动化" : "手工") },
+              { title: "类型", dataIndex: "type_tag" },
             ]}
           />
         </Card>
       </Col>
       <Col span={9}>
-        <Card size="small" title="Schedule / recurrence" style={{ marginBottom: 16 }}>
+        <Card size="small" title="调度 / 周期" style={{ marginBottom: 16 }}>
           <Form<ScheduleValues> form={form} layout="vertical" disabled={!editable} onFinish={(v) => patch.mutate({ schedule: scheduleBody(v) })}>
             <Form.Item name="kind">
               <Radio.Group
                 options={[
-                  { value: "none", label: "No schedule" },
-                  { value: "once", label: "Once at a time" },
-                  { value: "cron", label: "cron recurrence" },
+                  { value: "none", label: "无调度" },
+                  { value: "once", label: "单次定时" },
+                  { value: "cron", label: "cron 周期" },
                 ]}
               />
             </Form.Item>
             <Form.Item noStyle shouldUpdate={(a, b) => a.kind !== b.kind}>
               {({ getFieldValue }) =>
                 getFieldValue("kind") === "once" ? (
-                  <Form.Item name="at" label="Run at" rules={[{ required: true, message: "Choose a time" }]}>
+                  <Form.Item name="at" label="执行时间" rules={[{ required: true, message: "选择时间" }]}>
                     <DatePicker showTime />
                   </Form.Item>
                 ) : getFieldValue("kind") === "cron" ? (
                   <>
-                    <Form.Item name="expr" label="cron expression (minute hour day month weekday, local time of the time zone below)" rules={[{ required: true, message: "Enter a cron expression" }]} extra="e.g. 0 9 * * 1-5 runs at 09:00 on weekdays">
+                    <Form.Item name="expr" label="cron 表达式（分 时 日 月 星期，使用下方时区的本地时间）" rules={[{ required: true, message: "请输入 cron 表达式" }]} extra="例如 0 9 * * 1-5 表示工作日 09:00 执行">
                       <Input placeholder="0 9 * * *" />
                     </Form.Item>
-                    <Form.Item name="tz" label="Time zone">
+                    <Form.Item name="tz" label="时区">
                       <Select showSearch options={tzOptions} style={{ width: 200 }} />
                     </Form.Item>
                   </>
@@ -246,16 +246,16 @@ export function TaskPage() {
               }
             </Form.Item>
             <Button htmlType="submit" loading={patch.isPending}>
-              Save
+              保存
             </Button>
           </Form>
           <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0 }}>
             Next run: {t.next_run_at ? `${fmtTime(t.next_run_at, { tz: t.schedule?.tz || defaultTz })} (${t.schedule?.tz || defaultTz})` : "-"}. Checked every 30 seconds while the platform runs; skipped while the previous run is still going; runs missed while the platform is off are not caught up.
           </Typography.Paragraph>
         </Card>
-        <Card size="small" title="Run history">
+        <Card size="small" title="执行历史">
           <ListTable<TaskRunRow>
-            label="Task run history"
+            label="任务执行历史"
             error={runs.isError}
             onRetry={() => runs.refetch()}
             recordLimit={100}
@@ -264,12 +264,12 @@ export function TaskPage() {
             loading={runs.isLoading}
             dataSource={runs.data}
             pagination={{ pageSize: 10, hideOnSinglePage: true }}
-            locale={{ emptyText: "Never run yet" }}
+            locale={{ emptyText: "尚未执行" }}
             columns={[
-              { title: "Time", dataIndex: "created_at", render: (v: string, r) => <Link to={`/runs/${r.id}`}>{dayjs(v).format("MM-DD HH:mm")}</Link> },
-              { title: "Result", dataIndex: "status", render: (v: string) => <TaskRunStatusTag status={v} /> },
-              { title: "Passed", render: (_: unknown, r) => `${r.counts.passed}/${r.counts.total}` },
-              { title: "Trigger", dataIndex: "trigger", render: (v: string) => (v === "schedule" ? "Schedule" : "Manual") },
+              { title: "时间", dataIndex: "created_at", render: (v: string, r) => <Link to={`/runs/${r.id}`}>{dayjs(v).format("MM-DD HH:mm")}</Link> },
+              { title: "结果", dataIndex: "status", render: (v: string) => <TaskRunStatusTag status={v} /> },
+              { title: "通过", render: (_: unknown, r) => `${r.counts.passed}/${r.counts.total}` },
+              { title: "触发", dataIndex: "trigger", render: (v: string) => (v === "schedule" ? "调度" : "手工") },
             ]}
           />
         </Card>

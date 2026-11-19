@@ -19,9 +19,9 @@ describe("link texts", () => {
   it("reads both directions with cardinality and foreign key", () => {
     expect(forwardText(link)).toBe("PurchaseOrder belongs to Supplier");
     expect(reverseText(link)).toBe("Supplier supplies PurchaseOrder");
-    expect(linkText(link)).toBe("PurchaseOrder belongs to Supplier (N:1, foreign key PurchaseOrder.supplier_id)");
+    expect(linkText(link)).toBe("PurchaseOrder belongs to Supplier (N:1, 外键 PurchaseOrder.supplier_id)");
     expect(linkText({ ...link, cardinality: "many_to_many", fk_field: null, via_name: "OrderLine" })).toBe(
-      "PurchaseOrder belongs to Supplier (M:N, junction entity OrderLine)",
+      "PurchaseOrder belongs to Supplier (M:N, 中间实体 OrderLine)",
     );
   });
 
@@ -32,9 +32,9 @@ describe("link texts", () => {
     expect(effectText({ kind: "set_field", field: "PurchaseOrder.state", values: ["approved", "rejected"] })).toBe(
       "PurchaseOrder.state → approved | rejected",
     );
-    expect(effectText({ kind: "create_object", entity: "Payment", when: "Success" })).toBe("Create object Payment (Success)");
+    expect(effectText({ kind: "create_object", entity: "Payment", when: "成功" })).toBe("创建对象 Payment (成功)");
     expect(effectText({ kind: "create_link", link_id: "l1" }, new Map([["l1", "Payment pays PurchaseOrder"]]))).toBe(
-      "Create link Payment pays PurchaseOrder",
+      "创建关系 Payment pays PurchaseOrder",
     );
   });
 });
@@ -59,12 +59,12 @@ describe("action rule form values", () => {
       cleanEffects([
         { kind: "set_field", attribute_id: "f1", values: ["paid"], node_id: "ignored" },
         { kind: "create_object", node_id: "n1" },
-        { kind: "create_link", link_id: "l1", when: "Success" },
+        { kind: "create_link", link_id: "l1", when: "成功" },
       ]),
     ).toEqual([
       { kind: "set_field", attribute_id: "f1", values: ["paid"], when: null, text: null },
       { kind: "create_object", node_id: "n1", when: null, text: null },
-      { kind: "create_link", link_id: "l1", when: "Success", text: null },
+      { kind: "create_link", link_id: "l1", when: "成功", text: null },
     ]);
   });
 

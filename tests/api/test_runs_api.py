@@ -501,13 +501,13 @@ def test_next_step_runs_tasks(client, db):
         return next(s for s in p["steps"] if s["key"] == "runs")["action"]
 
     # nothing to run yet: the button says what is missing instead of pretending to run
-    assert runs_action()["label"] == "New task"
+    assert runs_action()["label"] == "新建任务"
     a = make_case(client, w, "A")
     task = make_task(client, w, [a], name="T1", ready=False)
-    assert runs_action()["label"] == "Set tasks ready"
+    assert runs_action()["label"] == "将任务设为就绪"
     client.post(f"{V1}/tasks/{task}/status", json={"status": "ready"})
     assert runs_action() == {
-        "label": "Run tasks",
+        "label": "执行任务",
         "path": f"/versions/{w['version']}?tab=strategy",
         "kind": "run_tasks",
         "version_id": w["version"],

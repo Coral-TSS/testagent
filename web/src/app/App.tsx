@@ -1,6 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App as AntApp, ConfigProvider } from "antd";
-import enUS from "antd/locale/en_US";
+import zhCN from "antd/locale/zh_CN";
+import dayjs from "dayjs";
+import "dayjs/locale/zh-cn";
+
+dayjs.locale("zh-cn");
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 
 import { ApiError } from "../api/client";
@@ -19,7 +23,7 @@ const router = createBrowserRouter(routes);
 
 export function App() {
   return (
-    <ConfigProvider locale={enUS}>
+    <ConfigProvider locale={zhCN} button={{ autoInsertSpace: false }}>
       <AntApp>
         <QueryClientProvider client={queryClient}>
           <AuthGate>

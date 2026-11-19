@@ -26,7 +26,7 @@ function StartButton({ env }: { env: Environment }) {
   });
   return (
     <Button size="small" type="primary" loading={start.isPending} onClick={() => start.mutate(undefined)}>
-      Start
+      开始
     </Button>
   );
 }
@@ -37,11 +37,11 @@ export function EnvironmentStatus({ env, compact = false }: { env?: Environment;
   if (!env || !check.data) return null;
   if (compact)
     return check.data.reachable ? (
-      <Tag color="green">Reachable</Tag>
+      <Tag color="green">可达</Tag>
     ) : (
       <Space size={4}>
         <Tooltip title={check.data.message}>
-          <Tag color="red">unreachable</Tag>
+          <Tag color="red">不可达</Tag>
         </Tooltip>
         {env.start_command && <StartButton env={env} />}
       </Space>

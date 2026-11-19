@@ -22,12 +22,12 @@ export function ExecutionsPage() {
   });
   const rows = runs.data;
   return (
-    <Card title="Recent task runs">
+    <Card title="最近的任务执行">
       <Typography.Paragraph type="secondary">
-        Run tasks or set schedules under “Test strategy & tasks” on the version page; debug runs and manual records of a single case are on the <Link to="/cases">case</Link> detail page.
+        请在版本页的“测试策略与任务”下执行任务或设置定时；单条用例的调试执行和手工记录在<Link to="/cases">用例</Link>详情页。
       </Typography.Paragraph>
       <ListTable<TaskRunRow>
-        label="Recent task runs"
+        label="最近的任务执行"
         error={runs.isError}
         onRetry={() => runs.refetch()}
         recordLimit={50}
@@ -38,21 +38,21 @@ export function ExecutionsPage() {
         locale={{
           emptyText: (
             <EmptyState
-              title={versionId ? "No task has run in this version yet" : "No task has run yet"}
-              hint="Execution is task-based: on the version page under “Test strategy & tasks”, create a task, choose cases and an environment, then click “Run”. A single case can be debug-run from its detail page."
-              actionLabel={versionId ? "Go to test strategy & tasks" : undefined}
+              title={versionId ? "该版本还没有执行过任务" : "还没有执行过任务"}
+              hint="执行以任务为单位：请在版本页的“测试策略与任务”下创建任务，选择用例和环境，然后点击“执行”。单个用例也可在其详情页进行调试执行。"
+              actionLabel={versionId ? "前往测试策略与任务" : undefined}
               onAction={() => navigate(`/versions/${versionId}?tab=strategy`)}
             />
           ),
         }}
         columns={[
-          { title: "Time", dataIndex: "created_at", render: (v: string, r) => <Link to={`/runs/${r.id}`}>{dayjs(v).format("YYYY-MM-DD HH:mm:ss")}</Link> },
-          { title: "System", dataIndex: "sut_code" },
-          { title: "Version", dataIndex: "version_name", render: (v: string, r) => <Link to={`/versions/${r.version_id}`}>{`Version ${v}`}</Link> },
-          { title: "Task", dataIndex: "task_name", render: (v: string, r) => <Link to={`/tasks/${r.task_id}`}>{v}</Link> },
-          { title: "Result", dataIndex: "status", render: (v: string) => <TaskRunStatusTag status={v} /> },
-          { title: "Passed/total", render: (_: unknown, r) => `${r.counts.passed}/${r.counts.total}` },
-          { title: "Trigger", dataIndex: "trigger", render: (v: string) => (v === "schedule" ? "Schedule" : "Manual") },
+          { title: "时间", dataIndex: "created_at", render: (v: string, r) => <Link to={`/runs/${r.id}`}>{dayjs(v).format("YYYY-MM-DD HH:mm:ss")}</Link> },
+          { title: "系统", dataIndex: "sut_code" },
+          { title: "版本", dataIndex: "version_name", render: (v: string, r) => <Link to={`/versions/${r.version_id}`}>{`Version ${v}`}</Link> },
+          { title: "测试任务", dataIndex: "task_name", render: (v: string, r) => <Link to={`/tasks/${r.task_id}`}>{v}</Link> },
+          { title: "结果", dataIndex: "status", render: (v: string) => <TaskRunStatusTag status={v} /> },
+          { title: "通过/总数", render: (_: unknown, r) => `${r.counts.passed}/${r.counts.total}` },
+          { title: "触发", dataIndex: "trigger", render: (v: string) => (v === "schedule" ? "调度" : "手工") },
         ]}
       />
     </Card>

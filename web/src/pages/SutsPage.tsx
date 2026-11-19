@@ -18,7 +18,7 @@ export function SutsPage() {
   const [form] = Form.useForm<Schemas["SutIn"]>();
   const create = useApiMutation((body: Schemas["SutIn"]) => api<Sut>("/suts", { method: "POST", body }), {
     invalidate: [["suts"]],
-    success: "Created",
+    success: "创建时间",
     onSuccess: () => {
       setOpen(false);
       form.resetFields();
@@ -26,22 +26,22 @@ export function SutsPage() {
   });
   const remove = useApiMutation((id: string) => api(`/suts/${id}`, { method: "DELETE" }), {
     invalidate: [["suts"]],
-    success: "Deleted",
+    success: "已删除",
   });
 
   return (
     <>
       <Space style={{ marginBottom: 16, width: "100%", justifyContent: "space-between" }}>
         <Typography.Title level={3} style={{ margin: 0 }}>
-          SUT
+          被测系统
         </Typography.Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
-          New SUT
+          新建被测系统
         </Button>
       </Space>
       <SutExplainer closable={Boolean(suts.data?.length)} />
       <ListTable<Sut>
-        label="SUTs"
+        label="被测系统"
         error={suts.isError}
         onRetry={() => suts.refetch()}
         rowKey="id"
@@ -51,25 +51,25 @@ export function SutsPage() {
         locale={{
           emptyText: (
             <EmptyState
-              title="No SUT yet"
-              hint="Register the software to test first: enter a code and a name, then add an environment (its address) and build the model."
-              actionLabel="New SUT"
+              title="暂无被测系统"
+              hint="请先登记要测试的软件：输入编号和名称，然后添加环境（地址）并构建模型。"
+              actionLabel="新建被测系统"
               onAction={() => setOpen(true)}
             />
           ),
         }}
         columns={[
-          { title: "Name (code)", dataIndex: "name", render: (name, row) => <Link to={`/suts/${row.id}`}>{`${name} (${row.code})`}</Link> },
+          { title: "名称（编号）", dataIndex: "name", render: (name, row) => <Link to={`/suts/${row.id}`}>{`${name} (${row.code})`}</Link> },
           { title: "description", dataIndex: "description" },
           {
-            title: "Action",
+            title: "动作",
             width: 200,
             render: (_, row) => (
               <Space>
-                <Link to={`/suts/${row.id}/model`}>Model</Link>
-                <Link to={`/suts/${row.id}/review`}>Review</Link>
-                <Popconfirm title="Delete this SUT?" onConfirm={() => remove.mutate(row.id)}>
-                  <a>Delete</a>
+                <Link to={`/suts/${row.id}/model`}>模型</Link>
+                <Link to={`/suts/${row.id}/review`}>评审</Link>
+                <Popconfirm title="要删除该被测系统吗？" onConfirm={() => remove.mutate(row.id)}>
+                  <a>删除</a>
                 </Popconfirm>
               </Space>
             ),
@@ -77,7 +77,7 @@ export function SutsPage() {
         ]}
       />
       <Modal
-        title="New SUT"
+        title="新建被测系统"
         open={open}
         onCancel={() => setOpen(false)}
         onOk={() => form.submit()}
@@ -87,12 +87,12 @@ export function SutsPage() {
         <Form form={form} layout="vertical" onFinish={(v) => create.mutate(v)}>
           <Form.Item
             name="code"
-            label="Code"
-            rules={[{ required: true, pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/, message: "Starts with a letter; digits, - and _ allowed" }]}
+            label="编号"
+            rules={[{ required: true, pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/, message: "以字母开头；允许数字、- 和 _" }]}
           >
-            <Input placeholder="e.g. procurement" />
+            <Input placeholder="例如 procurement" />
           </Form.Item>
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+          <Form.Item name="name" label="名称" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
           <Form.Item name="description" label="description">

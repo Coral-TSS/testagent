@@ -15,7 +15,7 @@ describe("Layout", () => {
           crumbs: [
             { kind: "sut", id: "s1", label: "Procurement system (PROC)", path: "/suts/s1" },
             { kind: "version", id: "v1", label: "Version v1", path: "/versions/v1" },
-            { kind: "strategy", id: "v1", label: "Test strategy & tasks", path: "/versions/v1?tab=strategy" },
+            { kind: "strategy", id: "v1", label: "测试策略与任务", path: "/versions/v1?tab=strategy" },
             { kind: "task", id: "t1", label: "Regression task", path: "/tasks/t1" },
           ],
         },
@@ -23,7 +23,7 @@ describe("Layout", () => {
       "GET /suts/s1/progress": () => ({ body: progress }),
     });
     renderPage(<Layout />, { path: "*", route: "/tasks/t1" });
-    expect((await screen.findByRole("link", { name: "Test strategy & tasks" })).getAttribute("href")).toBe("/versions/v1?tab=strategy");
+    expect((await screen.findByRole("link", { name: "测试策略与任务" })).getAttribute("href")).toBe("/versions/v1?tab=strategy");
     expect(screen.getByRole("link", { name: "Version v1" })).toBeTruthy();
     expect(await screen.findByTestId("flow-steps")).toBeTruthy();
   });

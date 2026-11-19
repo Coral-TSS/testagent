@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import type { CaseBrief, CaseCoverage, Coverage, CoverageBlock, CoveredItem, NamedRef } from "../api/types";
 
 /** Case tags that link to the case page: "TC-001". */
-export function CaseRefs({ cases, empty = "Not covered" }: { cases?: CaseBrief[]; empty?: string }) {
+export function CaseRefs({ cases, empty = "未覆盖" }: { cases?: CaseBrief[]; empty?: string }) {
   if (!cases?.length) return <Tag color="red">{empty}</Tag>;
   return (
     <Space size={[4, 4]} wrap>
@@ -34,18 +34,18 @@ export function ModelRef({ sutId, kind, item, color }: { sutId?: string; kind: s
 }
 
 const KIND_COLOR: Record<string, string> = { actions: "blue", entities: "cyan", fields: "purple", relations: "volcano" };
-export const KIND_LABEL: Record<string, string> = { actions: "Actions", entities: "Entities", fields: "Fields", relations: "Links" };
+export const KIND_LABEL: Record<string, string> = { actions: "动作", entities: "实体", fields: "字段", relations: "关系" };
 
 /** One case's coverage as linked tags per kind (case page trace / list tooltip). */
 export function CaseCoverageTags({ coverage, sutId, compact }: { coverage: CaseCoverage; sutId?: string; compact?: boolean }) {
   const kinds = (["actions", "entities", "fields", "relations"] as const).filter((k) => coverage[k]?.length);
-  if (!kinds.length) return <Typography.Text type="secondary">Not linked to any model element</Typography.Text>;
+  if (!kinds.length) return <Typography.Text type="secondary">未关联任何模型要素</Typography.Text>;
   return (
     <div>
       {kinds.map((k) => (
         <div key={k} style={{ marginBottom: 4 }}>
           <Typography.Text type={compact ? undefined : "secondary"} style={compact ? { color: "inherit" } : undefined}>
-            {`${KIND_LABEL[k]} (${coverage[k].length}): `}
+            {`${KIND_LABEL[k]} (${coverage[k].length})：`}
           </Typography.Text>
           <Space size={[4, 4]} wrap>
             {coverage[k].map((i) => (
@@ -68,14 +68,14 @@ export function coverageSummary(c?: CaseCoverage): string {
 function ItemsTable({ block, kind, sutId, versionId }: { block: CoverageBlock; kind: string; sutId?: string; versionId: string }) {
   return (
     <ListTable
-      label="Coverage items"
+      label="覆盖项"
       size="small"
       rowKey="id"
 
       dataSource={block.items}
       columns={[
         {
-          title: kind === "requirements" ? "Requirement" : KIND_LABEL[kind],
+          title: kind === "requirements" ? "需求" : KIND_LABEL[kind],
           render: (_, i) =>
             kind === "requirements" ? (
               <Link to={`/versions/${versionId}?req=${i.id}`}>{`${i.code} ${i.title || ""}`}</Link>
@@ -83,8 +83,8 @@ function ItemsTable({ block, kind, sutId, versionId }: { block: CoverageBlock; k
               <ModelRef sutId={sutId} kind={kind} item={{ id: i.id, name: i.name || "", node_id: i.node_id }} color={KIND_COLOR[kind]} />
             ),
         },
-        { title: "Covering cases", render: (_, i) => <CaseRefs cases={i.case_list} /> },
-        { title: "Count", dataIndex: "cases", width: 60 },
+        { title: "覆盖的用例", render: (_, i) => <CaseRefs cases={i.case_list} /> },
+        { title: "数量", dataIndex: "cases", width: 60 },
       ]}
     />
   );
@@ -93,10 +93,10 @@ function ItemsTable({ block, kind, sutId, versionId }: { block: CoverageBlock; k
 /** Coverage detail: which cases cover each requirement / action / field / link. */
 export function CoverageDetail({ coverage }: { coverage: Coverage }) {
   const blocks = [
-    ["requirements", "Requirement", coverage.requirements],
-    ["actions", "Action", coverage.actions],
-    ["fields", "Field", coverage.fields],
-    ["relations", "Link", coverage.relations],
+    ["requirements", "需求", coverage.requirements],
+    ["actions", "动作", coverage.actions],
+    ["fields", "字段", coverage.fields],
+    ["relations", "关系", coverage.relations],
   ] as const;
   return (
     <Collapse
@@ -106,7 +106,7 @@ export function CoverageDetail({ coverage }: { coverage: Coverage }) {
         .filter(([, , b]) => b && b.total > 0)
         .map(([kind, label, b]) => ({
           key: kind,
-          label: `${label} coverage detail ${b!.covered}/${b!.total}`,
+          label: `${label}覆盖详情 ${b!.covered}/${b!.total}`,
           children: <ItemsTable block={b!} kind={kind} sutId={coverage.sut_id} versionId={coverage.version_id} />,
         }))}
     />
@@ -116,19 +116,19 @@ export function CoverageDetail({ coverage }: { coverage: Coverage }) {
 /** Requirement drawer: each referenced element and the cases that cover it. */
 export function RequirementCoverage({ coverage, sutId }: { coverage: Record<string, CoveredItem[]>; sutId: string }) {
   const kinds = ["actions", "entities", "fields", "relations"].filter((k) => coverage[k]?.length);
-  if (!kinds.length) return <Typography.Text type="secondary">The requirements have not been structured onto model elements yet; structure and confirm them to see per-item coverage.</Typography.Text>;
+  if (!kinds.length) return <Typography.Text type="secondary">需求尚未结构化到模型要素；请先结构化并确认，才能看到分项覆盖。</Typography.Text>;
   const rows = kinds.flatMap((k) => coverage[k].map((i) => ({ ...i, kind: k })));
   return (
     <ListTable
-      label="Coverage requirements"
+      label="覆盖需求"
       size="small"
       rowKey={(r) => `${r.kind}:${r.id}`}
 
       dataSource={rows}
       columns={[
-        { title: "Kind", dataIndex: "kind", width: 60, render: (k: string) => KIND_LABEL[k] },
-        { title: "Element", render: (_, r) => <ModelRef sutId={sutId} kind={r.kind} item={r} color={KIND_COLOR[r.kind]} /> },
-        { title: "Covering cases", render: (_, r) => <CaseRefs cases={r.cases} /> },
+        { title: "种类", dataIndex: "kind", width: 60, render: (k: string) => KIND_LABEL[k] },
+        { title: "元素", render: (_, r) => <ModelRef sutId={sutId} kind={r.kind} item={r} color={KIND_COLOR[r.kind]} /> },
+        { title: "覆盖的用例", render: (_, r) => <CaseRefs cases={r.cases} /> },
       ]}
     />
   );

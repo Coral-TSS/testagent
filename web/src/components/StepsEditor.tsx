@@ -10,14 +10,14 @@ export function StepsEditor({ disabled }: { disabled?: boolean }) {
           {fields.map((f, i) => (
             <Space key={f.key} align="baseline" style={{ display: "flex" }} wrap={false}>
               <span style={{ width: 20 }}>{i + 1}.</span>
-              <Form.Item name={[f.name, "action"]} rules={[{ required: true, message: "Required" }]} style={{ marginBottom: 6 }}>
-                <Input placeholder="Action" style={{ width: 260 }} />
+              <Form.Item name={[f.name, "action"]} rules={[{ required: true, message: "必填" }]} style={{ marginBottom: 6 }}>
+                <Input placeholder="动作" style={{ width: 260 }} />
               </Form.Item>
               <Form.Item name={[f.name, "data"]} style={{ marginBottom: 6 }}>
-                <Input placeholder="Data (optional)" style={{ width: 150 }} />
+                <Input placeholder="数据（可选）" style={{ width: 150 }} />
               </Form.Item>
               <Form.Item name={[f.name, "expected"]} style={{ marginBottom: 6 }}>
-                <Input placeholder="Expected for this step (optional)" style={{ width: 200 }} />
+                <Input placeholder="本步骤的预期（可选）" style={{ width: 200 }} />
               </Form.Item>
               {!disabled && (
                 <>
@@ -30,7 +30,7 @@ export function StepsEditor({ disabled }: { disabled?: boolean }) {
           ))}
           {!disabled && (
             <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => add({ action: "" })}>
-              Add step
+              添加步骤
             </Button>
           )}
         </>

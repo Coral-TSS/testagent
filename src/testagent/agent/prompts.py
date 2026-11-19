@@ -16,8 +16,8 @@ MAX_MEMORY_CHARS = 8000  # roughly 2k tokens
 
 
 def output_language() -> str:
-    """TESTAGENT_AGENT_LANGUAGE (default English): the language of text written for people."""
-    return (Settings().agent_language or "English").strip() or "English"
+    """TESTAGENT_AGENT_LANGUAGE (default Simplified Chinese): the language of text written for people."""
+    return (Settings().agent_language or "Simplified Chinese").strip() or "Simplified Chinese"
 
 
 def assemble(db, entry, sut_id=None, context: dict | None = None) -> tuple[str, dict]:

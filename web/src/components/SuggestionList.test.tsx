@@ -9,7 +9,7 @@ const base = { id: "s1", status: "pending" } as const;
 describe("describeSuggestion", () => {
   it("shows names, never UUIDs", () => {
     const attr = { ...base, kind: "attribute", payload: { node_id: "b1d63985-uuid", node_name: "PurchaseOrder", attr: "constraints", text: "Amount > 0" } } as Suggestion;
-    expect(describeSuggestion(attr)).toBe("Add to “PurchaseOrder”: Constraints: Amount > 0");
+    expect(describeSuggestion(attr)).toBe("添加到“PurchaseOrder”：约束：Amount > 0");
     const old = { ...base, kind: "attribute", payload: { node_id: "b1d63985-uuid", attr: "states", text: "paid" } } as Suggestion;
     expect(describeSuggestion(old)).not.toContain("b1d63985");
   });
@@ -20,7 +20,7 @@ describe("describeSuggestion", () => {
       kind: "field",
       payload: { node_id: "x", node_name: "PurchaseOrder", name: "currency", display_name: "Currency", data_type: "enum", unit: null },
     } as Suggestion;
-    expect(describeSuggestion(field)).toBe("Add to “PurchaseOrder” new field currency (Currency), Enum");
+    expect(describeSuggestion(field)).toBe("添加到“PurchaseOrder”新字段 currency（Currency）, 枚举");
     expect(fieldLabel({ name: "amount_minor", display_name: "Amount", node_name: "PurchaseOrder" })).toBe("PurchaseOrder.amount_minor (Amount)");
   });
 
@@ -37,7 +37,7 @@ describe("describeSuggestion", () => {
         fk_field: "Payment.order_id",
       },
     } as Suggestion;
-    expect(describeSuggestion(link)).toBe("New link “Payment belongs to PurchaseOrder” / “PurchaseOrder has Payment” (N:1, foreign key Payment.order_id)");
+    expect(describeSuggestion(link)).toBe("新建关系“Payment belongs to PurchaseOrder” / “PurchaseOrder has Payment”（N:1，外键 Payment.order_id）");
     const rules = {
       ...base,
       kind: "rules",
@@ -49,7 +49,7 @@ describe("describeSuggestion", () => {
       },
     } as Suggestion;
     expect(describeSuggestion(rules)).toBe(
-      "Add to action “Approve purchase order”: precondition PurchaseOrder.state == pending; effect PurchaseOrder.state → approved | rejected",
+      "添加到动作“Approve purchase order”：前置条件 PurchaseOrder.state == pending；效果 PurchaseOrder.state → approved | rejected",
     );
   });
 });
@@ -67,14 +67,14 @@ describe("SuggestionList sources and batch accept (#6/#4)", () => {
   it("pre-selects sourced suggestions only and shows source tags", () => {
     expect(defaultSelected(items)).toEqual(["a", "b"]);
     renderPage(<SuggestionList sutId="s1" items={items} onChanged={() => {}} />);
-    expect(screen.getByText("Requirement REQ-001")).toBeTruthy();
+    expect(screen.getByText("需求 REQ-001")).toBeTruthy();
     expect(screen.getByText("OpenAPI")).toBeTruthy();
-    expect(screen.getByText("Model rule")).toBeTruthy();
-    expect(screen.getAllByText("AI inferred")).toHaveLength(2);
+    expect(screen.getByText("模型规则")).toBeTruthy();
+    expect(screen.getAllByText("AI 推断")).toHaveLength(2);
     expect(screen.getByText("Basis: 50,000 or more need approval")).toBeTruthy();
     expect(screen.getByText("Possible duplicate: Create purchase order")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Accept selected (2)" })).toBeTruthy();
-    fireEvent.click(screen.getByLabelText("Only AI inferences"));
+    expect(screen.getByRole("button", { name: "接受所选（2）" })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("仅 AI 推断"));
     expect(screen.queryByText("OpenAPI")).toBeNull();
   });
 
@@ -84,8 +84,8 @@ describe("SuggestionList sources and batch accept (#6/#4)", () => {
     });
     const onChanged = vi.fn();
     renderPage(<SuggestionList sutId="s1" items={items} onChanged={onChanged} />);
-    fireEvent.click(screen.getByLabelText(/Select Add to “PurchaseOrder” new field currency/));
-    fireEvent.click(screen.getByRole("button", { name: "Accept selected (1)" }));
+    fireEvent.click(screen.getByLabelText(/选择 添加到“PurchaseOrder”新字段 currency/));
+    fireEvent.click(screen.getByRole("button", { name: "接受所选（1）" }));
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
     expect(calls[0].body).toEqual({ ids: ["a"] });
   });
@@ -93,9 +93,9 @@ describe("SuggestionList sources and batch accept (#6/#4)", () => {
   it("asks why before accepting an AI inference", async () => {
     const calls = mockFetch({ "POST /suggestions/c/accept": () => ({ body: { id: "c", status: "accepted" } }) });
     renderPage(<SuggestionList sutId="s1" items={items} onChanged={() => {}} />);
-    fireEvent.click(screen.getAllByText("Accept")[2]);
-    const note = await screen.findByLabelText("Why it is right");
-    const ok = () => screen.getByRole("button", { name: "OK" }) as HTMLButtonElement;
+    fireEvent.click(screen.getAllByText("接受")[2]);
+    const note = await screen.findByLabelText("为何正确");
+    const ok = () => screen.getByRole("button", { name: "确定" }) as HTMLButtonElement;
     expect(ok().disabled).toBe(true);
     fireEvent.change(note, { target: { value: "ok" } });
     expect(ok().disabled).toBe(true);
@@ -116,7 +116,7 @@ describe("SuggestionList sources and batch accept (#6/#4)", () => {
         skipped: 4,
         dropped: { duplicate_node: 0, duplicate_api: 1, duplicate_in_batch: 2, previously_rejected: 0, invalid: 0 },
       }),
-    ).toBe("1 new suggestion(s), 4 left out (1 API already bound to an action, 2 repeated in the same batch, 1 already pending)");
+    ).toBe("1 条新建议，排除 4 条（1 API 已绑定到动作，2 本批次中重复，1 条已在待处理中）");
     expect(completionNote({ agent_run_id: "r", status: "failed" })).toBeNull();
   });
 });

@@ -15,18 +15,18 @@ export function CasesPage() {
   return (
     <Card>
       <Typography.Title level={3} style={{ marginTop: 0 }}>
-        Test cases
+        测试用例
       </Typography.Title>
       {!params.sutId && (
         <Select
-          placeholder="Choose SUT"
+          placeholder="选择被测系统"
           style={{ width: 240, marginBottom: 16 }}
           value={sutId}
           onChange={(v) => setSearch({ sut: v })}
           options={(suts.data || []).map((s) => ({ value: s.id, label: `${s.code} ${s.name}` }))}
         />
       )}
-      {sutId ? <CaseList sutId={sutId} versionId={search.get("version_id") || undefined} /> : <Empty description="Choose a SUT at the top right or here first; cases belong to a SUT" />}
+      {sutId ? <CaseList sutId={sutId} versionId={search.get("version_id") || undefined} /> : <Empty description="请先在右上角或此处选择被测系统；测试用例归属于被测系统" />}
     </Card>
   );
 }

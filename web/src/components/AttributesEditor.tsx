@@ -2,9 +2,9 @@ import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Form, Input, Space, Typography } from "antd";
 
 const GROUPS = [
-  ["conditions", "Conditions"],
-  ["states", "Status"],
-  ["constraints", "Constraints"],
+  ["conditions", "条件"],
+  ["states", "状态"],
+  ["constraints", "约束"],
 ] as const;
 
 /** Edits attributes.{conditions,states,constraints}: lists of {text, expr?}. Use inside a Form. */
@@ -19,11 +19,11 @@ export function AttributesEditor() {
               <>
                 {fields.map((field) => (
                   <Space key={field.key} align="baseline" style={{ display: "flex" }}>
-                    <Form.Item name={[field.name, "text"]} rules={[{ required: true, message: "Required" }]} style={{ marginBottom: 6 }}>
-                      <Input placeholder={`${label}Description`} style={{ width: 240 }} />
+                    <Form.Item name={[field.name, "text"]} rules={[{ required: true, message: "必填" }]} style={{ marginBottom: 6 }}>
+                      <Input placeholder={`${label}说明`} style={{ width: 240 }} />
                     </Form.Item>
                     <Form.Item name={[field.name, "expr"]} style={{ marginBottom: 6 }}>
-                      <Input placeholder="Expression (optional)" style={{ width: 170 }} />
+                      <Input placeholder="表达式（可选）" style={{ width: 170 }} />
                     </Form.Item>
                     <MinusCircleOutlined onClick={() => remove(field.name)} />
                   </Space>

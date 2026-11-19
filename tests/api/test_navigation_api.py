@@ -39,7 +39,7 @@ def test_context_chains_for_every_detail_page(client, db):
     assert body["sut"]["code"] == "SHOP" and body["version"] is None
 
     body, labels, _ = crumbs(client, "version", w["version"])
-    assert labels == [("sut", "Shop (SHOP)"), ("version", "Version v1")]
+    assert labels == [("sut", "Shop (SHOP)"), ("version", "版本 v1")]
     assert body["version"]["id"] == w["version"]
     version = client.get(f"{V1}/versions/{w['version']}").json()
     assert (version["sut_code"], version["sut_name"]) == ("SHOP", "Shop")
@@ -55,18 +55,18 @@ def test_context_chains_for_every_detail_page(client, db):
 
     _, labels, paths = crumbs(client, "run", run["id"])
     assert [k for k, _ in labels] == ["sut", "version", "strategy", "task", "run"]
-    assert labels[-1][1].startswith("Run ") and paths[-1] == f"/runs/{run['id']}"
+    assert labels[-1][1].startswith("执行 ") and paths[-1] == f"/runs/{run['id']}"
 
     body, labels, _ = crumbs(client, "execution", execution)
     assert [k for k, _ in labels] == ["sut", "version", "strategy", "task", "run", "execution"]
-    assert labels[-1] == ("execution", "Amount approval (TC-001) execution")
+    assert labels[-1] == ("execution", "Amount approval (TC-001) 的执行")
     assert body["version"]["name"] == "v1"
 
     _, labels, paths = crumbs(client, "case", case)
     assert labels == [
         ("sut", "Shop (SHOP)"),
-        ("version", "Version v1"),
-        ("cases", "Case"),
+        ("version", "版本 v1"),
+        ("cases", "用例"),
         ("case", "Amount approval (TC-001)"),
     ]
     assert paths[2] == f"/versions/{w['version']}?tab=cases"
@@ -87,7 +87,7 @@ def test_progress_walks_the_main_flow(client, db):
     keys = [s["key"] for s in p["steps"]]
     assert keys == ["sut", "model", "requirements", "strategy", "tasks", "cases", "runs", "results"]
     assert [s["status"] for s in p["steps"]][:2] == ["todo", "todo"]
-    assert p["next"]["key"] == "sut" and p["next"]["label"] == "Add environment"
+    assert p["next"]["key"] == "sut" and p["next"]["label"] == "添加环境"
     assert p["version"] is None and p["repo_path"].endswith("NEW")
 
     client.post(f"{V1}/suts/{sut}/environments", json={"name": "t", "base_url": "http://x:1"})
@@ -110,5 +110,5 @@ def test_progress_walks_the_main_flow(client, db):
     status = {s["key"]: s["status"] for s in p["steps"]}
     assert status["tasks"] == "done" and status["cases"] == "done" and status["runs"] == "done"
     runs = next(s for s in p["steps"] if s["key"] == "runs")
-    assert "Passed" in runs["summary"] and runs["path"].startswith("/runs/")
+    assert "通过" in runs["summary"] and runs["path"].startswith("/runs/")
     assert [v["name"] for v in p["versions"]] == ["v1"]

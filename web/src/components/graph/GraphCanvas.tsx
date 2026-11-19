@@ -68,7 +68,7 @@ function BoxNode({ data }: NodeProps<FlowNode<Data>>) {
 
 type LinkData = { forward: string; reverse: string; card: string; via?: string | null; fk?: string | null; required?: boolean };
 
-/** A relation drawn between two entities: "belongs to →" / "← supplies" with the cardinality in the middle. */
+/** A relation drawn between two entities: "属于 →" / "← 供应" with the cardinality in the middle. */
 function LinkEdge(props: EdgeProps<FlowEdge<LinkData>>) {
   const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, selected } = props;
   const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
@@ -80,7 +80,7 @@ function LinkEdge(props: EdgeProps<FlowEdge<LinkData>>) {
         <div
           className="nodrag nopan"
           data-testid={`link-label-${id}`}
-          title={[data?.fk ? `foreign key ${data.fk}` : "", data?.via ? `junction entity ${data.via}` : "", data?.required ? "required" : ""]
+          title={[data?.fk ? `外键 ${data.fk}` : "", data?.via ? `中间实体 ${data.via}` : "", data?.required ? "必填" : ""]
             .filter(Boolean)
             .join(", ")}
           style={{
@@ -122,7 +122,7 @@ function sides(a?: { x: number; y: number }, b?: { x: number; y: number }) {
   if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? { sourceHandle: "right-s", targetHandle: "left-t" } : { sourceHandle: "left-s", targetHandle: "right-t" };
   return dy > 0 ? { sourceHandle: "bottom-s", targetHandle: "top-t" } : { sourceHandle: "top-s", targetHandle: "bottom-t" };
 }
-const ROLE_LABEL: Record<string, string> = { source: "Source", target: "Target", actor: "Actor", object: "object", ref: "References" };
+const ROLE_LABEL: Record<string, string> = { source: "来源", target: "目标", actor: "执行者", object: "对象", ref: "引用" };
 
 export function toFlow(graph: Graph, selectedId?: string | null) {
   const layout = computeLayout(graph);

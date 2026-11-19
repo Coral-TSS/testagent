@@ -8,11 +8,11 @@ import { linkText } from "./links";
 import { KIND_LABEL } from "./StatusTags";
 
 export const PARTS: [Part, string][] = [
-  ["actor", "Actor"],
-  ["condition", "Preconditions"],
-  ["action", "Actions"],
-  ["result", "Expected result"],
-  ["constraint", "Constraints"],
+  ["actor", "执行者"],
+  ["condition", "前置条件"],
+  ["action", "动作"],
+  ["result", "预期结果"],
+  ["constraint", "约束"],
 ];
 
 /** Five-part requirement structure; each item may link to a model node, an entity field and a relation. */
@@ -60,11 +60,11 @@ export function StructureEditor({
               <>
                 {fields.map((f) => (
                   <Space key={f.key} align="baseline" style={{ display: "flex" }}>
-                    <Form.Item name={[f.name, "text"]} rules={[{ required: true, message: "Required" }]} style={{ marginBottom: 6 }}>
+                    <Form.Item name={[f.name, "text"]} rules={[{ required: true, message: "必填" }]} style={{ marginBottom: 6 }}>
                       <Input style={{ width: 200 }} />
                     </Form.Item>
                     <Form.Item name={[f.name, "node_id"]} style={{ marginBottom: 6 }}>
-                      <Select allowClear showSearch optionFilterProp="label" placeholder="Linked model nodes" style={{ width: 200 }} options={options} />
+                      <Select allowClear showSearch optionFilterProp="label" placeholder="关联的模型节点" style={{ width: 200 }} options={options} />
                     </Form.Item>
                     {fieldOptions.length > 0 && (
                       <Form.Item name={[f.name, "attribute_id"]} style={{ marginBottom: 6 }}>
@@ -72,7 +72,7 @@ export function StructureEditor({
                           allowClear
                           showSearch
                           optionFilterProp="label"
-                          placeholder="Linked fields"
+                          placeholder="关联字段"
                           style={{ width: 200 }}
                           options={fieldOptions}
                         />
@@ -84,21 +84,21 @@ export function StructureEditor({
                           allowClear
                           showSearch
                           optionFilterProp="label"
-                          placeholder="Linked links"
+                          placeholder="关联关系"
                           style={{ width: 220 }}
                           options={linkOptions}
                         />
                       </Form.Item>
                     )}
                     <Form.Item noStyle shouldUpdate>
-                      {() => (form.getFieldValue([part, f.name, "missing"]) ? <Tag color="orange">Missing in model</Tag> : null)}
+                      {() => (form.getFieldValue([part, f.name, "missing"]) ? <Tag color="orange">模型中缺失</Tag> : null)}
                     </Form.Item>
                     {!disabled && <MinusCircleOutlined onClick={() => remove(f.name)} />}
                   </Space>
                 ))}
                 {!disabled && (
                   <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => add({ text: "" })}>
-                    Add
+                    添加
                   </Button>
                 )}
               </>
@@ -108,7 +108,7 @@ export function StructureEditor({
       ))}
       {!disabled && (
         <Button size="small" htmlType="submit" loading={saving}>
-          Save structure
+          保存结构
         </Button>
       )}
     </Form>

@@ -44,18 +44,18 @@ describe("PeopleStatsPage", () => {
     renderPage(<PeopleStatsPage />, { path: "/stats/people", route: "/stats/people?sort=related_count" });
     expect(await screen.findByText("Lee Dev")).toBeTruthy();
     expect(urls[0]).toContain("sort=related_count");
-    expect(screen.getByText("Developer 2 (13)")).toBeTruthy();
-    expect(screen.getByText("Disabled")).toBeTruthy();
+    expect(screen.getByText("开发 2 (13)")).toBeTruthy();
+    expect(screen.getByText("已停用")).toBeTruthy();
     const link = screen.getByRole("link", { name: "Lee Dev" });
     expect(link.getAttribute("href")).toBe("/defects?person_id=p1");
 
-    await waitFor(() => expect((screen.getByLabelText("Critical") as HTMLInputElement).value).toBe("8"));
-    expect(await screen.findByText(/default Critical 10 \/ Major 3 \/ Minor 1 \/ Trivial 0.1/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Critical"), { target: { value: "20" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save weights" }));
+    await waitFor(() => expect((screen.getByLabelText("严重") as HTMLInputElement).value).toBe("8"));
+    expect(await screen.findByText(/默认 严重 10 \/ 主要 3 \/ 次要 1 \/ 轻微 0.1/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("严重"), { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存权重" }));
     await waitFor(() => expect(calls.some((c) => c.method === "PUT")).toBe(true));
     expect(calls.find((c) => c.method === "PUT")!.body).toEqual({ critical: 20, major: 3, minor: 1, trivial: 0.1 });
-    fireEvent.click(screen.getByRole("button", { name: "Fill in defaults" }));
-    await waitFor(() => expect((screen.getByLabelText("Critical") as HTMLInputElement).value).toBe("10"));
+    fireEvent.click(screen.getByRole("button", { name: "填入默认值" }));
+    await waitFor(() => expect((screen.getByLabelText("严重") as HTMLInputElement).value).toBe("10"));
   });
 });

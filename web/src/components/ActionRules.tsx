@@ -62,7 +62,7 @@ export function ActionRulesEditor({
   const linkOptions = links.map((l) => ({ value: l.id, label: forwardText(l) }));
   return (
     <>
-      <Typography.Text strong>Preconditions (must hold before running, e.g. PurchaseOrder.state == pending)</Typography.Text>
+      <Typography.Text strong>前置条件（执行前必须成立，例如 PurchaseOrder.state == pending）</Typography.Text>
       <Form.List name="preconditions">
         {(rows, { add, remove }) => (
           <div data-testid="preconditions">
@@ -76,7 +76,7 @@ export function ActionRulesEditor({
                   return (
                     <Space align="baseline" style={{ display: "flex", flexWrap: "wrap" }}>
                       <Form.Item name={[row.name, "attribute_id"]} style={{ marginBottom: 6 }}>
-                        <Select allowClear showSearch optionFilterProp="label" placeholder="Entity.field" style={{ width: 190 }} options={fieldOptions} />
+                        <Select allowClear showSearch optionFilterProp="label" placeholder="实体.字段" style={{ width: 190 }} options={fieldOptions} />
                       </Form.Item>
                       {r.attribute_id ? (
                         <>
@@ -84,26 +84,26 @@ export function ActionRulesEditor({
                             <Select style={{ width: 90 }} options={OPS} />
                           </Form.Item>
                           {op === "in" || op === "not_in" ? (
-                            <Form.Item name={[row.name, "value_list"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "Enter values" }]}>
-                              <Select mode="tags" style={{ width: 200 }} options={opts} placeholder="Values (multiple allowed)" />
+                            <Form.Item name={[row.name, "value_list"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "输入取值" }]}>
+                              <Select mode="tags" style={{ width: 200 }} options={opts} placeholder="取值（可多个）" />
                             </Form.Item>
                           ) : op === "is_null" || op === "not_null" ? null : (
-                            <Form.Item name={[row.name, "value"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "Enter values" }]}>
+                            <Form.Item name={[row.name, "value"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "输入取值" }]}>
                               {opts.length ? (
-                                <Select style={{ width: 160 }} options={opts} placeholder="Value" />
+                                <Select style={{ width: 160 }} options={opts} placeholder="取值" />
                               ) : (
-                                <Input style={{ width: 160 }} placeholder="Value" />
+                                <Input style={{ width: 160 }} placeholder="取值" />
                               )}
                             </Form.Item>
                           )}
                         </>
                       ) : (
                         <Form.Item name={[row.name, "text"]} style={{ marginBottom: 6 }}>
-                          <Input style={{ width: 290 }} placeholder="or a text condition, e.g. The approver is not the submitter" />
+                          <Input style={{ width: 290 }} placeholder="或一条文本条件，例如：审批人不能是提交人" />
                         </Form.Item>
                       )}
                       <Form.Item name={[row.name, "message"]} style={{ marginBottom: 6 }}>
-                        <Input style={{ width: 200 }} placeholder="Message when not met (optional)" />
+                        <Input style={{ width: 200 }} placeholder="不满足时的提示（可选）" />
                       </Form.Item>
                       <MinusCircleOutlined onClick={() => remove(row.name)} />
                     </Space>
@@ -112,13 +112,13 @@ export function ActionRulesEditor({
               </Form.Item>
             ))}
             <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => add({ op: "eq" })} style={{ marginBottom: 12 }}>
-              Add precondition
+              添加前置条件
             </Button>
           </div>
         )}
       </Form.List>
       <div />
-      <Typography.Text strong>Effects (what changes after running, e.g. PurchaseOrder.state → approved | rejected)</Typography.Text>
+      <Typography.Text strong>效果（执行后会发生什么，例如 PurchaseOrder.state → approved | rejected）</Typography.Text>
       <Form.List name="effects">
         {(rows, { add, remove }) => (
           <div data-testid="effects">
@@ -134,24 +134,24 @@ export function ActionRulesEditor({
                       </Form.Item>
                       {r.kind === "set_field" || !r.kind ? (
                         <>
-                          <Form.Item name={[row.name, "attribute_id"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "Choose field" }]}>
-                            <Select showSearch optionFilterProp="label" placeholder="Entity.field" style={{ width: 190 }} options={fieldOptions} />
+                          <Form.Item name={[row.name, "attribute_id"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "选择字段" }]}>
+                            <Select showSearch optionFilterProp="label" placeholder="实体.字段" style={{ width: 190 }} options={fieldOptions} />
                           </Form.Item>
                           <Form.Item name={[row.name, "values"]} style={{ marginBottom: 6 }}>
-                            <Select mode="tags" style={{ width: 220 }} options={enumOptions(field)} placeholder="New values (multiple allowed)" />
+                            <Select mode="tags" style={{ width: 220 }} options={enumOptions(field)} placeholder="新取值（可多个）" />
                           </Form.Item>
                         </>
                       ) : r.kind === "create_object" || r.kind === "delete_object" ? (
-                        <Form.Item name={[row.name, "node_id"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "Choose entity" }]}>
-                          <Select showSearch optionFilterProp="label" placeholder="entities" style={{ width: 190 }} options={entityOptions} />
+                        <Form.Item name={[row.name, "node_id"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "选择实体" }]}>
+                          <Select showSearch optionFilterProp="label" placeholder="实体" style={{ width: 190 }} options={entityOptions} />
                         </Form.Item>
                       ) : (
-                        <Form.Item name={[row.name, "link_id"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "Choose link" }]}>
-                          <Select showSearch optionFilterProp="label" placeholder="Link" style={{ width: 240 }} options={linkOptions} />
+                        <Form.Item name={[row.name, "link_id"]} style={{ marginBottom: 6 }} rules={[{ required: true, message: "选择关系" }]}>
+                          <Select showSearch optionFilterProp="label" placeholder="关系" style={{ width: 240 }} options={linkOptions} />
                         </Form.Item>
                       )}
                       <Form.Item name={[row.name, "when"]} style={{ marginBottom: 6 }}>
-                        <Input style={{ width: 200 }} placeholder="When (optional, e.g. approved=true)" />
+                        <Input style={{ width: 200 }} placeholder="何时（可选，例如 approved=true）" />
                       </Form.Item>
                       <MinusCircleOutlined onClick={() => remove(row.name)} />
                     </Space>
@@ -160,7 +160,7 @@ export function ActionRulesEditor({
               </Form.Item>
             ))}
             <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => add({ kind: "set_field" })}>
-              Add effect
+              添加效果
             </Button>
           </div>
         )}

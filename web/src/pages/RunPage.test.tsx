@@ -21,10 +21,10 @@ const run = {
   started_at: "2026-10-31T20:00:01+08:00",
   ended_at: "2026-10-31T20:01:00+08:00",
   counts: { total: 3, done: 3, passed: 1, failed: 1, error: 0, blocked: 1, skipped: 0 },
-  not_ready: [{ id: "c9", code: "TC-009", title: "Draft", status: "draft" }],
+  not_ready: [{ id: "c9", code: "TC-009", title: "草稿", status: "draft" }],
   report_id: "rep1",
   executions: [
-    { id: "e1", case_id: "c1", case_code: "TC-001", case_title: "Sign in", executor: "agent_browser", status: "passed", created_at: "x" },
+    { id: "e1", case_id: "c1", case_code: "TC-001", case_title: "登录", executor: "agent_browser", status: "passed", created_at: "x" },
     { id: "e2", case_id: "c2", case_code: "TC-002", case_title: "Place order", executor: "agent_browser", status: "failed", failed_assertion: "Wrong amount", created_at: "x" },
     { id: "e3", case_id: "c3", case_code: "TC-003", case_title: "Refund", executor: "manual", status: "blocked", created_at: "x" },
   ],
@@ -36,11 +36,11 @@ describe("RunPage", () => {
     renderPage(<RunPage />, { path: "/runs/:runId", route: "/runs/r1" });
     expect(await screen.findByText("3/3")).toBeTruthy();
     expect(screen.getByText("Wrong amount")).toBeTruthy();
-    expect(screen.getByText("Waiting for manual execution")).toBeTruthy();
-    expect(screen.getByText("Record result")).toBeTruthy();
+    expect(screen.getByText("等待手工执行")).toBeTruthy();
+    expect(screen.getByText("记录结果")).toBeTruthy();
     expect(screen.getByText(/TC-009/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "View report" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Cancel run" })).toBeNull();
+    expect(screen.getByRole("button", { name: "查看报告" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "取消执行" })).toBeNull();
   });
 
   it("follows a live run over SSE and can cancel it", async () => {
@@ -70,7 +70,7 @@ describe("RunPage result trust (#15/#18)", () => {
       no_script: [{ case_id: "c3", code: "TC-003", title: "Refund" }],
       executions: [
         { id: "e1", case_id: "c1", case_code: "TC-001", case_title: "Place order", executor: "pytest", status: "failed", failure_kind: "assertion", suspected_cause: "sut", summary: { headline: "Expected 201, got 422" }, created_at: "x" },
-        { id: "e2", case_id: "c2", case_code: "TC-002", case_title: "Sign in", executor: "pytest", status: "error", failure_kind: "platform", suspected_cause: "platform", error: "NO_ENVIRONMENT", created_at: "x" },
+        { id: "e2", case_id: "c2", case_code: "TC-002", case_title: "登录", executor: "pytest", status: "error", failure_kind: "platform", suspected_cause: "platform", error: "NO_ENVIRONMENT", created_at: "x" },
         { id: "e3", case_id: "c3", case_code: "TC-003", case_title: "Refund", executor: "manual", status: "skipped", failure_kind: "no_script", suspected_cause: "platform", created_at: "x" },
       ],
     };
@@ -78,9 +78,9 @@ describe("RunPage result trust (#15/#18)", () => {
     renderPage(<RunPage />, { path: "/runs/:runId", route: "/runs/r1" });
     expect(await screen.findByText("Expected 201, got 422")).toBeTruthy();
     const counts = screen.getByTestId("cause-counts");
-    expect(counts.textContent).toContain("Suspected system issue 1");
-    expect(counts.textContent).toContain("Platform / configuration issue 1");
-    expect(screen.getByText("No script")).toBeTruthy();
+    expect(counts.textContent).toContain("疑似系统问题 1");
+    expect(counts.textContent).toContain("平台 / 配置问题 1");
+    expect(screen.getByText("无脚本")).toBeTruthy();
     expect(screen.getByTestId("no-script").textContent).toContain("Refund (TC-003)");
   });
 });
@@ -93,9 +93,9 @@ describe("RunPage not executed", () => {
       executions: [run.executions[2]],
     } }) });
     renderPage(<RunPage />, { path: "/runs/:runId", route: "/runs/r1" });
-    expect(await screen.findByText("Waiting for manual execution")).toBeTruthy();
+    expect(await screen.findByText("等待手工执行")).toBeTruthy();
     expect(screen.getByTestId("not-executed").textContent).not.toContain("none has an automation script");
-    expect(screen.getByRole("link", { name: "Record result" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "记录结果" })).toBeTruthy();
   });
 
   it("labels a run where nothing ran as not executed", async () => {
@@ -110,10 +110,10 @@ describe("RunPage not executed", () => {
     };
     mockFetch({ "GET /runs/r1": () => ({ body: r }) });
     renderPage(<RunPage />, { path: "/runs/:runId", route: "/runs/r1" });
-    expect(await screen.findByText("Not executed")).toBeTruthy();
-    expect(screen.getByTestId("not-executed").textContent).toContain("neither a pass nor a failure");
+    expect(await screen.findByText("未执行")).toBeTruthy();
+    expect(screen.getByTestId("not-executed").textContent).toContain("既不是通过也不是失败");
     expect(document.querySelector(".ant-progress-status-exception")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Cancel run" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "取消执行" })).toBeNull();
   });
 });
 

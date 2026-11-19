@@ -11,16 +11,16 @@ const tc = { id: "c1", sut_id: "s1", status: "ready", code_path: null } as unkno
 describe("CaseExecutionPanel", () => {
   it("debugs the case in the first environment and lists history", async () => {
     const calls = mockFetch({
-      "GET /suts/s1/environments": () => ({ body: [{ id: "env1", sut_id: "s1", name: "Testing", base_url: "http://x" }] }),
+      "GET /suts/s1/environments": () => ({ body: [{ id: "env1", sut_id: "s1", name: "测试中", base_url: "http://x" }] }),
       "GET /cases/c1/executions": () => ({
-        body: [{ id: "e0", executor: "manual", status: "passed", created_at: "2026-10-31T18:00:00+08:00", environment_name: "Testing" }],
+        body: [{ id: "e0", executor: "manual", status: "passed", created_at: "2026-10-31T18:00:00+08:00", environment_name: "测试中" }],
       }),
       "POST /cases/c1/debug": () => ({ body: { id: "e1", status: "passed" } }),
     });
     renderPage(<CaseExecutionPanel tc={tc} onAgentRun={() => {}} />);
     expect(await screen.findByText("2026-10-31 18:00:00")).toBeTruthy();
-    expect(screen.getByText("Manual")).toBeTruthy();
-    const button = screen.getByRole("button", { name: "Debug run" });
+    expect(screen.getByText("手工")).toBeTruthy();
+    const button = screen.getByRole("button", { name: "调试执行" });
     await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(button);
     await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
@@ -43,12 +43,12 @@ describe("CaseExecutionPanel", () => {
       }),
     });
     renderPage(<CaseExecutionPanel tc={broken} onAgentRun={() => {}} />);
-    expect(screen.getByText(/Automation needs fix/)).toBeTruthy();
-    expect(screen.getByText("Reason: assert 422 == 201")).toBeTruthy();
+    expect(screen.getByText(/自动化待修复/)).toBeTruthy();
+    expect(screen.getByText("原因：assert 422 == 201")).toBeTruthy();
     expect(screen.getByText("D:/repo/runtime/repos/PROC/tests/REQ-001/test_TC-001.py")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "View draft" }));
-    expect(await screen.findByLabelText("Code")).toBeTruthy();
-    expect(screen.getByLabelText("Code").textContent).toContain("def test_x()");
+    fireEvent.click(screen.getByRole("button", { name: "查看草稿" }));
+    expect(await screen.findByLabelText("编号")).toBeTruthy();
+    expect(screen.getByLabelText("编号").textContent).toContain("def test_x()");
   });
 
   it("shows the absolute script path of an automated case", async () => {
@@ -56,8 +56,8 @@ describe("CaseExecutionPanel", () => {
     mockFetch({ "GET /suts/s1/environments": () => ({ body: [] }), "GET /cases/c1/executions": () => ({ body: [] }) });
     renderPage(<CaseExecutionPanel tc={auto} onAgentRun={() => {}} />);
     expect(screen.getByText("D:/abs/test_TC-002.py")).toBeTruthy();
-    expect(screen.getByText(/Runs the bound Git version/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "View code" })).toBeTruthy();
+    expect(screen.getByText(/将运行已绑定的 Git 版本/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "查看代码" })).toBeTruthy();
   });
 
   it("builds manual result bodies and rejects bad JSON", async () => {
@@ -65,7 +65,7 @@ describe("CaseExecutionPanel", () => {
       body: { status: "failed", failed_assertion: "Should show", actual_data: { amount: 0 }, duration_ms: 90000, attachments: [] },
     });
     expect((await manualBody({ status: "passed", actual_data: "{bad" }, [])).error).toMatch("JSON");
-    expect((await manualBody({ status: "passed", actual_data: "[1]" }, [])).error).toMatch("object");
+    expect((await manualBody({ status: "passed", actual_data: "[1]" }, [])).error).toMatch(/对象|JSON 对象/);
   });
 
   it("offers the suspected-system-issue choices instead of a fix (#9)", async () => {
@@ -88,14 +88,14 @@ describe("CaseExecutionPanel", () => {
     });
     renderPage(<CaseExecutionPanel tc={mismatch} onAgentRun={() => {}} />);
     const box = screen.getByTestId("sut-mismatch");
-    expect(box.textContent).toContain("Suspected system issue");
+    expect(box.textContent).toContain("疑似系统问题");
     expect(box.textContent).toContain("Expected 201, got 422");
-    expect(screen.queryByText(/Automation needs fix/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Bind, record and create defect" }));
+    expect(screen.queryByText(/自动化待修复/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "绑定、记录并创建缺陷" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/cases/c1/automation/confirm-sut-issue")).toBe(true));
     expect(calls.find((c) => c.path === "/cases/c1/automation/confirm-sut-issue")!.body).toEqual({ action: "bind_and_record", create_defect: true });
-    fireEvent.click(screen.getByRole("button", { name: "It is a script issue" }));
+    fireEvent.click(screen.getByRole("button", { name: "这是脚本问题" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/cases/c1/automation/mark-script-issue")).toBe(true));
-    expect(await screen.findAllByText("Suspected system issue")).toBeTruthy();
+    expect(await screen.findAllByText("疑似系统问题")).toBeTruthy();
   });
 });

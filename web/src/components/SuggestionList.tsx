@@ -7,52 +7,52 @@ import { DATA_TYPE_LABEL } from "./EntityFields";
 import { CARD_LABEL, CARD_SHORT, effectText, preconditionText } from "./links";
 import { LIST_HEIGHT, ListCount, listTitle } from "./ListView";
 
-const ATTR: Record<string, string> = { conditions: "Conditions", states: "Status", constraints: "Constraints" };
-const KIND: Record<string, string> = { entity: "entities", action: "Actions", relation: "Link" };
+const ATTR: Record<string, string> = { conditions: "条件", states: "状态", constraints: "约束" };
+const KIND: Record<string, string> = { entity: "实体", action: "动作", relation: "关系" };
 
 export function describeSuggestion(s: Suggestion): string {
   const p = s.payload;
-  if (s.kind === "node") return `Add ${KIND[p.node_kind || ""] || "Node"}“${p.name}”`;
-  const owner = p.node_name || "(unknown node)"; // the server fills node_name; never show a UUID
+  if (s.kind === "node") return `新增${KIND[p.node_kind || ""] || "节点"}“${p.name}”`;
+  const owner = p.node_name || "（未知节点）"; // the server fills node_name; never show a UUID
   if (s.kind === "field") {
     const type = p.data_type ? `, ${DATA_TYPE_LABEL[p.data_type as DataType] || p.data_type}` : "";
     const values = p.enum_values?.length ? ` (${p.enum_values.join("/")})` : "";
-    const unit = p.unit ? `, unit ${p.unit}` : "";
+    const unit = p.unit ? `，单位 ${p.unit}` : "";
     if (p.rename_from)
-      return `“${owner}” field ${p.rename_from} renamed to ${p.name} (same as the API field, links kept)${type}${values}${unit}`;
-    return `Add to “${owner}” new field ${p.name}${p.display_name ? ` (${p.display_name})` : ""}${type}${values}${unit}`;
+      return `“${owner}”的字段 ${p.rename_from} 已重命名为 ${p.name}（与 API 字段一致，关系保留）${type}${values}${unit}`;
+    return `添加到“${owner}”新字段 ${p.name}${p.display_name ? `（${p.display_name}）` : ""}${type}${values}${unit}`;
   }
   if (s.kind === "link") {
     const from = p.from_name || "?";
     const to = p.to_name || "?";
     const card = p.cardinality ? CARD_SHORT[p.cardinality] : "N:1";
-    const fk = p.fk_field ? `, foreign key ${p.fk_field}` : "";
-    return `New link “${from} ${p.forward_name || "related"} ${to}” / “${to} ${p.reverse_name || "related"} ${from}” (${card}${fk})`;
+    const fk = p.fk_field ? `，外键 ${p.fk_field}` : "";
+    return `新建关系“${from} ${p.forward_name || "相关"} ${to}” / “${to} ${p.reverse_name || "相关"} ${from}”（${card}${fk}）`;
   }
   if (s.kind === "rules") {
     const parts = [
-      p.preconditions?.length ? `precondition ${p.preconditions.map(preconditionText).join("; ")}` : "",
-      p.effects?.length ? `effect ${p.effects.map((e) => effectText(e)).join("; ")}` : "",
+      p.preconditions?.length ? `前置条件 ${p.preconditions.map(preconditionText).join("；")}` : "",
+      p.effects?.length ? `效果 ${p.effects.map((e) => effectText(e)).join("；")}` : "",
     ].filter(Boolean);
-    return `Add to action “${owner}”: ${parts.join("; ")}`;
+    return `添加到动作“${owner}”：${parts.join("；")}`;
   }
   if (s.kind === "io") {
     const parts = [
-      p.description ? `purpose: ${p.description}` : "",
-      p.inputs?.length ? `inputs ${p.inputs.map((x) => x.name).join(", ")}` : "",
-      p.outputs?.length ? `outputs ${p.outputs.map((x) => x.name).join(", ")}` : "",
+      p.description ? `用途：${p.description}` : "",
+      p.inputs?.length ? `输入 ${p.inputs.map((x) => x.name).join("，")}` : "",
+      p.outputs?.length ? `输出 ${p.outputs.map((x) => x.name).join("，")}` : "",
     ].filter(Boolean);
-    return `Add to action “${owner}”: ${parts.join("; ") || "inputs/outputs"}`;
+    return `添加到动作“${owner}”：${parts.join("；") || "输入/输出"}`;
   }
-  return `Add to “${owner}”: ${ATTR[p.attr || ""] || p.attr}: ${p.text}`;
+  return `添加到“${owner}”：${ATTR[p.attr || ""] || p.attr}：${p.text}`;
 }
 
 /** #6: where a suggestion comes from → label and colour. */
 export const SOURCE_TAG: Record<SuggestionSource, [string, string]> = {
-  requirement: ["Requirement", "blue"],
+  requirement: ["需求", "blue"],
   openapi: ["OpenAPI", "green"],
-  model_rule: ["Model rule", "cyan"],
-  ai_inferred: ["AI inferred", "orange"],
+  model_rule: ["模型规则", "cyan"],
+  ai_inferred: ["AI 推断", "orange"],
 };
 
 /** Pre-selected for "Accept selected": pending, not an AI inference, not a link (links need their names confirmed). */
@@ -61,11 +61,11 @@ export function defaultSelected(items: Suggestion[]): string[] {
 }
 
 const DROP_LABEL: Record<string, string> = {
-  duplicate_node: "already in the model",
-  duplicate_api: "API already bound to an action",
-  duplicate_in_batch: "repeated in the same batch",
-  previously_rejected: "rejected before",
-  invalid: "no name or no description",
+  duplicate_node: "模型中已存在",
+  duplicate_api: "API 已绑定到动作",
+  duplicate_in_batch: "本批次中重复",
+  previously_rejected: "此前已拒绝",
+  invalid: "缺少名称或描述",
 };
 
 /** #4: "3 new suggestions, 4 left out (2 repeated in the same batch, 1 API already bound…)". */
@@ -76,8 +76,8 @@ export function completionNote(out: CompletionOutcome): string | null {
     .map(([k, n]) => `${n} ${DROP_LABEL[k] || k}`);
   const skipped = out.skipped || 0;
   const pending = skipped - Object.values(out.dropped || {}).reduce((a, n) => a + (n || 0), 0);
-  if (pending > 0) parts.push(`${pending} already pending`);
-  return `${out.suggestions.length} new suggestion(s)${skipped ? `, ${skipped} left out (${parts.join(", ")})` : ""}`;
+  if (pending > 0) parts.push(`${pending} 条已在待处理中`);
+  return `${out.suggestions.length} 条新建议${skipped ? `，排除 ${skipped} 条（${parts.join("，")}）` : ""}`;
 }
 
 function SourceTag({ s }: { s: Suggestion }) {
@@ -85,7 +85,7 @@ function SourceTag({ s }: { s: Suggestion }) {
   const [label, color] = SOURCE_TAG[source];
   const text = source === "requirement" && s.requirement_code ? `${label} ${s.requirement_code}` : label;
   return (
-    <Tooltip title={s.evidence ? `Basis: ${s.evidence}` : source === "ai_inferred" ? "No source: inferred by the AI" : undefined}>
+    <Tooltip title={s.evidence ? `依据：${s.evidence}` : source === "ai_inferred" ? "无来源：由 AI 推断" : undefined}>
       <Tag color={color}>{text}</Tag>
     </Tooltip>
   );
@@ -117,9 +117,9 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
   const reject = (s: Suggestion) => {
     let reason = "";
     modal.confirm({
-      title: "Reject suggestion",
-      content: <Input.TextArea placeholder="Reason (optional, used to steer later suggestions)" onChange={(e) => (reason = e.target.value)} />,
-      onOk: () => run(s.id, () => api(`/suggestions/${s.id}/reject`, { method: "POST", body: { reason: reason || null } }), "Rejected"),
+      title: "拒绝建议",
+      content: <Input.TextArea placeholder="原因（可选，用于引导后续建议）" onChange={(e) => (reason = e.target.value)} />,
+      onOk: () => run(s.id, () => api(`/suggestions/${s.id}/reject`, { method: "POST", body: { reason: reason || null } }), "已拒绝"),
     });
   };
   const inferred = (s: Suggestion) => (s.source || "ai_inferred") === "ai_inferred";
@@ -128,8 +128,8 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
   const noteField = (s: Suggestion, v: { note?: string }, dialog: Dialog) =>
     inferred(s) ? (
       <Input.TextArea
-        aria-label="Why it is right"
-        placeholder="AI inference without a source: why is it right? (5+ characters, kept in the change log)"
+        aria-label="为何正确"
+        placeholder="无来源的 AI 推断：为何正确？（不少于 5 个字符，会记入变更日志）"
         onChange={(e) => {
           v.note = e.target.value.trim();
           dialog.current?.update({ okButtonProps: { disabled: v.note.length < 5 } });
@@ -153,15 +153,15 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
       const dialog: Dialog = { current: null };
       dialog.current = modal.confirm({
         ...gate(s),
-        title: "Accept link suggestion (edit the readings first if needed)",
+        title: "接受关系建议（如需可先修改读法）",
         width: 560,
         content: (
           <Space orientation="vertical" style={{ width: "100%", marginTop: 12 }}>
             <span>
-              {p.from_name} <Input size="small" style={{ width: 120 }} defaultValue={initial.forward_name} onChange={set("forward_name")} aria-label="Forward name" /> {p.to_name}
+              {p.from_name} <Input size="small" style={{ width: 120 }} defaultValue={initial.forward_name} onChange={set("forward_name")} aria-label="正向名称" /> {p.to_name}
             </span>
             <span>
-              {p.to_name} <Input size="small" style={{ width: 120 }} defaultValue={initial.reverse_name} onChange={set("reverse_name")} aria-label="Reverse name" /> {p.from_name}
+              {p.to_name} <Input size="small" style={{ width: 120 }} defaultValue={initial.reverse_name} onChange={set("reverse_name")} aria-label="反向名称" /> {p.from_name}
             </span>
             <span>
               API names: 
@@ -181,31 +181,31 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
         ),
         onOk: () => {
           if (!v.forward_name || !v.reverse_name) {
-            message.error("Both direction names are required");
-            return Promise.reject(new Error("names required"));
+            message.error("两个方向的名称都必填");
+            return Promise.reject(new Error("需要填写名称"));
           }
-          return run(s.id, () => api(`/suggestions/${s.id}/accept`, { method: "POST", body: v }), "Accepted and link created");
+          return run(s.id, () => api(`/suggestions/${s.id}/accept`, { method: "POST", body: v }), "已接受并创建关系");
         },
       });
       return;
     }
     if (s.kind !== "node") {
       if (!inferred(s)) {
-        run(s.id, () => api(`/suggestions/${s.id}/accept`, { method: "POST", body: {} }), "Accepted");
+        run(s.id, () => api(`/suggestions/${s.id}/accept`, { method: "POST", body: {} }), "已接受");
         return;
       }
       const v: { note?: string } = {};
       const dialog: Dialog = { current: null };
       dialog.current = modal.confirm({
         ...gate(s),
-        title: "Accept an AI inference",
+        title: "接受 AI 推断",
         content: (
           <>
             <Typography.Paragraph style={{ marginBottom: 0 }}>{describeSuggestion(s)}</Typography.Paragraph>
             {noteField(s, v, dialog)}
           </>
         ),
-        onOk: () => run(s.id, () => api(`/suggestions/${s.id}/accept`, { method: "POST", body: v }), "Accepted"),
+        onOk: () => run(s.id, () => api(`/suggestions/${s.id}/accept`, { method: "POST", body: v }), "已接受"),
       });
       return;
     }
@@ -213,23 +213,23 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
     const dialog: Dialog = { current: null };
     dialog.current = modal.confirm({
       ...gate(s),
-      title: "Accept and create node",
+      title: "接受并创建节点",
       content: (
         <>
-          <Input aria-label="Node name" defaultValue={v.name} onChange={(e) => (v.name = e.target.value)} />
+          <Input aria-label="节点名称" defaultValue={v.name} onChange={(e) => (v.name = e.target.value)} />
           {s.payload.similar_to && <Typography.Text type="warning">Possible duplicate of “{s.payload.similar_to}”</Typography.Text>}
           {noteField(s, v, dialog)}
         </>
       ),
-      onOk: () => run(s.id, () => api(`/suggestions/${s.id}/accept`, { method: "POST", body: { name: v.name, ...(v.note ? { note: v.note } : {}) } }), "Accepted and node created"),
+      onOk: () => run(s.id, () => api(`/suggestions/${s.id}/accept`, { method: "POST", body: { name: v.name, ...(v.note ? { note: v.note } : {}) } }), "已接受并创建节点"),
     });
   };
   const acceptSelected = async () => {
     setBusy("batch");
     try {
       const out = await api<AcceptBatchResult>(`/suts/${sutId}/suggestions/accept-batch`, { method: "POST", body: { ids: selected } });
-      if (out.skipped.length) message.warning(`Accepted ${out.accepted.length}, skipped ${out.skipped.length}: ${[...new Set(out.skipped.map((x) => x.message))].join("; ")}`);
-      else message.success(`Accepted ${out.accepted.length}`);
+      if (out.skipped.length) message.warning(`已接受 ${out.accepted.length}，跳过 ${out.skipped.length}：${[...new Set(out.skipped.map((x) => x.message))].join("；")}`);
+      else message.success(`已接受 ${out.accepted.length}`);
       setPicked(null);
       onChanged();
     } catch (err) {
@@ -242,45 +242,45 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
   const aiCount = pending.filter(inferred).length;
   return (
     <>
-      <Typography.Text strong role="status" aria-label="Model suggestions count">{listTitle("Model suggestions", loading || (error && !items.length) ? undefined : shown.length)}</Typography.Text>
+      <Typography.Text strong role="status" aria-label="模型建议数量">{listTitle("模型建议", loading || (error && !items.length) ? undefined : shown.length)}</Typography.Text>
       {pending.length > 0 && (
         <Space wrap style={{ marginBottom: 8 }} data-testid="suggestion-batch">
           <Button type="primary" size="small" disabled={!selected.length} loading={busy === "batch"} onClick={acceptSelected}>
-            Accept selected ({selected.length})
+            接受所选（{selected.length}）
           </Button>
-          <Typography.Text type="secondary">AI inferences and links are not pre-selected: accept them one by one.</Typography.Text>
+          <Typography.Text type="secondary">AI 推断和关系不会预选：请逐条接受。</Typography.Text>
           {aiCount > 0 && (
             <Space size={4}>
-              <Switch size="small" checked={onlyAi} onChange={setOnlyAi} aria-label="Only AI inferences" />
-              <span>Only AI inferences ({aiCount})</span>
+              <Switch size="small" checked={onlyAi} onChange={setOnlyAi} aria-label="仅 AI 推断" />
+              <span>仅 AI 推断（{aiCount}）</span>
             </Space>
           )}
         </Space>
       )}
-      <div className="list-region" role="region" aria-label="Model suggestions rows" tabIndex={0} style={{ maxHeight: LIST_HEIGHT, overflowY: "auto" }}>
+      <div className="list-region" role="region" aria-label="模型建议列表" tabIndex={0} style={{ maxHeight: LIST_HEIGHT, overflowY: "auto" }}>
       <List
         size="small"
         dataSource={shown}
-        locale={{ emptyText: loading ? "Loading suggestions…" : error ? "Suggestions unavailable" : onlyAi ? "No suggestions match the filter" : "No suggestions" }}
+        locale={{ emptyText: loading ? "正在加载建议…" : error ? "无法获取建议" : onlyAi ? "没有符合筛选条件的建议" : "暂无建议" }}
         renderItem={(s) => (
           <List.Item
             actions={
               s.status === "pending"
                 ? [
                     <a key="a" onClick={() => accept(s)} aria-disabled={busy === s.id}>
-                      Accept
+                      接受
                     </a>,
                     <a key="r" onClick={() => reject(s)}>
-                      Reject
+                      拒绝
                     </a>,
                   ]
-                : [<Tag key="s">{s.status === "accepted" ? "Accepted" : "Rejected"}</Tag>]
+                : [<Tag key="s">{s.status === "accepted" ? "已接受" : "已拒绝"}</Tag>]
             }
           >
             <Space align="start">
               {s.status === "pending" && (
                 <Checkbox
-                  aria-label={`Select ${describeSuggestion(s)}`}
+                  aria-label={`选择 ${describeSuggestion(s)}`}
                   checked={selected.includes(s.id)}
                   disabled={s.kind === "link" || inferred(s)}
                   onChange={(e) => toggle(s.id, e.target.checked)}
@@ -303,7 +303,7 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
         )}
       />
       </div>
-      <ListCount label="Model suggestions" count={loading || (error && !items.length) ? undefined : shown.length} total={items.length} filtered={onlyAi} error={error} onRetry={onRetry} />
+      <ListCount label="模型建议" count={loading || (error && !items.length) ? undefined : shown.length} total={items.length} filtered={onlyAi} error={error} onRetry={onRetry} />
     </>
   );
 }

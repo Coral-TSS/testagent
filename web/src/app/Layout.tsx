@@ -27,7 +27,7 @@ import { routeObject, withContext } from "./navContext";
 
 const { Sider, Header, Content } = AntLayout;
 
-/** Where "Back" goes when there is no in-app history (opened from a link / new tab): the parent crumb. */
+/** Where "返回" goes when there is no in-app history (opened from a link / new tab): the parent crumb. */
 export function parentPath(pathname: string, crumbs: { path: string }[]): string {
   const paths = crumbs.map((c) => c.path).filter((p) => p && p.split("?")[0] !== pathname);
   if (paths.length) return paths[paths.length - 1];
@@ -40,14 +40,14 @@ export function BackButton({ fallback }: { fallback: string }) {
   const navigate = useNavigate();
   const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
   return (
-    <Tooltip title={idx > 0 ? "Back to the previous page" : "Back to the parent page"}>
+    <Tooltip title={idx > 0 ? "返回上一页" : "返回上级页面"}>
       <Button
-        aria-label="Back"
+        aria-label="返回"
         size="small"
         icon={<ArrowLeftOutlined />}
         onClick={() => (idx > 0 ? navigate(-1) : navigate(fallback))}
       >
-        Back
+        返回
       </Button>
     </Tooltip>
   );
@@ -79,25 +79,26 @@ export function UserMenu() {
   const { me, signOut, refresh } = useAuth();
   const [changing, setChanging] = useState(false);
   if (!me) return null;
+  const roleLabel = me.role === "admin" ? "管理员" : me.role === "member" ? "成员" : me.role;
   return (
     <>
       <Dropdown
         trigger={["click"]}
         menu={{
           items: [
-            { key: "role", label: `${me.username} · ${me.role}`, disabled: true },
+            { key: "role", label: `${me.username} · ${roleLabel}`, disabled: true },
             { type: "divider" },
-            { key: "password", label: "Change password", onClick: () => setChanging(true) },
-            { key: "logout", label: "Sign out", onClick: () => void signOut() },
+            { key: "password", label: "修改密码", onClick: () => setChanging(true) },
+            { key: "logout", label: "退出登录", onClick: () => void signOut() },
           ],
         }}
       >
-        <Button aria-label="Account" icon={<UserOutlined />}>
+        <Button aria-label="账户" icon={<UserOutlined />}>
           {me.display_name || me.username}
         </Button>
       </Dropdown>
-      <Modal title="Change password" open={changing} footer={null} onCancel={() => setChanging(false)} destroyOnHidden>
-        <Typography.Paragraph type="secondary">Your other sessions are signed out; this one stays signed in.</Typography.Paragraph>
+      <Modal title="修改密码" open={changing} footer={null} onCancel={() => setChanging(false)} destroyOnHidden>
+        <Typography.Paragraph type="secondary">你的其他会话已退出；当前会话保持登录。</Typography.Paragraph>
         <ChangePasswordForm
           onDone={(next) => {
             refresh(next);
@@ -119,7 +120,7 @@ export function Layout() {
   const vq = versionId ? `?version_id=${versionId}` : "";
 
   const items: { key: string; icon: ReactNode; label: ReactNode; children?: unknown[] }[] = [
-    { key: "/suts", icon: <AppstoreOutlined />, label: <Link to="/suts">SUT</Link> },
+    { key: "/suts", icon: <AppstoreOutlined />, label: <Link to="/suts">被测系统</Link> },
   ];
   if (sutId) {
     items.push({
@@ -127,12 +128,12 @@ export function Layout() {
       icon: <ApartmentOutlined />,
       label: sutName || "…",
       children: [
-        { key: `/suts/${sutId}`, label: <Link to={`/suts/${sutId}${vq}`}>Overview</Link> },
-        { key: `/suts/${sutId}/model`, label: <Link to={`/suts/${sutId}/model${vq}`}>Model</Link> },
-        { key: `/suts/${sutId}/review`, label: <Link to={`/suts/${sutId}/review${vq}`}>Model review</Link> },
-        { key: `/suts/${sutId}/apis`, label: <Link to={`/suts/${sutId}/apis${vq}`}>API registry</Link> },
-        { key: `/suts/${sutId}/versions`, label: <Link to={`/suts/${sutId}/versions${vq}`}>Version</Link> },
-        { key: `/suts/${sutId}/cases`, label: <Link to={`/suts/${sutId}/cases${vq}`}>Case library</Link> },
+        { key: `/suts/${sutId}`, label: <Link to={`/suts/${sutId}${vq}`}>概览</Link> },
+        { key: `/suts/${sutId}/model`, label: <Link to={`/suts/${sutId}/model${vq}`}>模型</Link> },
+        { key: `/suts/${sutId}/review`, label: <Link to={`/suts/${sutId}/review${vq}`}>模型评审</Link> },
+        { key: `/suts/${sutId}/apis`, label: <Link to={`/suts/${sutId}/apis${vq}`}>API 注册表</Link> },
+        { key: `/suts/${sutId}/versions`, label: <Link to={`/suts/${sutId}/versions${vq}`}>版本</Link> },
+        { key: `/suts/${sutId}/cases`, label: <Link to={`/suts/${sutId}/cases${vq}`}>用例库</Link> },
       ],
     });
   }
@@ -142,22 +143,22 @@ export function Layout() {
     label: <Link to={withContext(path, sutId, versionId)}>{label}</Link>,
   });
   items.push(
-    global("/cases", <ExperimentOutlined />, "Test cases"),
-    global("/executions", <PlayCircleOutlined />, "Execution"),
-    global("/reports", <FileTextOutlined />, "Report"),
-    global("/defects", <BugOutlined />, "Defect"),
-    { key: "/persons", icon: <TeamOutlined />, label: <Link to="/persons">Person</Link> },
-    { key: "/stats/people", icon: <BarChartOutlined />, label: <Link to="/stats/people">People stats</Link> },
-    { key: "/agent/config", icon: <SettingOutlined />, label: <Link to="/agent/config">Agent settings</Link> },
-    { key: "/agent/runs", icon: <RobotOutlined />, label: <Link to="/agent/runs">Agent runs</Link> },
-    { key: "/agent/tools", icon: <ToolOutlined />, label: <Link to="/agent/tools">Agent tools</Link> },
+    global("/cases", <ExperimentOutlined />, "测试用例"),
+    global("/executions", <PlayCircleOutlined />, "执行"),
+    global("/reports", <FileTextOutlined />, "报告"),
+    global("/defects", <BugOutlined />, "缺陷"),
+    { key: "/persons", icon: <TeamOutlined />, label: <Link to="/persons">人员</Link> },
+    { key: "/stats/people", icon: <BarChartOutlined />, label: <Link to="/stats/people">人员统计</Link> },
+    { key: "/agent/config", icon: <SettingOutlined />, label: <Link to="/agent/config">Agent 设置</Link> },
+    { key: "/agent/runs", icon: <RobotOutlined />, label: <Link to="/agent/runs">Agent 运行</Link> },
+    { key: "/agent/tools", icon: <ToolOutlined />, label: <Link to="/agent/tools">Agent 工具</Link> },
   );
   if (me?.role === "admin") {
-    items.push({ key: "/users", icon: <UsergroupAddOutlined />, label: <Link to="/users">Users</Link> });
+    items.push({ key: "/users", icon: <UsergroupAddOutlined />, label: <Link to="/users">用户</Link> });
   }
 
   const crumbs = [
-    { title: <Link to="/suts">Home</Link> },
+    { title: <Link to="/suts">首页</Link> },
     ...(ctx?.crumbs || []).map((c, i, all) => ({
       title: i === all.length - 1 && !obj.page ? <span>{c.label}</span> : <Link to={c.path}>{c.label}</Link>,
     })),
@@ -210,24 +211,24 @@ export function Layout() {
           </Space>
           <Space style={{ flexShrink: 0 }}>
             <Typography.Text type="secondary" style={{ whiteSpace: "nowrap" }}>
-              Current
+              当前
             </Typography.Text>
             <Select
-              aria-label="Current SUT"
-              placeholder="Choose SUT"
+              aria-label="当前被测系统"
+              placeholder="选择被测系统"
               style={{ width: 200 }}
               value={sutId}
               onChange={onSut}
               options={(suts.data || []).map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
             />
             <Select
-              aria-label="Current version"
-              placeholder={sutId ? "Choose version" : "Choose a SUT first"}
+              aria-label="当前版本"
+              placeholder={sutId ? "选择版本" : "请先选择被测系统"}
               disabled={!sutId || !progress?.versions.length}
               style={{ width: 140 }}
               value={progress?.version?.id}
               onChange={onVersion}
-              options={(progress?.versions || []).map((v) => ({ value: v.id, label: `Version ${v.name}` }))}
+              options={(progress?.versions || []).map((v) => ({ value: v.id, label: `版本 ${v.name}` }))}
             />
             <UserMenu />
           </Space>

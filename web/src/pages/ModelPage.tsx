@@ -67,7 +67,7 @@ export function ModelPage() {
   const pendingLinks = (linkSuggestions.data || []).filter((s) => s.kind === "link");
   const suggest = useApiMutation(() => api<{ created: number }>(`/suts/${sutId}/links/suggest`, { method: "POST" }), {
     invalidate: [["suggestions", sutId]],
-    success: "Link suggestions generated from foreign-key/reference fields",
+    success: "已根据外键/引用字段生成关系建议",
   });
   const kindOptions = Object.entries(KIND_LABEL)
     .filter(([value]) => value !== "relation")
@@ -76,7 +76,7 @@ export function ModelPage() {
 
   const create = useApiMutation((body: Record<string, unknown>) => api<NodeDetail>(`/suts/${sutId}/nodes`, { method: "POST", body }), {
     invalidate: [["graph", sutId]],
-    success: "Node created",
+    success: "节点已创建",
     onSuccess: (node) => {
       setCreating(false);
       form.resetFields();
@@ -89,23 +89,23 @@ export function ModelPage() {
     <>
       <Space style={{ marginBottom: 16, width: "100%", justifyContent: "space-between" }}>
         <Typography.Title level={3} style={{ margin: 0 }}>
-          Model
+          模型
         </Typography.Title>
         <Space>
-          <RouterLink to={`/suts/${sutId}/review`}>Model review (read-only, exportable)</RouterLink>
+          <RouterLink to={`/suts/${sutId}/review`}>模型评审（只读，可导出）</RouterLink>
           <Select
             allowClear
-            placeholder="All groups"
+            placeholder="全部分组"
             style={{ width: 180 }}
             value={moduleId}
             onChange={(v) => setParam("module", v)}
             options={(modules.data || []).map((m) => ({ value: m.id, label: m.name }))}
           />
           <Button icon={<PlusOutlined />} onClick={() => setLinkEdit({ link: null })}>
-            New link
+            新建关系
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-            New node
+            新建节点
           </Button>
         </Space>
       </Space>
@@ -115,7 +115,7 @@ export function ModelPage() {
         items={[
           {
             key: "graph",
-            label: "Graph",
+            label: "图谱",
             children: graph.data && (
               graph.data.nodes.length ? (
                 <GraphCanvas
@@ -125,31 +125,31 @@ export function ModelPage() {
                   onLinkClick={openLink}
                 />
               ) : (
-                <Typography.Text type="secondary">No nodes yet; click “New node” to start modelling.</Typography.Text>
+                <Typography.Text type="secondary">还没有节点；请点击“新建节点”开始建模。</Typography.Text>
               )
             ),
           },
           {
             key: "list",
-            label: listTitle("List", graph.data?.nodes.length),
+            label: listTitle("列表", graph.data?.nodes.length),
             children: (
               <>
                 <Space style={{ marginBottom: 12 }}>
                   <Select
                     allowClear
-                    placeholder="All types"
+                    placeholder="全部类型"
                     style={{ width: 120 }}
                     value={kindFilter}
                     onChange={setKindFilter}
                     options={kindOptions}
                   />
-                  <Input.Search placeholder="Search by name" allowClear onChange={(e) => setSearch(e.target.value)} />
+                  <Input.Search placeholder="按名称搜索" allowClear onChange={(e) => setSearch(e.target.value)} />
                 </Space>
                 <ListTable<ModelNode>
                   className="model-nodes-table"
                   total={fullGraph.data?.nodes.length}
                   filtered={Boolean(moduleId || kindFilter || search)}
-                  label="Model nodes"
+                  label="模型节点"
                   error={graph.isError}
                   onRetry={() => graph.refetch()}
                   size="small"
@@ -158,16 +158,16 @@ export function ModelPage() {
                   dataSource={rows}
                   onRow={(row) => ({ onClick: () => setParam("node", row.id), style: { cursor: "pointer" } })}
                   columns={[
-                    { title: "Name", dataIndex: "name" },
-                    { title: "Type", dataIndex: "kind", width: 90, render: (k) => <Tag color={KIND_COLOR[k]}>{KIND_LABEL[k]}</Tag> },
-                    { title: "Group", dataIndex: "module_id", render: (m) => (m ? moduleName.get(m) : "-") },
+                    { title: "名称", dataIndex: "name" },
+                    { title: "类型", dataIndex: "kind", width: 90, render: (k) => <Tag color={KIND_COLOR[k]}>{KIND_LABEL[k]}</Tag> },
+                    { title: "分组", dataIndex: "module_id", render: (m) => (m ? moduleName.get(m) : "-") },
                     {
-                      title: "Inputs / outputs · fields (type)",
+                      title: "输入 / 输出 · 字段（类型）",
                       render: (_, n) => {
                         if (n.kind === "action") {
                           const ins = n.inputs || [];
                           const outs = n.outputs || [];
-                          if (!ins.length && !outs.length) return <Typography.Text type="secondary">No inputs/outputs yet</Typography.Text>;
+                          if (!ins.length && !outs.length) return <Typography.Text type="secondary">还没有输入/输出</Typography.Text>;
                           const short = (ps: typeof ins) => ps.map((p) => `${p.name}:${typeText(p.data_type)}`).join(", ");
                           return (
                             <Space orientation="vertical" size={0}>
@@ -181,19 +181,19 @@ export function ModelPage() {
                           return fs.length ? (
                             fs.map((f) => `${f.name}:${typeText(f.data_type)}`).join(", ")
                           ) : (
-                            <Typography.Text type="secondary">No fields registered</Typography.Text>
+                            <Typography.Text type="secondary">尚未登记字段</Typography.Text>
                           );
                         }
                         return "—";
                       },
                     },
                     {
-                      title: "Attributes",
+                      title: "属性",
                       width: 170,
                       render: (_, n) =>
                         `conditions ${n.attributes.conditions?.length || 0} / states ${n.attributes.states?.length || 0} / constraints ${n.attributes.constraints?.length || 0}`,
                     },
-                    { title: "Description / purpose", dataIndex: "description", width: 320, render: (text: string | null, n) => <ExpandableDescription text={text} name={n.name} /> },
+                    { title: "描述 / 用途", dataIndex: "description", width: 320, render: (text: string | null, n) => <ExpandableDescription text={text} name={n.name} /> },
                   ]}
                 />
               </>
@@ -201,18 +201,18 @@ export function ModelPage() {
           },
           {
             key: "links",
-            label: listTitle("Links", links.data?.length),
+            label: listTitle("关系", links.data?.length),
             children: (
               <>
                 <Typography.Paragraph type="secondary">
                   A link is an edge between entities with a reading in each direction (e.g. PurchaseOrder belongs to Supplier / Supplier supplies PurchaseOrder), plus cardinality and foreign-key field.
-                  Foreign-key field names match the API/code fields (e.g. supplier_id, order_id).
+                  外键字段名与 API/代码字段一致（例如 supplier_id、order_id）。
                 </Typography.Paragraph>
                 <LinksTable links={links.data} loading={links.isLoading} error={links.isError} onRetry={() => links.refetch()} onOpen={(l) => setLinkEdit({ link: l })} />
                 <Space style={{ margin: "16px 0 8px" }}>
-                  <Typography.Text strong>Link suggestions to review ({pendingLinks.length})</Typography.Text>
+                  <Typography.Text strong>待评审的关系建议（{pendingLinks.length}）</Typography.Text>
                   <Button size="small" loading={suggest.isPending} onClick={() => suggest.mutate()}>
-                    Suggest from foreign-key fields
+                    根据外键字段建议
                   </Button>
                 </Space>
                 <SuggestionList
@@ -250,7 +250,7 @@ export function ModelPage() {
         allNodes={fullGraph.data?.nodes || []}
       />
       <Modal
-        title="New node"
+        title="新建节点"
         open={creating}
         onCancel={() => setCreating(false)}
         onOk={() => form.submit()}
@@ -263,16 +263,16 @@ export function ModelPage() {
           initialValues={{ kind: "entity", module_id: moduleId }}
           onFinish={(v) => create.mutate(v)}
         >
-          <Form.Item name="kind" label="Type" rules={[{ required: true }]}>
+          <Form.Item name="kind" label="类型" rules={[{ required: true }]}>
             <Select options={kindOptions} />
           </Form.Item>
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+          <Form.Item name="name" label="名称" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
           {kind === "entity" && (
-            <Typography.Paragraph type="secondary">Add links between entities with “New link” (readings on both ends, cardinality, foreign key).</Typography.Paragraph>
+            <Typography.Paragraph type="secondary">使用“新建关系”在实体之间添加关系（两端读法、基数、外键）。</Typography.Paragraph>
           )}
-          <Form.Item name="module_id" label="Group">
+          <Form.Item name="module_id" label="分组">
             <Select allowClear options={(modules.data || []).map((m) => ({ value: m.id, label: m.name }))} />
           </Form.Item>
           <Form.Item name="description" label="description">

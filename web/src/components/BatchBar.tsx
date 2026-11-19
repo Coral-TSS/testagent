@@ -21,7 +21,7 @@ export function BatchBar({
   actions,
   onDone,
   onClear,
-  noun = " item(s)",
+  noun = " 项",
 }: {
   selected: string[];
   labelOf: (id: string) => string;
@@ -47,7 +47,7 @@ export function BatchBar({
     }
     setBusy(null);
     onDone(ok);
-    const head = `${a.label}: succeeded ${ok.length}${failed.length ? `, failed ${failed.length}` : ""}`;
+    const head = `${a.label}：成功 ${ok.length}${failed.length ? `，失败 ${failed.length}` : ""}`;
     if (failed.length)
       modal.info({
         title: head,
@@ -56,7 +56,7 @@ export function BatchBar({
           <ul style={{ paddingInlineStart: 18 }}>
             {failed.map((f) => (
               <li key={f.id}>
-                <Tag color="red">failed</Tag>
+                <Tag color="red">失败</Tag>
                 {labelOf(f.id)}: {f.error}
               </li>
             ))}
@@ -68,7 +68,7 @@ export function BatchBar({
   return (
     <Space wrap data-testid="batch-bar" style={{ background: "#f6ffed", border: "1px solid #b7eb8f", borderRadius: 6, padding: "6px 12px", marginBottom: 8 }}>
       <span>
-        Selected {selected.length} {noun}: 
+        已选 {selected.length} {noun}：
       </span>
       {actions.map((a) =>
         a.confirm ? (
@@ -84,7 +84,7 @@ export function BatchBar({
         ),
       )}
       <Button size="small" type="link" onClick={onClear}>
-        Clear selection
+        清除选择
       </Button>
     </Space>
   );

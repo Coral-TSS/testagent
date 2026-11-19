@@ -66,14 +66,14 @@ export function ReadingDrawer({ kind, children, rootClassName, ...props }: Omit<
           className="drawer-width-handle"
           role="separator"
           tabIndex={0}
-          aria-label="Resize drawer"
+          aria-label="调整抽屉宽度"
           aria-orientation="vertical"
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={width}
           aria-valuetext={`${width} pixels`}
           aria-keyshortcuts="ArrowLeft ArrowRight Home End Enter"
-          title="Drag to resize. Left/Right arrows adjust width; Home/End use limits; Enter resets."
+          title="拖动以调整大小。左右方向键调整宽度；Home/End 到极限；Enter 重置。"
           onKeyDown={(event) => {
             const next = event.key === "ArrowLeft" ? width + 32 : event.key === "ArrowRight" ? width - 32 : event.key === "Home" ? min : event.key === "End" ? max : undefined;
             if (event.key !== "Enter" && next === undefined) return;

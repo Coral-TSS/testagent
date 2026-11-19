@@ -32,21 +32,21 @@ const coverage: Coverage = {
 describe("coverage detail", () => {
   it("lists each action / field / relation with the covering cases", () => {
     renderPage(<CoverageDetail coverage={coverage} />);
-    fireEvent.click(screen.getByText("Action coverage detail 1/2"));
+    fireEvent.click(screen.getByText("动作覆盖详情 1/2"));
     expect(screen.getByRole("link", { name: "Approve purchase order" }).getAttribute("href")).toBe("/suts/s1/model?node=a1");
     expect(screen.getByRole("link", { name: "TC-001" }).getAttribute("href")).toBe("/cases/c1");
-    expect(screen.getByText("Not covered")).toBeTruthy();
-    fireEvent.click(screen.getByText("Field coverage detail 1/1"));
+    expect(screen.getByText("未覆盖")).toBeTruthy();
+    fireEvent.click(screen.getByText("字段覆盖详情 1/1"));
     expect(screen.getByRole("link", { name: "PurchaseOrder.amount" }).getAttribute("href")).toBe("/suts/s1/model?node=n1");
-    expect(screen.getByText("Link coverage detail 0/1")).toBeTruthy();
+    expect(screen.getByText("关系覆盖详情 0/1")).toBeTruthy();
   });
 
   it("summarises and lists one case's coverage", () => {
     const c = { actions: [{ id: "a1", name: "Approve purchase order" }], entities: [], fields: [{ id: "f1", name: "PurchaseOrder.amount", node_id: "n1" }], relations: [{ id: "l1", name: "PurchaseOrder belongs to Supplier" }] };
-    expect(coverageSummary(c)).toBe("Actions 1 · Fields 1 · Links 1");
+    expect(coverageSummary(c)).toBe("动作 1 · 字段 1 · 关系 1");
     expect(coverageSummary(undefined)).toBe("-");
     renderPage(<CaseCoverageTags coverage={c} sutId="s1" />);
-    expect(screen.getByText("Actions (1):")).toBeTruthy();
+    expect(screen.getByText("动作 (1)：")).toBeTruthy();
     expect(screen.getByRole("link", { name: "PurchaseOrder belongs to Supplier" }).getAttribute("href")).toBe("/suts/s1/model?view=links");
   });
 });
@@ -62,7 +62,7 @@ describe("back button", () => {
 
 describe("log refs", () => {
   it("renders resolved subjects as links", () => {
-    renderPage(<RefLinks refs={[{ id: "c1", kind: "Case", label: "Large-amount approval (TC-001)", path: "/cases/c1" }, { id: "s1", kind: "SUT", label: "Procurement approval (PROC)", path: "/suts/s1" }]} max={1} />);
+    renderPage(<RefLinks refs={[{ id: "c1", kind: "用例", label: "Large-amount approval (TC-001)", path: "/cases/c1" }, { id: "s1", kind: "被测系统", label: "Procurement approval (PROC)", path: "/suts/s1" }]} max={1} />);
     expect(screen.getByRole("link", { name: "Large-amount approval (TC-001)" }).getAttribute("href")).toBe("/cases/c1");
     expect(screen.getByText("+1")).toBeTruthy();
   });
@@ -107,10 +107,10 @@ describe("AI completion diff", () => {
     expect(screen.getByText("Completed based on REQ-001")).toBeTruthy();
     expect(screen.getByText("+ REQ-001 Approve purchase order")).toBeTruthy();
     // steps and node_ids unchanged → not selectable
-    expect((screen.getByLabelText("Accept Steps") as HTMLInputElement).disabled).toBe(true);
-    fireEvent.click(screen.getByLabelText("Accept Test point"));
-    fireEvent.click(screen.getByRole("button", { name: /Accept selected \(3\)/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /OK/ }));
+    expect((screen.getByLabelText("接受步骤") as HTMLInputElement).disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText("接受测试点"));
+    fireEvent.click(screen.getByRole("button", { name: /接受所选（3）/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /确定/ }));
     expect(onAccept).toHaveBeenCalledWith(["test_data", "expected", "requirement_ids"]);
   });
 });
@@ -128,15 +128,15 @@ describe("batch on the case list", () => {
     });
     renderPage(<CaseList sutId="s1" />);
     await screen.findByText("TC-001");
-    expect(screen.getByTestId("coverage-TC-001").textContent).toBe("Actions 1");
+    expect(screen.getByTestId("coverage-TC-001").textContent).toBe("动作 1");
     const checks = screen.getAllByRole("checkbox");
     fireEvent.click(checks[0]); // select all
     const bar = await screen.findByTestId("batch-bar");
-    expect(within(bar).getByText("Selected 2 case(s):")).toBeTruthy();
-    fireEvent.click(within(bar).getByRole("button", { name: "Set draft" }));
+    expect(within(bar).getByText("已选 2 个用例：")).toBeTruthy();
+    fireEvent.click(within(bar).getByRole("button", { name: "设为草稿" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/cases/batch")).toBe(true));
     const call = calls.find((c) => c.path === "/cases/batch")!;
     expect(call.body).toMatchObject({ case_ids: ["c1", "c2"], action: "draft" });
-    expect(await screen.findByText("Set draft: succeeded 2")).toBeTruthy();
+    expect(await screen.findByText("设为草稿：成功 2")).toBeTruthy();
   });
 });

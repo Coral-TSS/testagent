@@ -23,11 +23,11 @@ describe("UsersPage", () => {
       "PATCH /users/u2": () => ({ body: { ...ROWS[1], locked: false } }),
     });
     renderPage(<UsersPage />);
-    expect(await screen.findByRole("heading", { name: "Users (2)" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "用户 (2)" })).toBeTruthy();
     expect(screen.getByText("locked")).toBeTruthy();
-    expect(screen.getByText("must change password")).toBeTruthy();
-    expect(screen.getByText("you")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+    expect(screen.getByText("必须修改密码")).toBeTruthy();
+    expect(screen.getByText("我")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "解锁" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ unlock: true }));
   });
 
@@ -35,6 +35,6 @@ describe("UsersPage", () => {
     vi.spyOn(auth, "useAuth").mockReturnValue({ me: { ...ADMIN, role: "member" }, signOut: async () => {}, refresh: () => {} });
     mockFetch({});
     renderPage(<UsersPage />);
-    expect(screen.getByText("Only an admin can manage accounts.")).toBeTruthy();
+    expect(screen.getByText("只有管理员可以管理账号。")).toBeTruthy();
   });
 });

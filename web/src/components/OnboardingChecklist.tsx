@@ -9,16 +9,16 @@ const ICON: Record<StepStatus, React.ReactNode> = {
   doing: <ClockCircleOutlined style={{ color: "#1677ff" }} />,
   todo: <MinusCircleOutlined style={{ color: "#bfbfbf" }} />,
 };
-const TEXT: Record<StepStatus, string> = { done: "Done", doing: "In progress", todo: "Not started" };
+const TEXT: Record<StepStatus, string> = { done: "已完成", doing: "进行中", todo: "未开始" };
 const WHY: Record<string, string> = {
-  sut: "Register the SUT's address (environment); the platform checks it is reachable before running",
-  model: "Describe business objects, actions and links; the AI generates cases and scripts from it. Check each item in “Model review” when done",
-  requirements: "Create a version, enter and confirm requirements, then freeze them (creates a model snapshot)",
-  strategy: "Decide the test scope, types and depth",
-  tasks: "Group cases into tasks, choose the executor and environment, optionally scheduled",
-  cases: "Generate cases by AI or by hand; a person reviews and sets them ready; the AI can generate automation scripts",
-  runs: "Run tasks and look at each case's result, screenshots and assertions",
-  results: "Handle defects from failures (assigned to requirements, attributed to people) and read the reports",
+  sut: "登记被测系统的地址（环境）；平台在执行前会检查其是否可达",
+  model: "描述业务对象、动作和关系；AI 据此生成用例和脚本。完成后请在“模型评审”中逐项检查",
+  requirements: "创建版本，录入并确认需求，然后冻结（会生成模型快照）",
+  strategy: "确定测试范围、类型和深度",
+  tasks: "把用例编成任务，选择执行器和环境，必要时设置调度",
+  cases: "用 AI 或手工生成用例；由人评审并设为就绪；AI 可以生成自动化脚本",
+  runs: "执行任务，并查看每个用例的结果、截图和断言",
+  results: "处理失败产生的缺陷（关联到需求、归因到人员）并阅读报告",
 };
 
 /** Onboarding checklist of the main flow with one action per step. */
@@ -38,7 +38,7 @@ export function OnboardingChecklist({ progress }: { progress: SutProgress }) {
               </Button>
             ) : (
               <Button key="o" size="small" type="link" onClick={() => navigate(s.path)}>
-                View
+                查看
               </Button>
             ),
           ]}
