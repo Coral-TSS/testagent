@@ -61,9 +61,9 @@ export function ApisPage() {
       onSuccess: (r) => {
         setImportOpen(false);
         Modal.success({ title: "OpenAPI 导入完成", content:
-            `Total ${r.total} API(s): new ${r.created}, schema updated ${r.updated}` +
-            (r.field_suggestions ? `; entity field suggestions from API fields ${r.field_suggestions} (rename/add; review them under “Model suggestions” on the version page)` : "") +
-            (r.link_suggestions ? `; link suggestions from foreign-key fields ${r.link_suggestions} (review them under “Links” on the model page)` : ""),
+            `共 ${r.total} 条 API：新增 ${r.created}，模式已更新 ${r.updated}` +
+            (r.field_suggestions ? `；根据 API 字段生成了 ${r.field_suggestions} 条实体字段建议（重命名/新增；请在版本页的“模型建议”中评审）` : "") +
+            (r.link_suggestions ? `；根据外键字段生成了 ${r.link_suggestions} 条关系建议（请在模型页的“关系”中评审）` : ""),
         });
       },
     },
@@ -126,8 +126,8 @@ export function ApisPage() {
         </Button>
       </Space>
       <Typography.Paragraph type="secondary">
-        Each API records its purpose, inputs (parameters, body fields), outputs (response fields) and formats; expand a row to see the field table. Actions bound to an API get its inputs/outputs automatically. The AI
-        builds request bodies for generated cases and automation scripts strictly by field name, type and unit (e.g. amount_minor in cents).
+        每条 API 都会记录其用途、输入（参数、请求体字段）、输出（响应字段）和格式；展开行可查看字段表。绑定到 API 的动作会自动获得其输入/输出。AI
+        生成用例和自动化脚本时，会严格按字段名、类型和单位构造请求体（例如 amount_minor 以分为单位）。
       </Typography.Paragraph>
       <SimpleCrud<ApiEndpoint>
         error={apis.isError}
@@ -148,7 +148,7 @@ export function ApisPage() {
             render: (_, row) =>
               row.io && (row.io.inputs.length || row.io.outputs.length) ? (
                 <span>
-                  In {row.io.inputs.length} · out {row.io.outputs.length}
+                  入 {row.io.inputs.length} · 出 {row.io.outputs.length}
                 </span>
               ) : (
                 "—"
@@ -161,7 +161,7 @@ export function ApisPage() {
               r ? (
                 /^https?:\/\//.test(r) ? (
                   <a href={r} target="_blank" rel="noreferrer">
-                    关系
+                    链接
                   </a>
                 ) : (
                   <code>{r}</code>
@@ -231,7 +231,7 @@ export function ApisPage() {
       </Modal>
       <Modal
         open={schemaOf !== null}
-        title={schemaOf ? `Description & fields · ${schemaOf.method} ${schemaOf.path}` : ""}
+        title={schemaOf ? `描述与字段 · ${schemaOf.method} ${schemaOf.path}` : ""}
         width={1000}
         onCancel={() => setSchemaOf(null)}
         onOk={() => schemaForm.submit()}
@@ -266,7 +266,7 @@ export function ApisPage() {
                       <IoParamsTable label="输出参数" addLabel="添加输出字段" />
                     </Form.Item>
                     <Typography.Text type="secondary">
-                      Saving writes back to the API schema (existing constraints such as ranges are kept); switch to the “JSON (advanced)” tab to edit the schema directly.
+                      保存会写回 API 模式（已有约束如取值范围会保留）；可切换到“JSON（高级）”页直接编辑模式。
                     </Typography.Text>
                   </>
                 ),

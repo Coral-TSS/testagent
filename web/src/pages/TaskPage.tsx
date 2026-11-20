@@ -207,7 +207,7 @@ export function TaskPage() {
                 ),
               },
               { title: "原因", dataIndex: "reason", ellipsis: true, render: (r: string | null) => <Typography.Text type="secondary">{r || "-"}</Typography.Text> },
-              { title: "category", dataIndex: "category", render: (c: CaseCategory | undefined) => (c ? <Tag color={CATEGORY_COLOR[c]}>{CATEGORY_LABEL[c]}</Tag> : "-") },
+              { title: "类别", dataIndex: "category", render: (c: CaseCategory | undefined) => (c ? <Tag color={CATEGORY_COLOR[c]}>{CATEGORY_LABEL[c]}</Tag> : "-") },
               { title: "状态", dataIndex: "status", render: (s: string) => <CaseStatusTag status={s} /> },
               { title: "模式", dataIndex: "mode", render: (m: string) => (m === "automated" ? "已自动化" : "手工") },
               { title: "类型", dataIndex: "type_tag" },

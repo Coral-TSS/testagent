@@ -98,12 +98,12 @@ Set them in `.env` (Compose substitutes them) or in `docker-compose.yml`.
 | `TESTAGENT_SESSION_IDLE_HOURS` / `TESTAGENT_SESSION_MAX_DAYS` | `12` / `7` | Session lifetime |
 | `TESTAGENT_ALLOWED_HOSTS` | empty | Extra host names accepted besides `localhost` / `127.0.0.1` / `TESTAGENT_PUBLIC_HOST`, comma separated (e.g. `testagent.lan`) |
 | `TESTAGENT_TIMEZONE` | `UTC` | IANA time zone for schedules and displayed times (e.g. `Europe/Berlin`) |
-| `TESTAGENT_AGENT_LANGUAGE` | `English` | Language of the text the agent writes (requirements, cases, reports) |
+| `TESTAGENT_AGENT_LANGUAGE` | `Simplified Chinese` | Language of the text the agent writes (requirements, cases, reports) |
 | `TESTAGENT_SEED_DEMO` | `1` | Create the demo SUT (model, APIs, people, environment) on first start |
 | `PROCUREMENT_DEMO_BUGS` | `1` | Seeded bugs in the demo SUT on (`1`) or off (`0`) |
 | `DEBIAN_MIRROR` | empty (`deb.debian.org`) | Debian mirror host used while building the image (see [Package mirrors](#package-mirrors-for-the-build)) |
 | `PIP_INDEX_URL` / `NPM_REGISTRY` / `PLAYWRIGHT_DOWNLOAD_HOST` | empty | Python index, npm registry and Chromium download host used while building the image |
-| `UV_IMAGE` | `ghcr.io/astral-sh/uv:0.13` | Image the `uv` binary is copied from |
+| `UV_IMAGE` | `ghcr.nju.edu.cn/astral-sh/uv:0.13` | Image the `uv` binary is copied from. Official fallback: `ghcr.io/astral-sh/uv:0.13` |
 | `PYTHON_IMAGE` / `NODE_IMAGE` | `python:3.12-slim-bookworm` / `node:22-bookworm-slim` | Base images (for a registry proxy) |
 
 Platform settings available in all modes (prefix `TESTAGENT_`): `DATABASE_URL`, `TEST_DATABASE_URL`,
@@ -139,9 +139,10 @@ PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright
 
 Python and npm packages are still verified against the hashes in `uv.lock` and
 `web/package-lock.json`. The base images (`python`, `node`, `postgres`, `caddy`) come from Docker Hub
-and the `uv` binary from `ghcr.io`; if pulling them is slow, configure a registry mirror for the
-Docker daemon (`"registry-mirrors"` in `/etc/docker/daemon.json`, then `systemctl restart docker`),
-and if needed point `UV_IMAGE` at a proxy of `ghcr.io/astral-sh/uv:0.13`.
+and the `uv` binary from the Nanjing University GHCR mirror (`ghcr.nju.edu.cn/astral-sh/uv:0.13`) by default.
+If that mirror is unreachable, set `UV_IMAGE=ghcr.io/astral-sh/uv:0.13` in `.env` to use the official
+GitHub Container Registry. If pulling the Docker Hub images is slow, configure a registry mirror for the
+Docker daemon (`"registry-mirrors"` in `/etc/docker/daemon.json`, then `systemctl restart docker`).
 
 The build needs BuildKit (`docker buildx version`). Downloads are kept in BuildKit cache mounts, so
 later builds only fetch what changed and a code-only change rebuilds in seconds; avoid

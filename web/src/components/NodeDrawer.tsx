@@ -127,7 +127,7 @@ export function NodeDrawer(props: {
     {
       onSuccess: (r) => {
         message.success(
-          `Filled from the bound API: inputs +${r.inputs_added}, outputs +${r.outputs_added}${r.purpose_filled ? "，并补充了用途" : ""}`,
+          `已从绑定的 API 填充：输入 +${r.inputs_added}，输出 +${r.outputs_added}${r.purpose_filled ? "，并补充了用途" : ""}`,
         );
         refresh();
       },
@@ -312,7 +312,7 @@ export function NodeDrawer(props: {
                     const outgoing = l.from_node_id === n.id;
                     const viaOnly = l.via_node_id === n.id && !outgoing && l.to_node_id !== n.id;
                     const text = viaOnly
-                      ? `As “${l.from_name} ${l.forward_name} ${l.to_name}”`
+                      ? `作为「${l.from_name} ${l.forward_name} ${l.to_name}」`
                       : outgoing
                         ? `${n.name} ${l.forward_name} ${l.to_name}`
                         : `${n.name} ${l.reverse_name} ${l.from_name}`;
@@ -321,7 +321,7 @@ export function NodeDrawer(props: {
                         <Space>
                           <span>{text}</span>
                           <Tag color="purple">{CARD_SHORT[l.cardinality]}</Tag>
-                          {l.fk_field && <Typography.Text type="secondary">foreign key {l.fk_field}</Typography.Text>}
+                          {l.fk_field && <Typography.Text type="secondary">外键 {l.fk_field}</Typography.Text>}
                           {l.required && <Tag>必填</Tag>}
                         </Space>
                       </List.Item>

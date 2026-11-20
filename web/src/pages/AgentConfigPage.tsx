@@ -31,7 +31,7 @@ export function AgentConfigPage() {
     setTesting(true);
     try {
       const r = await api<{ ok: boolean; reply: string }>("/agent/config/test", { method: "POST" });
-      message.success(`Connected: ${r.reply}`);
+      message.success(`已连接：${r.reply}`);
     } catch (err) {
       message.error(describeError(err));
     } finally {
@@ -56,16 +56,16 @@ export function AgentConfigPage() {
         </Form.Item>
         <Form.Item
           name="api_key"
-          label="API Key"
-          extra={cfg.data?.api_key_masked ? `Current: ${cfg.data.api_key_masked} (leave empty to keep)` : "未设置"}
+          label="API 密钥"
+          extra={cfg.data?.api_key_masked ? `当前：${cfg.data.api_key_masked}（留空则保持不变）` : "未设置"}
         >
           <Input.Password autoComplete="new-password" />
         </Form.Item>
         <Space wrap>
-          <Form.Item name="temperature" label="temperature">
+          <Form.Item name="temperature" label="温度">
             <InputNumber min={0} max={2} step={0.1} />
           </Form.Item>
-          <Form.Item name="max_tokens" label="max_tokens">
+          <Form.Item name="max_tokens" label="最大 token 数">
             <InputNumber min={1} />
           </Form.Item>
           <Form.Item name="timeout_s" label="超时（秒）">

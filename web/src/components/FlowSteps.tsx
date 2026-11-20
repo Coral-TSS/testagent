@@ -57,7 +57,7 @@ export function FlowSteps({ progress, compact }: { progress: SutProgress; compac
       {progress.next ? (
         <Space orientation="vertical" size={0} style={{ minWidth: 150, flexShrink: 0 }}>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Next
+            下一步
           </Typography.Text>
           <Button type="primary" size="small" icon={<ArrowRightOutlined />} onClick={go}>
             {progress.next.label}

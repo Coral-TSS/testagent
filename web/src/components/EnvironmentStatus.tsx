@@ -20,13 +20,13 @@ function StartButton({ env }: { env: Environment }) {
   const start = useApiMutation(() => api<{ reachable: boolean; message: string }>(`/environments/${env.id}/start`, { method: "POST" }), {
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["env-check", env.id] });
-      if (r.reachable) message.success(`Environment “${env.name}” is reachable`);
+      if (r.reachable) message.success(`环境「${env.name}」已可达`);
       else message.warning(r.message);
     },
   });
   return (
     <Button size="small" type="primary" loading={start.isPending} onClick={() => start.mutate(undefined)}>
-      开始
+      启动
     </Button>
   );
 }
@@ -51,7 +51,7 @@ export function EnvironmentStatus({ env, compact = false }: { env?: Environment;
     <Alert
       type="warning"
       showIcon
-      title={`SUT environment “${env.name}” is unreachable`}
+      title={`被测系统环境「${env.name}」不可达`}
       description={check.data.message}
       action={env.start_command ? <StartButton env={env} /> : undefined}
     />

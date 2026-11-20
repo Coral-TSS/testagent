@@ -90,7 +90,7 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
           }
         >
           <Typography.Paragraph type="secondary">
-            Assembly order: system prompt → entry description → extra guidance for this entry → enabled memories → context. Patches from corrections create a new version that takes effect immediately; you can switch back to any older version at any time (roll back).
+            组装顺序：系统提示词 → 条目说明 → 本条目的额外指引 → 已启用的记忆 → 上下文。纠正产生的补丁会立即另存为新版本并生效；可以随时切换回任意旧版本（回滚）。
           </Typography.Paragraph>
           <ListTable<PromptVersion>
             label="提示词版本"
@@ -105,7 +105,7 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
             columns={[
               { title: "版本", dataIndex: "version", width: 70, render: (v: number, r) => <Space>v{v}{r.active && <Tag color="green">正常</Tag>}</Space> },
               { title: "来源", dataIndex: "created_by", width: 100, render: byLabel },
-              { title: "description", dataIndex: "note", render: (v: string | null, r) => <Space>{v || "-"}{r.source_correction_ids.length > 0 && <Tag>From {r.source_correction_ids.length} correction(s)</Tag>}</Space> },
+              { title: "说明", dataIndex: "note", render: (v: string | null, r) => <Space>{v || "-"}{r.source_correction_ids.length > 0 && <Tag>来自 {r.source_correction_ids.length} 条纠正</Tag>}</Space> },
               { title: "时间", dataIndex: "created_at", width: 140, render: (v: string) => fmtTime(v) },
               {
                 title: "",
@@ -117,7 +117,7 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
                     {!r.active && (
                       <Button
                         size="small"
-                        onClick={() => modal.confirm({ title: `Switch to v${r.version}? `, content: "后续 Agent 运行将使用此版本。", onOk: () => activate.mutateAsync(r.version) })}
+                        onClick={() => modal.confirm({ title: `切换到 v${r.version}？`, content: "后续 Agent 运行将使用此版本。", onOk: () => activate.mutateAsync(r.version) })}
                       >
                         回滚到此版本
                       </Button>
@@ -129,7 +129,7 @@ function PromptsTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; o
           />
         </Card>
       </Col>
-      <Modal title={`Edit ${promptLabel(selected)}`} open={editing !== null} onCancel={() => setEditing(null)} onOk={() => create.mutate()} okText="另存为新版本" confirmLoading={create.isPending} width={720}>
+      <Modal title={`编辑 ${promptLabel(selected)}`} open={editing !== null} onCancel={() => setEditing(null)} onOk={() => create.mutate()} okText="另存为新版本" confirmLoading={create.isPending} width={720}>
         <Input.TextArea aria-label="提示词内容" rows={14} value={editing ?? ""} onChange={(e) => setEditing(e.target.value)} />
         <Input aria-label="版本说明" style={{ marginTop: 8 }} placeholder="版本说明（可选）" value={note} onChange={(e) => setNote(e.target.value)} />
       </Modal>
@@ -183,7 +183,7 @@ function MemoriesTab({ onOpenRun, onCount }: { onOpenRun: (id: string) => void; 
             title: "启用",
             dataIndex: "enabled",
             width: 70,
-            render: (v: boolean, m) => <Switch aria-label={`Enable memory ${m.content.slice(0, 10)}`} size="small" checked={v} onChange={(checked) => toggle.mutate({ id: m.id, enabled: checked })} />,
+            render: (v: boolean, m) => <Switch aria-label={`启用记忆 ${m.content.slice(0, 10)}`} size="small" checked={v} onChange={(checked) => toggle.mutate({ id: m.id, enabled: checked })} />,
           },
         ]}
       />
@@ -299,7 +299,7 @@ function RegistryTab<T extends SkillItem | McpServer>({ path, kind, onCount }: {
   const toggle = useApiMutation((v: { id: string; enabled: boolean }) => api(`${path}/${v.id}`, { method: "PATCH", body: { enabled: v.enabled } }), { invalidate: [key] });
   return (
     <>
-      <Alert type="info" showIcon style={{ marginBottom: 12 }} message={`This version only registers and disables ${kind === "skill" ? "skills" : " 个 MCP 服务器"}; they are never loaded or executed (C07). The agent'的浏览器能力来自平台's built-in Playwright tools.`} />
+      <Alert type="info" showIcon style={{ marginBottom: 12 }} message={`本版本仅登记并启用/停用${kind === "skill" ? "技能" : "MCP 服务器"}，不会加载或执行它们（C07）。Agent 的浏览器能力来自平台内置的 Playwright 工具。`} />
       <Button type="primary" style={{ marginBottom: 12 }} onClick={() => setOpen(true)}>
         {kind === "skill" ? "登记技能" : "登记 MCP 服务器"}
       </Button>
@@ -320,7 +320,7 @@ function RegistryTab<T extends SkillItem | McpServer>({ path, kind, onCount }: {
                 { title: "命令 / URL", key: "cmd", render: (_: unknown, r: T) => (r as McpServer).command || (r as McpServer).url || "-" },
               ]
             : [{ title: "来源", dataIndex: "source", render: (v: string | null) => v || "-" }]),
-          { title: "description", dataIndex: "description", render: (v: string | null) => v || "-" },
+          { title: "描述", dataIndex: "description", render: (v: string | null) => v || "-" },
           { title: "启用", dataIndex: "enabled", width: 70, render: (v: boolean, r: T) => <Switch size="small" checked={v} onChange={(checked) => toggle.mutate({ id: r.id, enabled: checked })} /> },
         ]}
       />
@@ -337,7 +337,7 @@ function RegistryTab<T extends SkillItem | McpServer>({ path, kind, onCount }: {
               <Form.Item name="command" label="命令（stdio）">
                 <Input />
               </Form.Item>
-              <Form.Item name="url" label="URL（http）">
+              <Form.Item name="url" label="地址（http）">
                 <Input />
               </Form.Item>
             </>
@@ -346,7 +346,7 @@ function RegistryTab<T extends SkillItem | McpServer>({ path, kind, onCount }: {
               <Input />
             </Form.Item>
           )}
-          <Form.Item name="description" label="description">
+          <Form.Item name="description" label="描述">
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>

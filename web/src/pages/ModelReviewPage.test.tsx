@@ -11,7 +11,7 @@ describe("ModelReviewPage", () => {
       "PUT /suts/s1/model-review/marks": () => ({ body: { reviewed: true } }),
     });
     renderPage(<ModelReviewPage />, { path: "/suts/:sutId/review", route: "/suts/s1/review" });
-    expect(await screen.findByText("Model review: Procurement system (PROC)")).toBeTruthy();
+    expect(await screen.findByText("模型评审：Procurement system (PROC)")).toBeTruthy();
     expect(screen.getByText("PurchaseOrder belongs to Supplier (N:1, 外键 PurchaseOrder.supplier_id)")).toBeTruthy();
     expect(screen.getByText("Supplier supplies PurchaseOrder")).toBeTruthy();
     expect(screen.getByText("枚举 (draft / done)")).toBeTruthy();
@@ -30,7 +30,7 @@ describe("ModelReviewPage", () => {
   it("filters to unreviewed elements", async () => {
     mockFetch({ "GET /suts/s1/model-review": () => ({ body: review }) });
     renderPage(<ModelReviewPage />, { path: "/suts/:sutId/review", route: "/suts/s1/review" });
-    await screen.findByText("Model review: Procurement system (PROC)");
+    await screen.findByText("模型评审：Procurement system (PROC)");
     fireEvent.click(screen.getByText("未评审"));
     expect(screen.queryByRole("link", { name: "PurchaseOrder" })).toBeNull();
     expect(screen.getByRole("link", { name: "Supplier" })).toBeTruthy();

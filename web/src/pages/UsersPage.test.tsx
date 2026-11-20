@@ -24,7 +24,7 @@ describe("UsersPage", () => {
     });
     renderPage(<UsersPage />);
     expect(await screen.findByRole("heading", { name: "用户 (2)" })).toBeTruthy();
-    expect(screen.getByText("locked")).toBeTruthy();
+    expect(screen.getByText("已锁定")).toBeTruthy();
     expect(screen.getByText("必须修改密码")).toBeTruthy();
     expect(screen.getByText("我")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "解锁" }));

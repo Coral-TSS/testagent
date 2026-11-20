@@ -141,7 +141,7 @@ export function IoParamsTable(props: {
             render: (_, p) => (
               <Space orientation="vertical" size={0}>
                 {p.format && <span>{p.format}</span>}
-                {p.example && <Typography.Text type="secondary">e.g. {p.example}</Typography.Text>}
+                {p.example && <Typography.Text type="secondary">例如 {p.example}</Typography.Text>}
                 {!p.format && !p.example && "—"}
               </Space>
             ),
@@ -151,7 +151,7 @@ export function IoParamsTable(props: {
             width: 130,
             render: (_, p) => (p.field ? <Tag color="purple">{p.field}</Tag> : "—"),
           },
-          { title: "description", dataIndex: "description", render: (d) => d || "—" },
+          { title: "描述", dataIndex: "description", render: (d) => d || "—" },
           ...(editable
             ? [
                 {
@@ -160,7 +160,7 @@ export function IoParamsTable(props: {
                   render: (_: unknown, p: IoParam & { _i: number }) => (
                     <Space size={4}>
                       <Tooltip title="编辑">
-                        <a aria-label={`Edit ${p.name}`} onClick={() => open(p._i)}>
+                        <a aria-label={`编辑 ${p.name}`} onClick={() => open(p._i)}>
                           <EditOutlined />
                         </a>
                       </Tooltip>
@@ -183,7 +183,7 @@ export function IoParamsTable(props: {
       )}
       <Modal
         open={editing !== null}
-        title={editing === "new" ? props.addLabel || "Add parameter" : "编辑参数"}
+        title={editing === "new" ? props.addLabel || "添加参数" : "编辑参数"}
         onCancel={() => setEditing(null)}
         onOk={() => form.submit()}
         forceRender
@@ -222,11 +222,11 @@ export function IoParamsTable(props: {
             </Form.Item>
           )}
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }}>
-            <Form.Item name="format" label="format">
+            <Form.Item name="format" label="格式">
               <Input placeholder="例如：以分为单位的整数、YYYY-MM-DD、uuid" />
             </Form.Item>
             <Form.Item name="example" label="示例">
-              <Input placeholder="e.g. 5000000" />
+              <Input placeholder="例如 5000000" />
             </Form.Item>
           </Space>
           {props.fieldOptions && (
@@ -234,7 +234,7 @@ export function IoParamsTable(props: {
               <Select allowClear showSearch optionFilterProp="label" options={props.fieldOptions} placeholder="例如 PurchaseOrder.amount_minor" />
             </Form.Item>
           )}
-          <Form.Item name="description" label="description">
+          <Form.Item name="description" label="描述">
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>

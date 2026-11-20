@@ -171,7 +171,7 @@ export function PeopleStatsPage() {
           ]}
         />
         <Typography.Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0 }}>
-          Attributed: defects are assigned to the responsible person by cause category (requirement/design → requirement owner, development → developer, test → tester; environment and undetermined are not attributed). Related: holds any role on the defect's requirement. Density = defects ÷ executed cases.
+          已归因：缺陷按原因类别归到负责人（需求/设计 → 需求负责人，开发 → 开发人员，测试 → 测试人员；环境和原因未定的不归因）。相关：在缺陷所属需求上担任任一角色。密度 = 缺陷数 ÷ 已执行用例数。
         </Typography.Paragraph>
       </Card>
     </>

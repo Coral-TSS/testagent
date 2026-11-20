@@ -131,7 +131,7 @@ export function CaseForm({
           </Form.Item>
         </Col>
         <Col span={8}>
-          <Form.Item name="category" label="category" tooltip="需求验证：需求中的业务规则（含输入校验/错误码）；通用质量：幂等、并发、可重复性/数据重置；回归冒烟：守护主路径">
+          <Form.Item name="category" label="类别" tooltip="需求验证：需求中的业务规则（含输入校验/错误码）；通用质量：幂等、并发、可重复性/数据重置；回归冒烟：守护主路径">
             <Select options={categoryOptions} />
           </Form.Item>
         </Col>

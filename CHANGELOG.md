@@ -58,6 +58,8 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 
 - The web UI and the agent's default output language are now Simplified Chinese (Ant Design `zh_CN`, `index.html` `lang="zh-CN"`, and `TESTAGENT_AGENT_LANGUAGE` defaulting to `Simplified Chinese`). Set `TESTAGENT_AGENT_LANGUAGE` to override the agent language (for example `English`).
+- The default `UV_IMAGE` is now the Nanjing University GHCR mirror (`ghcr.nju.edu.cn/astral-sh/uv:0.13`). Set `UV_IMAGE=ghcr.io/astral-sh/uv:0.13` in `.env` to use the official GitHub Container Registry.
+- Leftover English UI chrome from the first Simplified Chinese pass is now translated (stepper, SUT overview, model graph/list/relations/review, API registry, cases, people, reports, and related toasts/help). `TESTAGENT_AGENT_LANGUAGE` in `docker-compose.yml` now also defaults to `Simplified Chinese` (it previously still defaulted to `English`).
 - `DEBIAN_MIRROR` defaults to empty (the image's own `deb.debian.org` sources are kept unchanged).
 - Faster image builds: BuildKit cache mounts for apt, uv and npm downloads (a changed lock file only
   fetches the difference), the image is built once for `testagent` and reused by `demo`, and only

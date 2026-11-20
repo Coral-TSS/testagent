@@ -62,7 +62,7 @@ export function SutOverviewPage() {
         <Card title={sut.data?.name || "被测系统"} loading={sut.isLoading}>
           <Descriptions column={3}>
             <Descriptions.Item label="编号">{sut.data?.code}</Descriptions.Item>
-            <Descriptions.Item label="description">{sut.data?.description || "-"}</Descriptions.Item>
+            <Descriptions.Item label="描述">{sut.data?.description || "-"}</Descriptions.Item>
             <Descriptions.Item label="快捷键">
               <Link to={`/suts/${sutId}/model`}>模型</Link>&nbsp;·&nbsp;<Link to={`/suts/${sutId}/review`}>模型评审</Link>&nbsp;·&nbsp;
               <Link to={`/suts/${sutId}/apis`}>API 注册表</Link>
@@ -75,9 +75,9 @@ export function SutOverviewPage() {
       </Col>
       <Col span={24}>
         <Card
-          title={`Getting started${progress.data?.version ? ` (version ${progress.data.version.name})` : ""}`}
+          title={`开始使用${progress.data?.version ? `（版本 ${progress.data.version.name}）` : ""}`}
           loading={progress.isLoading}
-          extra={progress.data?.next ? `Next: ${progress.data.next.label}` : progress.data ? "主流程已完成" : null}
+          extra={progress.data?.next ? `下一步：${progress.data.next.label}` : progress.data ? "主流程已完成" : null}
         >
           {progress.data && <OnboardingChecklist progress={progress.data} />}
         </Card>
@@ -94,7 +94,7 @@ export function SutOverviewPage() {
             loading={envs.isLoading}
             columns={[
               { title: "名称", dataIndex: "name" },
-              { title: "URL", dataIndex: "base_url" },
+              { title: "地址", dataIndex: "base_url" },
               { title: "状态", width: 150, render: (_: unknown, e: Environment) => <EnvironmentStatus env={e} compact /> },
             ]}
             fields={
@@ -102,7 +102,7 @@ export function SutOverviewPage() {
                 <Form.Item name="name" label="名称" rules={[{ required: true }]}>
                   <Input />
                 </Form.Item>
-                <Form.Item name="base_url" label="URL" rules={[{ required: true, pattern: /^https?:\/\/\S+$/, message: "以 http:// 或 https:// 开头" }]}>
+                <Form.Item name="base_url" label="地址" rules={[{ required: true, pattern: /^https?:\/\/\S+$/, message: "以 http:// 或 https:// 开头" }]}>
                   <Input placeholder="http://127.0.0.1:8766" />
                 </Form.Item>
                 <Form.Item name="credential_ref" label="登录凭据引用（可选）">
@@ -135,14 +135,14 @@ export function SutOverviewPage() {
             loading={modules.isLoading}
             columns={[
               { title: "名称", dataIndex: "name" },
-              { title: "description", dataIndex: "description" },
+              { title: "描述", dataIndex: "description" },
             ]}
             fields={
               <>
                 <Form.Item name="name" label="名称" rules={[{ required: true }]}>
                   <Input />
                 </Form.Item>
-                <Form.Item name="description" label="description">
+                <Form.Item name="description" label="描述">
                   <Input />
                 </Form.Item>
               </>

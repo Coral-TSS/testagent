@@ -164,7 +164,7 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
               {p.to_name} <Input size="small" style={{ width: 120 }} defaultValue={initial.reverse_name} onChange={set("reverse_name")} aria-label="反向名称" /> {p.from_name}
             </span>
             <span>
-              API names: 
+              API 名称：
               <Input size="small" style={{ width: 140 }} defaultValue={initial.forward_api_name} onChange={set("forward_api_name")} /> /{" "}
               <Input size="small" style={{ width: 140 }} defaultValue={initial.reverse_api_name} onChange={set("reverse_api_name")} />
             </span>
@@ -175,7 +175,7 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
               onChange={(c) => (v.cardinality = c)}
               options={Object.entries(CARD_LABEL).map(([value, label]) => ({ value, label }))}
             />
-            {p.fk_field && <Typography.Text type="secondary">foreign key {p.fk_field}</Typography.Text>}
+            {p.fk_field && <Typography.Text type="secondary">外键 {p.fk_field}</Typography.Text>}
             {noteField(s, v, dialog)}
           </Space>
         ),

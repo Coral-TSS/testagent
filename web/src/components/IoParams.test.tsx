@@ -30,7 +30,7 @@ describe("IoParamsTable", () => {
     expect(screen.getByText("必填", { selector: ".ant-tag" })).toBeTruthy();
     expect(screen.getByText("请求体")).toBeTruthy();
     expect(screen.getByText("integer in cents")).toBeTruthy();
-    expect(screen.getByText("e.g. 5000000")).toBeTruthy();
+    expect(screen.getByText("例如 5000000")).toBeTruthy();
     expect(screen.getByText("PurchaseOrder.amount_minor")).toBeTruthy();
     expect(screen.queryByText("添加参数")).toBeNull(); // read-only without onChange
   });

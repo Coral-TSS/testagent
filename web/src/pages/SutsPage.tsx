@@ -18,7 +18,7 @@ export function SutsPage() {
   const [form] = Form.useForm<Schemas["SutIn"]>();
   const create = useApiMutation((body: Schemas["SutIn"]) => api<Sut>("/suts", { method: "POST", body }), {
     invalidate: [["suts"]],
-    success: "创建时间",
+    success: "已创建",
     onSuccess: () => {
       setOpen(false);
       form.resetFields();
@@ -60,7 +60,7 @@ export function SutsPage() {
         }}
         columns={[
           { title: "名称（编号）", dataIndex: "name", render: (name, row) => <Link to={`/suts/${row.id}`}>{`${name} (${row.code})`}</Link> },
-          { title: "description", dataIndex: "description" },
+          { title: "描述", dataIndex: "description" },
           {
             title: "动作",
             width: 200,
@@ -95,7 +95,7 @@ export function SutsPage() {
           <Form.Item name="name" label="名称" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="description" label="description">
+          <Form.Item name="description" label="描述">
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>

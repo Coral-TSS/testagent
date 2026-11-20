@@ -91,7 +91,7 @@ export function ModelReviewPage() {
   return (
     <Space orientation="vertical" size={16} style={{ width: "100%" }} data-testid="model-review">
       <Card
-        title={`Model review: ${objLabel(r.sut.name, r.sut.code)}`}
+        title={`模型评审：${objLabel(r.sut.name, r.sut.code)}`}
         extra={
           <Space>
             <Button icon={<DownloadOutlined />} onClick={exportMd}>
@@ -135,7 +135,7 @@ export function ModelReviewPage() {
             suffix={
               r.pending_by_source?.ai_inferred ? (
                 <Typography.Text type="warning" style={{ fontSize: 12 }} data-testid="pending-ai">
-                  {r.pending_by_source.ai_inferred} AI inferred
+                  {r.pending_by_source.ai_inferred} 条 AI 推断
                 </Typography.Text>
               ) : undefined
             }
@@ -154,7 +154,7 @@ export function ModelReviewPage() {
         </div>
       </Card>
 
-      <Card title={`Entities (${r.entities.length})`}>
+      <Card title={`实体（${r.entities.length}）`}>
         <ListSection label="评审实体" count={r.entities.filter(show).length} total={r.entities.length} filtered={filter !== "all"}>
         {r.entities.length === 0 && <Typography.Text type="secondary">还没有实体；请先在模型页构建模型。</Typography.Text>}
         {r.entities.filter(show).map((e) => (
@@ -175,7 +175,7 @@ export function ModelReviewPage() {
             <ListTable<ReviewField>
               pagination={false}
               scroll={{ y: "min(32vh, 320px)" }}
-              label={`Fields of ${e.name}`}
+              label={`${e.name} 的字段`}
               size="small"
               rowKey="id"
 
@@ -186,9 +186,9 @@ export function ModelReviewPage() {
                 { title: "字段（API 名称）", dataIndex: "name", render: (v: string) => <code>{v}</code> },
                 { title: "显示名", dataIndex: "display_name", render: (v) => v || "-" },
                 { title: "类型", render: (_, f) => typeText(f) },
-                { title: "必填", dataIndex: "required", width: 60, render: (v: boolean) => (v ? "yes" : "no") },
+                { title: "必填", dataIndex: "required", width: 60, render: (v: boolean) => (v ? "是" : "否") },
                 { title: "数据库列名", dataIndex: "storage_name", render: (v) => v || "-" },
-                { title: "description", dataIndex: "description", ellipsis: true },
+                { title: "描述", dataIndex: "description", ellipsis: true },
                 { title: "覆盖", render: (_, f) => <CoverageLine coverage={f.coverage} uncovered={f.uncovered} /> },
               ]}
             />
@@ -214,7 +214,7 @@ export function ModelReviewPage() {
         </ListSection>
       </Card>
 
-      <Card title={`Links (${r.links.length})`}>
+      <Card title={`关系（${r.links.length}）`}>
         <ListSection label="评审关系" count={r.links.filter(show).length} total={r.links.length} filtered={filter !== "all"}>
         <List
           size="small"
@@ -225,10 +225,10 @@ export function ModelReviewPage() {
               <Space orientation="vertical" size={2}>
                 <span>
                   <b>{l.forward}</b> / <b>{l.reverse}</b> <Tag color="purple">{l.cardinality}</Tag>
-                  {l.fk_field && <Typography.Text type="secondary">foreign key {l.fk_field}</Typography.Text>}
-                  {l.via_name && <Typography.Text type="secondary"> junction entity {l.via_name}</Typography.Text>}
+                  {l.fk_field && <Typography.Text type="secondary">外键 {l.fk_field}</Typography.Text>}
+                  {l.via_name && <Typography.Text type="secondary"> 中间实体 {l.via_name}</Typography.Text>}
                   {l.required && <Tag>必填</Tag>}
-                  {l.api_names.length > 0 && <Typography.Text type="secondary"> API name {l.api_names.join(" / ")}</Typography.Text>}
+                  {l.api_names.length > 0 && <Typography.Text type="secondary"> API 名称 {l.api_names.join(" / ")}</Typography.Text>}
                 </span>
                 {l.description && <Typography.Text type="secondary">{l.description}</Typography.Text>}
                 <CoverageLine coverage={l.coverage} uncovered={l.uncovered} />
@@ -240,7 +240,7 @@ export function ModelReviewPage() {
         </ListSection>
       </Card>
 
-      <Card title={`Actions (${r.actions.length})`}>
+      <Card title={`动作（${r.actions.length}）`}>
         <ListSection label="评审动作" count={r.actions.filter(show).length} total={r.actions.length} filtered={filter !== "all"}>
         {r.actions.length === 0 && <Typography.Text type="secondary">还没有动作；请先在模型页构建模型。</Typography.Text>}
         {r.actions.filter(show).map((a) => (
@@ -262,7 +262,7 @@ export function ModelReviewPage() {
               <Descriptions.Item label="API">
                 {a.apis.length ? a.apis.map((x) => <Tag key={x.id}>{`${x.method} ${x.path}`}</Tag>) : <Typography.Text type="warning">未绑定</Typography.Text>}
               </Descriptions.Item>
-              <Descriptions.Item label="类型">{a.inputs.join(", ") || "无"}</Descriptions.Item>
+              <Descriptions.Item label="输入">{a.inputs.join(", ") || "无"}</Descriptions.Item>
               <Descriptions.Item label="输出">{a.outputs.join(", ") || "无"}</Descriptions.Item>
               <Descriptions.Item label="前置条件">{a.preconditions.join("; ") || "无"}</Descriptions.Item>
               <Descriptions.Item label="效果">{a.effects.join("; ") || "无"}</Descriptions.Item>

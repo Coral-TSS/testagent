@@ -42,7 +42,7 @@ export function CasePage() {
   };
   const save = useApiMutation((body: Record<string, unknown>) => api<TestCase>(`/cases/${caseId}`, { method: "PATCH", body }), {
     onSuccess: (c) => {
-      message.success(c.revision !== tc.data?.revision ? `Saved as revision ${c.revision}` : "没有变更");
+      message.success(c.revision !== tc.data?.revision ? `已保存为修订 ${c.revision}` : "没有变更");
       refresh();
     },
   });
@@ -213,13 +213,13 @@ export function CasePage() {
             <Descriptions.Item label="模型快照">{c.snapshot_id ? <Tag color="purple">已记录</Tag> : "-"}</Descriptions.Item>
           </Descriptions>
         </Card>
-        <Card size="small" title={`Revision history (current ${c.revision})`}>
+        <Card size="small" title={`修订历史（当前修订 ${c.revision}）`}>
           <Timeline
             items={(revisions.data || []).map((r) => ({
               key: r.revision,
               content: (
                 <>
-                  <Typography.Text strong>Rev {r.revision}</Typography.Text>{" "}
+                  <Typography.Text strong>修订 {r.revision}</Typography.Text>{" "}
                   <Typography.Text type="secondary">
                     {r.author.startsWith("agent") ? "AI" : r.author} · {fmtTime(r.created_at, { seconds: true })}
                   </Typography.Text>

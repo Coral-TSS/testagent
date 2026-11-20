@@ -116,7 +116,7 @@ describe("ExecutionPage", () => {
     expect(screen.getByText("1/2 通过")).toBeTruthy();
     expect(screen.getAllByText("'approved'").length).toBeGreaterThan(0);
     expect(screen.getByText("amount_minor = 100")).toBeTruthy();
-    expect(screen.getByText("title (not provided, script defaults used)")).toBeTruthy();
+    expect(screen.getByText("title（未提供，使用脚本默认值）")).toBeTruthy();
     expect(screen.getByText("原始输出（pytest）")).toBeTruthy();
   });
 

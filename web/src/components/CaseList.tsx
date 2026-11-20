@@ -158,7 +158,7 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
               <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
               {r.action === "ready" && [...r.ok, ...r.skipped].map((row) => (
                 <div key={row.id} style={{ marginBottom: 12 }}>
-                  {row.task_binding ? <ReadyTaskFeedback feedback={row.task_binding} onNavigate={(path) => { resultDialog.destroy(); navigate(path); }} /> : `${row.code}: task association details unavailable; open the case to check its links.`}
+                  {row.task_binding ? <ReadyTaskFeedback feedback={row.task_binding} onNavigate={(path) => { resultDialog.destroy(); navigate(path); }} /> : `${row.code}：无法显示任务关联详情；请打开该用例查看其关联。`}
                 </div>
               ))}
               <ul style={{ paddingInlineStart: 18 }}>
@@ -326,7 +326,7 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
             ),
           },
           {
-            title: "category",
+            title: "类别",
             dataIndex: "category",
             width: 100,
             filters: Object.entries(CATEGORY_LABEL).map(([value, text]) => ({ value, text })),
@@ -335,7 +335,7 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
               <Space size={2} wrap>
                 <Tag color={CATEGORY_COLOR[cat || "requirement"]}>{CATEGORY_LABEL[cat || "requirement"]}</Tag>
                 {r.category_suggestion && (
-                  <Tooltip title={`Suggested: ${CATEGORY_LABEL[r.category_suggestion.category]}: ${r.category_suggestion.reason || ""} (confirm in the case detail)`}>
+                  <Tooltip title={`建议：${CATEGORY_LABEL[r.category_suggestion.category]}：${r.category_suggestion.reason || ""}（请在用例详情中确认）`}>
                     <Tag color="orange" data-testid={`suggest-${r.code}`}>
                       待确认
                     </Tag>

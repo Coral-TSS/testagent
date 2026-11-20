@@ -171,8 +171,8 @@ export function ModelPage() {
                           const short = (ps: typeof ins) => ps.map((p) => `${p.name}:${typeText(p.data_type)}`).join(", ");
                           return (
                             <Space orientation="vertical" size={0}>
-                              <span>Inputs: {short(ins) || "—"}</span>
-                              <span>Outputs: {short(outs) || "—"}</span>
+                              <span>输入：{short(ins) || "—"}</span>
+                              <span>输出：{short(outs) || "—"}</span>
                             </Space>
                           );
                         }
@@ -191,7 +191,7 @@ export function ModelPage() {
                       title: "属性",
                       width: 170,
                       render: (_, n) =>
-                        `conditions ${n.attributes.conditions?.length || 0} / states ${n.attributes.states?.length || 0} / constraints ${n.attributes.constraints?.length || 0}`,
+                        `条件 ${n.attributes.conditions?.length || 0} / 状态 ${n.attributes.states?.length || 0} / 约束 ${n.attributes.constraints?.length || 0}`,
                     },
                     { title: "描述 / 用途", dataIndex: "description", width: 320, render: (text: string | null, n) => <ExpandableDescription text={text} name={n.name} /> },
                   ]}
@@ -205,7 +205,7 @@ export function ModelPage() {
             children: (
               <>
                 <Typography.Paragraph type="secondary">
-                  A link is an edge between entities with a reading in each direction (e.g. PurchaseOrder belongs to Supplier / Supplier supplies PurchaseOrder), plus cardinality and foreign-key field.
+                  关系是实体之间的一条边，两个方向各有一种读法（例如 PurchaseOrder belongs to Supplier / Supplier supplies PurchaseOrder），并包含基数和外键字段。
                   外键字段名与 API/代码字段一致（例如 supplier_id、order_id）。
                 </Typography.Paragraph>
                 <LinksTable links={links.data} loading={links.isLoading} error={links.isError} onRetry={() => links.refetch()} onOpen={(l) => setLinkEdit({ link: l })} />
@@ -275,7 +275,7 @@ export function ModelPage() {
           <Form.Item name="module_id" label="分组">
             <Select allowClear options={(modules.data || []).map((m) => ({ value: m.id, label: m.name }))} />
           </Form.Item>
-          <Form.Item name="description" label="description">
+          <Form.Item name="description" label="描述">
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>

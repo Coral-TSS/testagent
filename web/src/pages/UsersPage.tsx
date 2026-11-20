@@ -93,8 +93,8 @@ export function UsersPage() {
             title: "状态",
             render: (_, u) => (
               <Space size={4} wrap>
-                {u.is_active ? <Tag color="green">active</Tag> : <Tag>disabled</Tag>}
-                {u.locked && <Tag color="red">locked</Tag>}
+                {u.is_active ? <Tag color="green">启用</Tag> : <Tag>已停用</Tag>}
+                {u.locked && <Tag color="red">已锁定</Tag>}
                 {u.must_change_password && <Tag color="orange">必须修改密码</Tag>}
               </Space>
             ),

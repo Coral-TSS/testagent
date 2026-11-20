@@ -15,8 +15,10 @@
 #   docker compose build --progress=plain
 # Base images can be pointed at a registry mirror/proxy as well (PYTHON_IMAGE, NODE_IMAGE, UV_IMAGE).
 
-# image that provides the uv binary (override if ghcr.io is unreachable, e.g. a registry proxy)
-ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.13
+# uv binary image. Default: Nanjing University GHCR mirror (faster in mainland China).
+# Official fallback if that mirror is unreachable: ghcr.io/astral-sh/uv:0.13
+# (set UV_IMAGE in .env or pass --build-arg).
+ARG UV_IMAGE=ghcr.nju.edu.cn/astral-sh/uv:0.13
 ARG PYTHON_IMAGE=python:3.12-slim-bookworm
 ARG NODE_IMAGE=node:22-bookworm-slim
 FROM ${UV_IMAGE} AS uv

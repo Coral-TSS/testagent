@@ -176,7 +176,7 @@ export function RunPage() {
                 e.failure_kind === "no_script" ? <Tag>无脚本</Tag> : e.status === "failed" || e.status === "error" ? <CauseTag cause={e.suspected_cause} /> : null,
             },
             {
-              title: "description",
+              title: "描述",
               render: (_: unknown, e) => (
                 <Typography.Text ellipsis style={{ maxWidth: 360 }}>
                   {e.status === "blocked" ? "等待手工执行" : e.summary?.headline || e.failed_assertion || e.error || ""}

@@ -350,10 +350,10 @@ export function CaseExecutionPanel({ tc, onAgentRun }: { tc: TestCase; onAgentRu
           { title: "结果", dataIndex: "status", render: (v: string) => <ExecutionStatusTag status={v} /> },
           { title: "执行器", dataIndex: "executor", render: (v: string) => EXECUTOR_LABEL[v] || v },
           { title: "环境", dataIndex: "environment_name", render: (v?: string) => v || "-" },
-          { title: "来源", dataIndex: "task_run_id", render: (v?: string) => (v ? "测试任务" : "Debug/manual") },
+          { title: "来源", dataIndex: "task_run_id", render: (v?: string) => (v ? "测试任务" : "调试 / 手工") },
           { title: "原因", dataIndex: "suspected_cause", render: (v?: ExecutionRow["suspected_cause"]) => <CauseTag cause={v} /> },
           {
-            title: "description",
+            title: "描述",
             render: (_: unknown, r) => (
               <Typography.Text ellipsis style={{ maxWidth: 260 }}>{r.summary?.headline || r.failed_assertion || r.error || ""}</Typography.Text>
             ),

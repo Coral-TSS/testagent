@@ -64,8 +64,14 @@ docker compose config | grep -E 'DEBIAN_MIRROR|PIP_INDEX_URL|NPM_REGISTRY|PLAYWR
 
 不填就是官方源。换镜像不影响安全性：Python 和 npm 包仍按 `uv.lock`、`web/package-lock.json` 里的哈希校验。
 
-基础镜像（`python`、`node`、`postgres`、`caddy`）来自 Docker Hub，`uv` 来自 `ghcr.io`。如果
-`docker compose up -d --build` 一开始拉镜像就很慢或失败，需要给 Docker 配镜像加速器：在阿里云控制台
+基础镜像（`python`、`node`、`postgres`、`caddy`）来自 Docker Hub。`uv` 默认从南京大学的 GHCR
+镜像站拉取（`ghcr.nju.edu.cn/astral-sh/uv:0.13`）。若该镜像站不可用，在 `.env` 里改回官方源：
+
+```ini
+UV_IMAGE=ghcr.io/astral-sh/uv:0.13
+```
+
+如果 `docker compose up -d --build` 一开始拉 Docker Hub 基础镜像就很慢或失败，需要给 Docker 配镜像加速器：在阿里云控制台
 “容器镜像服务 ACR → 镜像工具 → 镜像加速器”拿到你自己的加速地址，写进 `/etc/docker/daemon.json`：
 
 ```json
@@ -85,8 +91,9 @@ docker compose config | grep -E 'DEBIAN_MIRROR|PIP_INDEX_URL|NPM_REGISTRY|PLAYWR
   （Ubuntu/Debian 用 `sudo apt install docker-buildx-plugin`）。
 - 想看每一步花了多少时间：`docker compose build --progress=plain 2>&1 | tee build.log`，
   每步结束会显示 `DONE 12.3s`，`grep DONE build.log` 就能找到最慢的那步。
-- Docker Hub 或 ghcr.io 本身拉不动、又没法配加速器时，可以在 `.env` 里用 `PYTHON_IMAGE`、`NODE_IMAGE`、
-  `UV_IMAGE` 指向你信任的镜像代理地址（默认是官方镜像）。
+- Docker Hub 本身拉不动、又没法配加速器时，可以在 `.env` 里用 `PYTHON_IMAGE`、`NODE_IMAGE`
+  指向你信任的镜像代理。`UV_IMAGE` 默认已是南大镜像站；要用官方源时设
+  `UV_IMAGE=ghcr.io/astral-sh/uv:0.13`。
 
 ## 3. 启动（二选一）
 

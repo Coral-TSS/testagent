@@ -220,15 +220,15 @@ export function LinkEditor({
             <Form.Item name="via_node_id" label="中间实体（可选，例如 OrderLine）">
               <Select allowClear showSearch optionFilterProp="label" options={entityOptions} />
             </Form.Item>
-            <Form.Item name="via_from_attribute_id" label={`Junction entity → ${sides.from_name} foreign key`}>
+            <Form.Item name="via_from_attribute_id" label={`中间实体 → ${sides.from_name} 的外键`}>
               <Select allowClear options={fieldsOf([v?.via_node_id])} disabled={!v?.via_node_id} />
             </Form.Item>
-            <Form.Item name="via_to_attribute_id" label={`Junction entity → ${sides.to_name} foreign key`}>
+            <Form.Item name="via_to_attribute_id" label={`中间实体 → ${sides.to_name} 的外键`}>
               <Select allowClear options={fieldsOf([v?.via_node_id])} disabled={!v?.via_node_id} />
             </Form.Item>
           </Space>
         )}
-        <Form.Item name="description" label="description">
+        <Form.Item name="description" label="描述">
           <Input.TextArea rows={2} placeholder="例如：每个采购订单恰好对应一个供应商" />
         </Form.Item>
       </Form>
@@ -264,12 +264,12 @@ export function LinksTable({ links, loading, onOpen, error, onRetry }: { links?:
               <Typography.Text type="secondary">未设置</Typography.Text>
             ),
         },
-        { title: "必填", width: 60, render: (_, l) => (l.required ? "yes" : "no") },
+        { title: "必填", width: 60, render: (_, l) => (l.required ? "是" : "否") },
         {
           title: "API 名称",
           render: (_, l) => [l.forward_api_name, l.reverse_api_name].filter(Boolean).join(" / ") || "—",
         },
-        { title: "description", dataIndex: "description", ellipsis: true },
+        { title: "描述", dataIndex: "description", ellipsis: true },
       ]}
     />
   );

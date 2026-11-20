@@ -45,7 +45,7 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
   });
   const sync = useApiMutation(() => api<{ added: string[]; removed: string[] }>(`/tasks/${task.id}/sync`, { method: "POST" }), {
     onSuccess: (out) => {
-      message.success(out.added.length || out.removed.length ? `Synced: added ${out.added.join(", ") || "无"}; removed ${out.removed.join(", ") || "无"}` : "已是最新，没有变更");
+      message.success(out.added.length || out.removed.length ? `已同步：新增 ${out.added.join(", ") || "无"}；移除 ${out.removed.join(", ") || "无"}` : "已是最新，没有变更");
       onChanged();
     },
   });
@@ -54,7 +54,7 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
   return (
     <Card size="small" title="用例选择规则" style={{ marginBottom: 16 }} data-testid="task-rule">
       <Typography.Paragraph style={{ marginBottom: 8 }}>
-        Current rule: <b data-testid="rule-text">{describeSelector(task.selector, reqCode)}</b>
+        当前规则：<b data-testid="rule-text">{describeSelector(task.selector, reqCode)}</b>
       </Typography.Paragraph>
       {stats && (
         <Typography.Paragraph type="secondary" data-testid="rule-stats">
@@ -110,7 +110,7 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
           locale={{ emptyText: "没有匹配的就绪用例" }}
           columns={[
             { title: "用例", render: (_: unknown, c) => <Link to={`/cases/${c.id}`}>{`${c.title} (${c.code})`}</Link> },
-            { title: "category", dataIndex: "category", render: (c: CaseCategory) => <Tag color={CATEGORY_COLOR[c]}>{CATEGORY_LABEL[c]}</Tag> },
+            { title: "类别", dataIndex: "category", render: (c: CaseCategory) => <Tag color={CATEGORY_COLOR[c]}>{CATEGORY_LABEL[c]}</Tag> },
             { title: "原因", dataIndex: "reason" },
             { title: "", dataIndex: "excluded", render: (x: boolean) => (x ? <Tag>已手工移除</Tag> : null) },
           ]}

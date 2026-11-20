@@ -87,7 +87,7 @@ export function EventLine({ ev }: { ev: ReportEvent }) {
           <div style={{ marginLeft: 22, fontSize: 12 }}>
             {ev.expected != null && (
               <span>
-                <Typography.Text type="secondary">expected</Typography.Text> <code>{ev.expected}</code>
+                <Typography.Text type="secondary">期望</Typography.Text> <code>{ev.expected}</code>
               </span>
             )}
             {ev.actual != null && (
@@ -200,7 +200,7 @@ function DataUsed({ test, testData }: { test: Report["tests"][number]; testData?
         const value = testData?.[k] ?? test.data_used?.[k];
         return (
           <Tag key={k} color={has ? "blue" : "default"}>
-            {has ? `${k} = ${JSON.stringify(value)}` : `${k} (not provided, script defaults used)`}
+            {has ? `${k} = ${JSON.stringify(value)}` : `${k}（未提供，使用脚本默认值）`}
           </Tag>
         );
       })}

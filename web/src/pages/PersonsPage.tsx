@@ -74,7 +74,7 @@ export function PersonsPage() {
         人员
       </Typography.Title>
       <div style={{ marginBottom: 8 }}>
-        <Switch checked={onlyActive} onChange={setOnlyActive} /> Active only
+        <Switch checked={onlyActive} onChange={setOnlyActive} /> 仅显示在职
       </div>
       <SimpleCrud<Person>
         total={allPersons.data?.length}

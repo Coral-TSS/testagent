@@ -157,7 +157,7 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
                 {f.data_type === "reference" && f.ref_node_name && (
                   <Typography.Text type="secondary">→ {f.ref_node_name}</Typography.Text>
                 )}
-                {f.unit && <Typography.Text type="secondary">Unit: {f.unit}</Typography.Text>}
+                {f.unit && <Typography.Text type="secondary">单位：{f.unit}</Typography.Text>}
               </Space>
             ),
           },
@@ -171,7 +171,7 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
             render: (_, f) => (
               <Space orientation="vertical" size={0}>
                 {f.format && <span>{f.format}</span>}
-                {f.example && <Typography.Text type="secondary">e.g. {f.example}</Typography.Text>}
+                {f.example && <Typography.Text type="secondary">例如 {f.example}</Typography.Text>}
                 {(f.constraints || []).length > 0 && <span>{(f.constraints || []).map((c) => c.text).join("; ")}</span>}
                 {!f.format && !f.example && !(f.constraints || []).length && "—"}
               </Space>
@@ -234,11 +234,11 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
             </Form.Item>
           )}
           <Space style={{ width: "100%" }} styles={{ item: { flex: 1 } }}>
-            <Form.Item name="format" label="format">
+            <Form.Item name="format" label="格式">
               <Input placeholder="例如：以分为单位的整数、YYYY-MM-DD、uuid" />
             </Form.Item>
             <Form.Item name="example" label="示例">
-              <Input placeholder="e.g. 5000000" />
+              <Input placeholder="例如 5000000" />
             </Form.Item>
             <Form.Item name="storage_name" label="数据库列名（如与字段名不同）">
               <Input placeholder="例如 amount" />
@@ -247,7 +247,7 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
           <Form.Item name="constraints_text" label="约束（每行一条）">
             <Input.TextArea rows={3} placeholder="例如至少为 0" />
           </Form.Item>
-          <Form.Item name="description" label="description">
+          <Form.Item name="description" label="描述">
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>

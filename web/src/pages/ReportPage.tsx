@@ -109,7 +109,7 @@ export function ReportPage() {
 
             dataSource={c.by_category}
             columns={[
-              { title: "category", dataIndex: "label" },
+              { title: "类别", dataIndex: "label" },
               { title: "用例", dataIndex: "total" },
               { title: "已执行", render: (_: unknown, r: NonNullable<ReportContent["by_category"]>[number]) => r.executed ?? r.passed + r.failed + r.error },
               { title: "通过", dataIndex: "passed" },
@@ -155,7 +155,7 @@ export function ReportPage() {
         />
       </Card>
 
-      <Card style={{ marginBottom: 16 }} title={`Failures and errors (${c.failures.length})`}>
+      <Card style={{ marginBottom: 16 }} title={`失败与错误（${c.failures.length}）`}>
         <ListTable<FailureRow>
           pagination={false}
           label="失败的执行"
@@ -190,7 +190,7 @@ export function ReportPage() {
         </Card>
       )}
 
-      <Card style={{ marginBottom: 16 }} title={`Defects (${c.defects.length})`}>
+      <Card style={{ marginBottom: 16 }} title={`缺陷（${c.defects.length}）`}>
         <ListTable<DefectRow>
           pagination={false}
           label="报告缺陷"

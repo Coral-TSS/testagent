@@ -28,7 +28,7 @@ describe("AgentToolsPage", () => {
     fireEvent.click(await screen.findByText("用例生成 (generate_cases)"));
     expect(await screen.findByText("正常")).toBeTruthy();
     expect(screen.getByText("AI 已处理")).toBeTruthy();
-    expect(screen.getByText("From 1 correction(s)")).toBeTruthy();
+    expect(screen.getByText("来自 1 条纠正")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "回滚到此版本" }));
     fireEvent.click(await screen.findByRole("button", { name: /确定/ }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/versions/1/activate"))).toBe(true));
@@ -77,7 +77,7 @@ describe("AgentToolsPage", () => {
       "POST /agent/skills": () => ({ status: 201, body: { id: "s1" } }),
     });
     renderPage(<AgentToolsPage />, { path: "/agent/tools", route: "/agent/tools?tab=skills" });
-    expect(await screen.findByText(/never loaded or executed/)).toBeTruthy();
+    expect(await screen.findByText(/不会加载或执行/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "登记技能" }));
     fireEvent.change(await screen.findByLabelText("名称"), { target: { value: "jira-export" } });
     fireEvent.click(screen.getByRole("button", { name: /确定/ }));

@@ -61,7 +61,7 @@ function BoxNode({ data }: NodeProps<FlowNode<Data>>) {
     >
       {handles}
       <div style={{ fontWeight: 600 }}>{node.name}</div>
-      {attrCount > 0 && <div style={{ fontSize: 11, opacity: 0.75 }}>{attrCount} attribute(s)</div>}
+      {attrCount > 0 && <div style={{ fontSize: 11, opacity: 0.75 }}>{attrCount} 个属性</div>}
     </div>
   );
 }

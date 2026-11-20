@@ -63,8 +63,8 @@ export function DefectsPage() {
         actions={[
           { key: "in_progress", label: "设为进行中", run: toStatus("in_progress") },
           { key: "resolved", label: "设为已解决", run: toStatus("resolved") },
-          { key: "closed", label: "关闭", confirm: `Close the ${sel.length} selected defect(s)? (only resolved defects can be closed)`, run: toStatus("closed") },
-          { key: "rejected", label: "拒绝", danger: true, confirm: `Reject the ${sel.length} selected defect(s)?`, run: toStatus("rejected") },
+          { key: "closed", label: "关闭", confirm: `要关闭选中的 ${sel.length} 个缺陷吗？（只能关闭已解决的缺陷）`, run: toStatus("closed") },
+          { key: "rejected", label: "拒绝", danger: true, confirm: `要拒绝选中的 ${sel.length} 个缺陷吗？`, run: toStatus("rejected") },
           { key: "open", label: "重新打开", run: toStatus("open") },
         ]}
       />
