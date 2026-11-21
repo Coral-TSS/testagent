@@ -5,8 +5,9 @@ describe("menuSelection", () => {
     expect(menuSelection("/suts", "")).toBe("sut-list");
     expect(menuSelection("/suts/s1", "")).toBe("sut-overview");
     expect(menuSelection("/suts/s1/model", "")).toBe("model-graph");
-    expect(menuSelection("/suts/s1/review", "")).toBe("model-review");
-    expect(menuSelection("/suts/s1/apis", "")).toBe("model-apis");
+    expect(menuSelection("/versions/v1/model", "")).toBe("model-graph");
+    expect(menuSelection("/versions/v1/review", "")).toBe("model-review");
+    expect(menuSelection("/versions/v1/apis", "")).toBe("model-apis");
     expect(menuSelection("/suts/s1/versions", "")).toBe("sut-requirements");
     expect(menuSelection("/versions/v1", "")).toBe("sut-requirements");
     expect(menuSelection("/versions/v1", "?req=r1")).toBe("sut-requirements");
@@ -34,7 +35,7 @@ describe("menuSelection", () => {
 
 describe("system and version switching", () => {
   it("keeps the same section when the system changes", () => {
-    expect(switchSutTarget("/suts/s1/model", "?version_id=v1", "s2")).toBe("/suts/s2/model");
+    expect(switchSutTarget("/versions/v1/model", "", "s2")).toBe("/suts/s2");
     expect(switchSutTarget("/suts/s1/cases", "?version_id=v1", "s2")).toBe("/suts/s2/cases");
     expect(switchSutTarget("/versions/v1/strategy", "", "s2")).toBe("/suts/s2");
     expect(switchSutTarget("/executions", "?version_id=v1", "s2")).toBe("/executions?sut_id=s2");
@@ -42,6 +43,9 @@ describe("system and version switching", () => {
 
   it("keeps the version section when the version changes", () => {
     expect(switchVersionTarget("/versions/v1/strategy", "?run=a", "v2")).toBe("/versions/v2/strategy?run=a");
+    expect(switchVersionTarget("/versions/v1/model", "?node=n1", "v2")).toBe("/versions/v2/model?node=n1");
+    expect(switchVersionTarget("/versions/v1/review", "", "v2")).toBe("/versions/v2/review");
+    expect(switchVersionTarget("/suts/s1/apis", "?x=1", "v2")).toBe("/versions/v2/apis?x=1");
     expect(switchVersionTarget("/versions/v1/tasks", "", "v2")).toBe("/versions/v2/tasks");
     expect(switchVersionTarget("/suts/s1/cases", "", "v2", "s1")).toBe("/suts/s1/cases?version_id=v2");
     expect(switchVersionTarget("/executions", "", "v2", "s1")).toBe("/executions?version_id=v2&sut_id=s1");

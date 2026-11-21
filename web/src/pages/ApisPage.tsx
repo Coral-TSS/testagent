@@ -2,8 +2,7 @@ import { CloudDownloadOutlined, PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Tag, Typography } from "antd";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
-
+import { usePageSut } from "../app/modelScope";
 import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import type { ApiEndpoint, Environment } from "../api/types";
@@ -15,9 +14,9 @@ import { AppModal } from "../components/panel/AppModal";
 
 /** P04 API registry: method, path, purpose, inputs/outputs (parameters, body, response fields) and formats */
 export function ApisPage() {
-  const { sutId = "" } = useParams();
+  const { sutId, ready } = usePageSut();
   const key = ["apis", sutId];
-  const apis = useQuery({ queryKey: key, queryFn: () => api<ApiEndpoint[]>(`/suts/${sutId}/apis`) });
+  const apis = useQuery({ queryKey: key, queryFn: () => api<ApiEndpoint[]>(`/suts/${sutId}/apis`), enabled: ready });
   const remove = useApiMutation((id: string) => api(`/apis/${id}`, { method: "DELETE" }), { invalidate: [key] });
   const envs = useQuery({ queryKey: ["environments", sutId], queryFn: () => api<Environment[]>(`/suts/${sutId}/environments`) });
   const [importOpen, setImportOpen] = useState(false);

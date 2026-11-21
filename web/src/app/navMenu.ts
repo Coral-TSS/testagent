@@ -15,6 +15,9 @@ export function menuSelection(pathname: string, search: string, sutId?: string):
     return "sut-overview";
   }
   if (parts[0] === "versions" && parts[1]) {
+    if (parts[2] === "model") return "model-graph";
+    if (parts[2] === "review") return "model-review";
+    if (parts[2] === "apis") return "model-apis";
     if (parts[2] === "strategy" || q.get("tab") === "strategy") return "sut-strategy";
     if (parts[2] === "tasks" || q.get("tab") === "tasks") return "sut-tasks";
     if (q.get("tab") === "cases") return "sut-cases";
@@ -52,9 +55,9 @@ export function sutLinks(sutId: string, versionId?: string) {
     executions: withContext("/executions", sutId, versionId),
     defects: withContext("/defects", sutId, versionId),
     reports: withContext("/reports", sutId, versionId),
-    model: `/suts/${sutId}/model`,
-    review: `/suts/${sutId}/review`,
-    apis: `/suts/${sutId}/apis`,
+    model: versionId ? `/versions/${versionId}/model` : "",
+    review: versionId ? `/versions/${versionId}/review` : "",
+    apis: versionId ? `/versions/${versionId}/apis` : "",
     versions: `/suts/${sutId}/versions`,
   };
 }
@@ -62,7 +65,10 @@ export function sutLinks(sutId: string, versionId?: string) {
 /** Stay on the same kind of page when the current system changes. Version ids do not carry over. */
 export function switchSutTarget(pathname: string, search: string, nextSut: string): string {
   const parts = pathname.split("/").filter(Boolean);
+  if (parts[0] === "versions") return `/suts/${nextSut}`;
   if (parts[0] === "suts" && parts[1]) {
+    const sub = parts[2];
+    if (sub === "model" || sub === "review" || sub === "apis" || sub === "versions") return `/suts/${nextSut}`;
     const rest = parts.slice(2).join("/");
     const q = new URLSearchParams(search);
     q.delete("version_id");
@@ -80,7 +86,14 @@ export function switchSutTarget(pathname: string, search: string, nextSut: strin
 
 /** Stay on the same version section (requirements, strategy, tasks) or keep a list filter. */
 export function switchVersionTarget(pathname: string, search: string, versionId: string, sutId?: string): string {
-  const section = pathname.match(/^\/versions\/[^/]+(\/(strategy|tasks))?$/);
+  const legacyModel = pathname.match(/^\/suts\/[^/]+\/(model|review|apis)$/);
+  if (legacyModel) {
+    const q = new URLSearchParams(search);
+    q.delete("version_id");
+    const s = q.toString();
+    return `/versions/${versionId}/${legacyModel[1]}${s ? `?${s}` : ""}`;
+  }
+  const section = pathname.match(/^\/versions\/[^/]+(\/(strategy|tasks|model|review|apis))?$/);
   if (section) {
     const q = new URLSearchParams(search);
     q.delete("tab");

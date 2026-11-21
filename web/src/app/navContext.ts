@@ -41,6 +41,9 @@ const VERSION_TABS: Record<string, string> = {
 const VERSION_SECTIONS: Record<string, string> = {
   strategy: "策略",
   tasks: "任务",
+  model: "模型图谱",
+  review: "模型评审",
+  apis: "API 注册表",
 };
 
 export function routeObject(pathname: string, search: string): RouteObject {

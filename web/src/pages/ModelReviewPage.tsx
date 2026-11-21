@@ -3,8 +3,9 @@ import { DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Card, Checkbox, Descriptions, Input, List, Progress, Segmented, Space, Statistic, Tag, Typography } from "antd";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 
+import { usePageSut } from "../app/modelScope";
 import { api, describeError, download } from "../api/client";
 import type { DataType, ModelReview, ReviewCoverage, ReviewField, ReviewMark } from "../api/types";
 import { DATA_TYPE_LABEL } from "../components/dataTypes";
@@ -41,15 +42,20 @@ function typeText(f: ReviewField) {
 
 /** Read-only review page of a SUT's model with per-element "已评审" marks. */
 export function ModelReviewPage() {
-  const { sutId = "" } = useParams();
+  const { sutId, versionId, ready } = usePageSut();
+  const modelPath = versionId ? `/versions/${versionId}/model` : `/suts/${sutId}/model`;
   const qc = useQueryClient();
   const { message } = App.useApp();
   const [filter, setFilter] = useState<Filter>("all");
-  const review = useQuery({ queryKey: ["model-review", sutId], queryFn: () => api<ModelReview>(`/suts/${sutId}/model-review`) });
+  const review = useQuery({
+    queryKey: ["model-review", sutId, versionId || null],
+    queryFn: () => api<ModelReview>(versionId ? `/versions/${versionId}/model-review` : `/suts/${sutId}/model-review`),
+    enabled: ready,
+  });
 
   const mark = async (target_type: Target, target_id: string, reviewed: boolean, note?: string | null) => {
     try {
-      await api(`/suts/${sutId}/model-review/marks`, { method: "PUT", body: { target_type, target_id, reviewed, note: note || null } });
+      await api(versionId ? `/versions/${versionId}/model-review/marks` : `/suts/${sutId}/model-review/marks`, { method: "PUT", body: { target_type, target_id, reviewed, note: note || null } });
       qc.invalidateQueries({ queryKey: ["model-review", sutId] });
     } catch (err) {
       message.error(describeError(err));
@@ -57,7 +63,7 @@ export function ModelReviewPage() {
   };
   const exportMd = async () => {
     try {
-      await download(`/suts/${sutId}/model-review.md`, {}, `model-review-${review.data?.sut.code || sutId}.md`);
+      await download(versionId ? `/versions/${versionId}/model-review.md` : `/suts/${sutId}/model-review.md`, {}, `model-review-${review.data?.sut.code || sutId}.md`);
     } catch (err) {
       message.error(describeError(err));
     }
@@ -100,7 +106,7 @@ export function ModelReviewPage() {
             <Button icon={<PrinterOutlined />} onClick={() => window.print()}>
               打印
             </Button>
-            <Link to={`/suts/${sutId}/model`}>在模型页编辑</Link>
+            <Link to={modelPath}>在模型页编辑</Link>
           </Space>
         }
       >
@@ -165,7 +171,7 @@ export function ModelReviewPage() {
             style={{ marginBottom: 12 }}
             title={
               <Space>
-                <Link to={`/suts/${sutId}/model?node=${e.id}`}>{e.name}</Link>
+                <Link to={`${modelPath}?node=${e.id}`}>{e.name}</Link>
                 {e.uncovered && <Tag color="orange">未覆盖</Tag>}
               </Space>
             }
@@ -251,7 +257,7 @@ export function ModelReviewPage() {
             style={{ marginBottom: 12 }}
             title={
               <Space>
-                <Link to={`/suts/${sutId}/model?node=${a.id}`}>{a.name}</Link>
+                <Link to={`${modelPath}?node=${a.id}`}>{a.name}</Link>
                 {a.uncovered && <Tag color="orange">未覆盖</Tag>}
               </Space>
             }

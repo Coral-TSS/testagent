@@ -34,16 +34,21 @@ describe("Layout", () => {
       "GET /nav/context": () => ({ body: { sut: { id: "s1", code: "PROC", name: "Procurement system" }, version: { id: "v1", name: "v1", status: "frozen" }, crumbs: [] } }),
       "GET /suts/s1/progress": () => ({ body: progress }),
     });
-    renderPage(<Layout />, { path: "*", route: "/suts/s1/model" });
+    renderPage(<Layout />, { path: "*", route: "/versions/v1/model" });
+    const all = await screen.findByRole("link", { name: "全部被测系统" });
+    expect(all.getAttribute("href")).toBe("/suts");
     const model = await screen.findByRole("link", { name: "模型图谱" });
-    expect(model.getAttribute("href")).toBe("/suts/s1/model");
+    expect(model.getAttribute("href")).toBe("/versions/v1/model");
     expect(model.closest(".ant-menu-item")?.className).toContain("ant-menu-item-selected");
+    expect(screen.getByText("当前系统")).toBeTruthy();
+    expect(screen.getByLabelText("切换被测系统")).toBeTruthy();
+    expect(screen.getByLabelText("切换当前版本")).toBeTruthy();
     expect((await screen.findByRole("link", { name: "版本与需求" })).getAttribute("href")).toBe("/versions/v1");
     expect(screen.getByRole("link", { name: "策略" }).getAttribute("href")).toBe("/versions/v1/strategy");
     expect(screen.getByRole("link", { name: "任务" }).getAttribute("href")).toBe("/versions/v1/tasks");
     expect(screen.getByRole("link", { name: "用例" }).getAttribute("href")).toBe("/suts/s1/cases?version_id=v1");
-    expect(screen.getByRole("link", { name: "模型评审" }).getAttribute("href")).toBe("/suts/s1/review");
-    expect(screen.getByRole("link", { name: "API 注册表" }).getAttribute("href")).toBe("/suts/s1/apis");
+    expect(screen.getByRole("link", { name: "模型评审" }).getAttribute("href")).toBe("/versions/v1/review");
+    expect(screen.getByRole("link", { name: "API 注册表" }).getAttribute("href")).toBe("/versions/v1/apis");
     expect(screen.getAllByRole("link", { name: "执行" }).map((el) => el.getAttribute("href"))).toEqual([
       "/executions?sut_id=s1&version_id=v1",
       "/executions",
@@ -54,5 +59,17 @@ describe("Layout", () => {
     expect(screen.queryByRole("link", { name: "测试用例" })).toBeNull();
     expect(screen.getByLabelText("切换被测系统")).toBeTruthy();
     expect(screen.queryByRole("menuitem", { name: "PROC" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "请先选择被测系统" })).toBeNull();
+  });
+
+  it("keeps the system list as its own entry and hides modeling until a system is open", async () => {
+    mockFetch({ "GET /suts": () => ({ body: [{ id: "s1", code: "PROC", name: "Procurement system" }] }) });
+    renderPage(<Layout />, { path: "*", route: "/suts" });
+    const all = await screen.findByRole("link", { name: "全部被测系统" });
+    expect(all.getAttribute("href")).toBe("/suts");
+    expect(all.closest(".ant-menu-item")?.className).toContain("ant-menu-item-selected");
+    expect(screen.queryByText("当前系统")).toBeNull();
+    expect(screen.queryByRole("link", { name: "模型图谱" })).toBeNull();
+    expect(screen.queryByText("建模")).toBeNull();
   });
 });

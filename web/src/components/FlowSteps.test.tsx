@@ -38,7 +38,7 @@ describe("main-flow step navigation (#12)", () => {
   });
 
   it.each([
-    ["completed", /模型 3 个实体/, "/suts/s1/model"],
+    ["completed", /模型 3 个实体/, "/versions/v1/model"],
     ["pending", /用例 0 个用例/, "/suts/s1/cases?version_id=v1"],
   ])("opens a %s step with a single history entry", async (_status, name, path) => {
     const user = userEvent.setup();

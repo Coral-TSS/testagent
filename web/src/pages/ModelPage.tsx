@@ -4,8 +4,9 @@ import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Button, Form, Input, Select, Space, Tabs, Tag, Typography } from "antd";
 import { useMemo, useRef, useState } from "react";
-import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
 
+import { usePageSut } from "../app/modelScope";
 import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import type { EntityField, Graph, Link, Module, ModelNode, NodeDetail, Suggestion } from "../api/types";
@@ -19,7 +20,7 @@ import { KIND_COLOR, KIND_LABEL } from "../components/StatusTags";
 
 /** P02 model (graph/list share one graph query) + P03 node drawer */
 export function ModelPage() {
-  const { sutId = "" } = useParams();
+  const { sutId, versionId, ready } = usePageSut();
   const [params, setParams] = useSearchParams();
   const moduleId = params.get("module") || undefined;
   const selected = params.get("node");
@@ -39,18 +40,22 @@ export function ModelPage() {
     setParams(next, { replace: true });
   };
 
-  const modules = useQuery({ queryKey: ["modules", sutId], queryFn: () => api<Module[]>(`/suts/${sutId}/modules`) });
+  const scope = versionId ? { version_id: versionId } : undefined;
+  const modules = useQuery({ queryKey: ["modules", sutId], queryFn: () => api<Module[]>(`/suts/${sutId}/modules`), enabled: ready });
   const graph = useQuery({
-    queryKey: ["graph", sutId, moduleId || null],
-    queryFn: () => api<Graph>(`/suts/${sutId}/graph`, { params: { module: moduleId } }),
+    queryKey: ["graph", sutId, versionId || null, moduleId || null],
+    queryFn: () => api<Graph>(`/suts/${sutId}/graph`, { params: { module: moduleId, ...scope } }),
+    enabled: ready,
   });
   const fullGraph = useQuery({
-    queryKey: ["graph", sutId, null],
-    queryFn: () => api<Graph>(`/suts/${sutId}/graph`),
+    queryKey: ["graph", sutId, versionId || null, null],
+    queryFn: () => api<Graph>(`/suts/${sutId}/graph`, { params: scope }),
+    enabled: ready,
   });
   const fields = useQuery({
-    queryKey: ["sut-fields", sutId],
-    queryFn: () => api<EntityField[]>(`/suts/${sutId}/fields`),
+    queryKey: ["sut-fields", sutId, versionId || null],
+    queryFn: () => api<EntityField[]>(`/suts/${sutId}/fields`, { params: scope }),
+    enabled: ready,
   });
   const fieldsByNode = useMemo(() => {
     const out = new Map<string, EntityField[]>();
@@ -62,7 +67,7 @@ export function ModelPage() {
   const rows = graph.data?.nodes.filter(
     (n) => (!kindFilter || n.kind === kindFilter) && (!search || n.name.includes(search)),
   );
-  const links = useQuery({ queryKey: ["links", sutId], queryFn: () => api<Link[]>(`/suts/${sutId}/links`) });
+  const links = useQuery({ queryKey: ["links", sutId, versionId || null], queryFn: () => api<Link[]>(`/suts/${sutId}/links`, { params: scope }), enabled: ready });
   const linkSuggestions = useQuery({
     queryKey: ["suggestions", sutId, "pending"],
     queryFn: () => api<Suggestion[]>(`/suts/${sutId}/suggestions`, { params: { status: "pending" } }),
@@ -77,7 +82,7 @@ export function ModelPage() {
     .map(([value, label]) => ({ value, label }));
   const openLink = (id: string) => setLinkEdit({ link: (links.data || []).find((l) => l.id === id) || null });
 
-  const create = useApiMutation((body: Record<string, unknown>) => api<NodeDetail>(`/suts/${sutId}/nodes`, { method: "POST", body }), {
+  const create = useApiMutation((body: Record<string, unknown>) => api<NodeDetail>(`/suts/${sutId}/nodes`, { method: "POST", body, params: scope }), {
     invalidate: [["graph", sutId]],
     success: "节点已创建",
     onSuccess: (node) => {
@@ -115,7 +120,7 @@ export function ModelPage() {
           模型
         </Typography.Title>
         <Space>
-          <RouterLink to={`/suts/${sutId}/review`}>模型评审（只读，可导出）</RouterLink>
+          <RouterLink to={versionId ? `/versions/${versionId}/review` : `/suts/${sutId}/review`}>模型评审（只读，可导出）</RouterLink>
           <Select
             allowClear
             placeholder="全部分组"

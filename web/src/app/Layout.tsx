@@ -15,7 +15,7 @@ import {
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Breadcrumb, Button, Dropdown, Layout as AntLayout, Menu, Modal, Select, Space, Tooltip, Typography } from "antd";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "../api/client";
@@ -134,54 +134,78 @@ export function Layout() {
   const suts = useQuery({ queryKey: ["suts"], queryFn: () => api<Sut[]>("/suts") });
   const links = sutId ? sutLinks(sutId, versionId) : null;
   const selected = menuSelection(location.pathname, location.search, sutId);
-  const [openKeys, setOpenKeys] = useState(["nav-suts", "nav-model"]);
+  const [openKeys, setOpenKeys] = useState<string[]>(["nav-model"]);
   useEffect(() => {
-    const parent = selected.startsWith("model-") ? "nav-model" : selected.startsWith("sut-") ? "nav-suts" : null;
-    if (parent) setOpenKeys((keys) => (keys.includes(parent) ? keys : [...keys, parent]));
+    if (selected.startsWith("model-")) setOpenKeys((keys) => (keys.includes("nav-model") ? keys : [...keys, "nav-model"]));
   }, [selected]);
 
   const versionTip = "请先创建版本";
-  const sutChildren = sutId && links
-    ? [
-        {
-          key: "sut-switcher",
-          label: (
-            <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-              <Select
-                aria-label="切换被测系统"
-                size="small"
-                style={{ width: "100%" }}
-                value={sutId}
-                onChange={(id) => navigate(switchSutTarget(location.pathname, location.search, id))}
-                options={(suts.data || []).map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
-              />
-            </div>
-          ),
-        },
-        linkItem("sut-overview", links.overview, "概览"),
-        versionId ? linkItem("sut-requirements", links.requirements, "版本与需求") : disabledItem("sut-requirements", "版本与需求", versionTip),
-        versionId ? linkItem("sut-strategy", links.strategy, "策略") : disabledItem("sut-strategy", "策略", versionTip),
-        versionId ? linkItem("sut-tasks", links.tasks, "任务") : disabledItem("sut-tasks", "任务", versionTip),
-        linkItem("sut-cases", links.cases, "用例"),
-        linkItem("sut-executions", links.executions, "执行"),
-        linkItem("sut-defects", links.defects, "缺陷"),
-        linkItem("sut-list", "/suts", "全部被测系统"),
-      ]
-    : [
-        linkItem("sut-list", "/suts", "被测系统列表"),
-        ...(suts.data || []).map((s) => linkItem(`pick-${s.id}`, `/suts/${s.id}`, `${s.name} (${s.code})`)),
-      ];
-  const modelChildren = sutId && links
+  const stopMenu = (e: ReactMouseEvent) => {
+    e.stopPropagation();
+  };
+  const switcher = (label: string, node: ReactNode) => ({
+    key: label,
+    label: (
+      <div onClick={stopMenu} onMouseDown={stopMenu}>
+        {node}
+      </div>
+    ),
+  });
+  const modelChildren = versionId && links
     ? [
         linkItem("model-graph", links.model, "模型图谱"),
         linkItem("model-review", links.review, "模型评审"),
         linkItem("model-apis", links.apis, "API 注册表"),
       ]
-    : [disabledItem("model-need-sut", "请先选择被测系统", "请先在「被测系统」中选择一个系统")];
+    : [
+        disabledItem("model-graph", "模型图谱", versionTip),
+        disabledItem("model-review", "模型评审", versionTip),
+        disabledItem("model-apis", "API 注册表", versionTip),
+      ];
+  const currentSystem = sutId && links
+    ? [{
+        type: "group" as const,
+        label: "当前系统",
+        children: [
+          switcher(
+            "sut-switcher",
+            <Select
+              aria-label="切换被测系统"
+              size="small"
+              style={{ width: "100%" }}
+              value={sutId}
+              onChange={(id) => navigate(switchSutTarget(location.pathname, location.search, id))}
+              options={(suts.data || []).map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
+            />,
+          ),
+          switcher(
+            "version-switcher",
+            <Select
+              aria-label="切换当前版本"
+              size="small"
+              style={{ width: "100%" }}
+              placeholder="请先创建版本"
+              disabled={!progress?.versions.length}
+              value={progress?.version?.id}
+              onChange={(id) => navigate(switchVersionTarget(location.pathname, location.search, id, sutId))}
+              options={(progress?.versions || []).map((v) => ({ value: v.id, label: `版本 ${v.name}` }))}
+            />,
+          ),
+          linkItem("sut-overview", links.overview, "概览"),
+          { key: "nav-model", icon: <ApartmentOutlined />, label: "建模", children: modelChildren },
+          versionId ? linkItem("sut-requirements", links.requirements, "版本与需求") : disabledItem("sut-requirements", "版本与需求", versionTip),
+          versionId ? linkItem("sut-strategy", links.strategy, "策略") : disabledItem("sut-strategy", "策略", versionTip),
+          versionId ? linkItem("sut-tasks", links.tasks, "任务") : disabledItem("sut-tasks", "任务", versionTip),
+          linkItem("sut-cases", links.cases, "用例"),
+          linkItem("sut-executions", links.executions, "执行"),
+          linkItem("sut-defects", links.defects, "缺陷"),
+        ],
+      }]
+    : [];
 
   const items = [
-    { key: "nav-suts", icon: <AppstoreOutlined />, label: "被测系统", children: sutChildren },
-    { key: "nav-model", icon: <ApartmentOutlined />, label: "建模", children: modelChildren },
+    linkItem("sut-list", "/suts", "全部被测系统", <AppstoreOutlined />),
+    ...currentSystem,
     linkItem("global-executions", "/executions", "执行", <PlayCircleOutlined />),
     linkItem("global-defects", "/defects", "缺陷", <BugOutlined />),
     linkItem("global-reports", withContext("/reports", sutId, versionId), "测试报告", <FileTextOutlined />),

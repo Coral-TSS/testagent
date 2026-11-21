@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, Col, Descriptions, Form, Input, Row, Tag } from "antd";
+import { Alert, Card, Col, Descriptions, Form, Input, Row, Tag } from "antd";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client";
@@ -58,14 +58,20 @@ export function SutOverviewPage() {
       <Col span={24}>
         <SutExplainer repoPath={progress.data?.repo_path} closable />
       </Col>
+      {search.get("need_version") === "1" && (
+        <Col span={24}>
+          <Alert type="warning" showIcon message="请先创建版本" description="没有版本就不能建模。请在下方版本列表中新建一个版本。" />
+        </Col>
+      )}
       <Col span={24}>
         <Card title={sut.data?.name || "被测系统"} loading={sut.isLoading}>
           <Descriptions column={3}>
             <Descriptions.Item label="编号">{sut.data?.code}</Descriptions.Item>
             <Descriptions.Item label="描述">{sut.data?.description || "-"}</Descriptions.Item>
             <Descriptions.Item label="快捷键">
-              <Link to={`/suts/${sutId}/model`}>模型</Link>&nbsp;·&nbsp;<Link to={`/suts/${sutId}/review`}>模型评审</Link>&nbsp;·&nbsp;
-              <Link to={`/suts/${sutId}/apis`}>API 注册表</Link>
+              <Link to={progress.data?.version ? `/versions/${progress.data.version.id}/model` : `/suts/${sutId}/versions`}>模型</Link>&nbsp;·&nbsp;
+              <Link to={progress.data?.version ? `/versions/${progress.data.version.id}/review` : `/suts/${sutId}/versions`}>模型评审</Link>&nbsp;·&nbsp;
+              <Link to={progress.data?.version ? `/versions/${progress.data.version.id}/apis` : `/suts/${sutId}/versions`}>API 注册表</Link>
             </Descriptions.Item>
             <Descriptions.Item label="本地测试仓库（存放自动化脚本的 git 仓库）" span={3}>
               <PathText path={progress.data?.repo_path} />

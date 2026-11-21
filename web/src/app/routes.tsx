@@ -1,4 +1,8 @@
-import { Navigate, useSearchParams, type RouteObject } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Navigate, useParams, useSearchParams, type RouteObject } from "react-router-dom";
+
+import { api } from "../api/client";
+import type { SutProgress } from "../api/types";
 
 import { AgentConfigPage } from "../pages/AgentConfigPage";
 import { AgentRunsPage } from "../pages/AgentRunsPage";
@@ -27,6 +31,25 @@ import { VersionSectionPage } from "../pages/VersionSectionPage";
 import { VersionsPage } from "../pages/VersionsPage";
 import { Layout } from "./Layout";
 
+/** Old system-scoped model URLs follow the current version. Without a version, go back to the overview. */
+function LegacyModelRedirect({ section }: { section: "model" | "review" | "apis" }) {
+  const { sutId = "" } = useParams();
+  const [params] = useSearchParams();
+  const progress = useQuery({
+    queryKey: ["progress", sutId, params.get("version_id")],
+    queryFn: () => api<SutProgress>(`/suts/${sutId}/progress`, { params: { version_id: params.get("version_id") } }),
+    enabled: Boolean(sutId),
+    retry: false,
+  });
+  if (progress.isLoading) return null;
+  const versionId = progress.data?.version?.id;
+  if (!versionId) return <Navigate to={`/suts/${sutId}?need_version=1`} replace />;
+  const next = new URLSearchParams(params);
+  next.delete("version_id");
+  const s = next.toString();
+  return <Navigate to={`/versions/${versionId}/${section}${s ? `?${s}` : ""}`} replace />;
+}
+
 /** Old case-library URL: the current system's cases, or the system list when none is named. */
 function CasesRedirect() {
   const [params] = useSearchParams();
@@ -48,9 +71,12 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="/suts" replace /> },
       { path: "suts", element: <SutsPage /> }, // P01
       { path: "suts/:sutId", element: <SutOverviewPage /> },
-      { path: "suts/:sutId/model", element: <ModelPage /> }, // P02 + P03 drawer
-      { path: "suts/:sutId/review", element: <ModelReviewPage /> }, // model review
-      { path: "suts/:sutId/apis", element: <ApisPage /> }, // P04
+      { path: "suts/:sutId/model", element: <LegacyModelRedirect section="model" /> },
+      { path: "suts/:sutId/review", element: <LegacyModelRedirect section="review" /> },
+      { path: "suts/:sutId/apis", element: <LegacyModelRedirect section="apis" /> },
+      { path: "versions/:versionId/model", element: <ModelPage /> },
+      { path: "versions/:versionId/review", element: <ModelReviewPage /> },
+      { path: "versions/:versionId/apis", element: <ApisPage /> },
       { path: "suts/:sutId/versions", element: <VersionsPage /> }, // P05
       { path: "versions/:versionId/strategy", element: <VersionSectionPage section="strategy" /> },
       { path: "versions/:versionId/tasks", element: <VersionSectionPage section="tasks" /> },

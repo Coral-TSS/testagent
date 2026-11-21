@@ -3,6 +3,9 @@ import { routeObject, withContext } from "./navContext";
 describe("routeObject", () => {
   it("maps detail pages to the object shown", () => {
     expect(routeObject("/suts/s1/model", "")).toMatchObject({ kind: "sut", id: "s1", page: "模型图谱" });
+    expect(routeObject("/versions/v1/model", "")).toEqual({ kind: "version", id: "v1", page: "模型图谱" });
+    expect(routeObject("/versions/v1/review", "")).toEqual({ kind: "version", id: "v1", page: "模型评审" });
+    expect(routeObject("/versions/v1/apis", "")).toEqual({ kind: "version", id: "v1", page: "API 注册表" });
     expect(routeObject("/suts/s1/review", "?version_id=v1")).toMatchObject({ kind: "sut", versionId: "v1", page: "模型评审" });
     expect(routeObject("/versions/v1/strategy", "")).toEqual({ kind: "version", id: "v1", page: "策略" });
     expect(routeObject("/versions/v1/tasks", "")).toEqual({ kind: "version", id: "v1", page: "任务" });

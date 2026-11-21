@@ -234,12 +234,13 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
         summary = f"实体 {nodes['entities']} · 动作 {nodes['actions']} · 关系 {links}"
         if pending:
             summary += f" · 待处理建议 {pending}"
+        model_path = f"/versions/{version['id']}/model" if version else f"{base}/versions"
         step(
             "model",
             "done" if model_done else ("doing" if nodes["entities"] or nodes["actions"] else "todo"),
             summary,
-            f"{base}/model",
-            None if model_done else {"label": "构建模型（实体、动作、关系）", "path": f"{base}/model"},
+            model_path,
+            None if model_done else {"label": "构建模型（实体、动作、关系）", "path": model_path},
         )
 
         vpath = f"/versions/{version['id']}" if version else f"{base}/versions"

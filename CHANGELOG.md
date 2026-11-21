@@ -77,6 +77,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Sidebar: 「全部被测系统」 is its own top-level entry. After a system is open, the current
+  system and version switchers and the workflow (including 建模) stay in a current-system
+  area. Modeling follows the current version (`/versions/:id/model`, `/review`, `/apis`);
+  the old `/suts/:id/model` routes redirect there, or back to the overview when there is
+  no version yet.
 - `generate_cases` no longer injects whole-system `action_summaries`, `link_summaries` or
   `api_summaries` into the prompt. Details are read with tools inside the requirement's scope.
   This is a breaking change for clients that depended on those prompt sections.

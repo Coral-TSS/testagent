@@ -12,41 +12,45 @@
 
 ## 2. 左侧导航
 
-侧栏固定，一级项目不随是否选中系统而增减。宽度 240。被测系统、建模默认展开，切换系统时不重挂菜单。
+侧栏固定宽度 240。一级项目不随是否选中系统而把「全部被测系统」换成流程菜单。详见 `nav-versioned-model-supply-chain-demo.md` 第 1 节；与本节冲突时以该文档为准。
 
 一级顺序：
 
-1. **被测系统**（子菜单）
-   - 未选系统：列出全部被测系统（链到各自概览），第一项「被测系统列表」进入 `/suts`。
-   - 已选系统：顶部是当前系统切换器；下面按流程排列：
+1. **全部被测系统**（独立一级，始终可点）→ `/suts`。这是管理系统、进入某个系统的入口，不再嵌在可变形的子菜单里，也不再在选中系统后被挤到底部。
+2. **当前系统区**（仅当已经进入某个被测系统时显示，不是会把第 1 项吃掉的一级）：
+   - 顶部是**当前系统切换**和**当前版本切换**，与顶栏选择器同步。从这里就能换系统、换版本。
+   - 其下按工作流程排列，全部属于当前系统（及当前版本，若该页依赖版本）：
      - 概览 → `/suts/:sutId`
-     - 版本与需求 → `/versions/:versionId`（跟着顶栏版本选择器）
+     - **建模**（子项，跟随当前版本；没有版本时三项都禁用，提示「请先创建版本」）
+       - 模型图谱 → `/versions/:versionId/model`
+       - 模型评审 → `/versions/:versionId/review`
+       - API 注册表 → `/versions/:versionId/apis`
+     - 版本与需求 → `/versions/:versionId`
      - 策略 → `/versions/:versionId/strategy`
      - 任务 → `/versions/:versionId/tasks`
      - 用例 → `/suts/:sutId/cases?version_id=`
      - 执行 → `/executions?sut_id=&version_id=`
      - 缺陷 → `/defects?sut_id=&version_id=`
-   - 版本与需求、策略、任务在没有版本时禁用，提示「请先创建版本」。创建版本仍从概览的「管理版本 / 新建版本」和步骤条进入 `/suts/:id/versions`。
-   - 子菜单底部保留「全部被测系统」，避免列表页失去入口。
-2. **建模**（子菜单，跟随当前系统）
-   - 模型图谱 → `/suts/:sutId/model`
-   - 模型评审 → `/suts/:sutId/review`
-   - API 注册表 → `/suts/:sutId/apis`
-   - 未选系统时只有一项禁用提示「请先选择被测系统」。
-3. **执行**、**缺陷**：保留跨系统的一级入口（不带系统参数，页面内可筛选，默认全部系统）。系统子菜单里的同名项是当前系统的范围。
+   - 版本与需求、策略、任务、建模在没有版本时禁用，提示「请先创建版本」。创建版本仍从概览的「管理版本 / 新建版本」和步骤条进入 `/suts/:id/versions`。
+   - 未进入任何系统时不显示当前系统区，建模也不作为孤立的一级菜单。
+3. **执行**、**缺陷**：保留跨系统的一级入口（不带系统参数，页面内可筛选，默认全部系统）。当前系统区里的同名项是当前系统的范围。
 4. **测试报告**：仍是一级，跨系统，页面内筛选。
 5. 分组 **人员**（人员、人员统计）、**Agent**（设置、运行、工具）、**用户**（仅管理员）。
 
-去掉一级「测试用例」。`/cases` 若查询串里有 `sut` 或 `sut_id`，重定向到该系统的用例页并保留 `version_id`；否则到 `/suts`。`/cases/:caseId` 不变。
+去掉一级「测试用例」。`/cases` 若查询串里有 `sut` 或 `sut_id`，重定向到该系统的用例页并保留 `version_id`；否则到 `/suts`。`/cases/:caseId` 不变。旧的 `/suts/:sutId/model`、`/review`、`/apis` 重定向到当前版本的对应页；没有版本则回到概览并提示先创建版本。
 
-顶栏的系统、版本选择器保留。切换系统时尽量留在同一类页面（模型、评审、API、用例、执行、缺陷、报告）；版本页因为版本号不能沿用，回到新系统的概览。切换版本时，若当前就在 `/versions/:id`、`/strategy` 或 `/tasks`，则换到同一段的新版本。
+顶栏的系统、版本选择器保留。切换系统时尽量留在同一类页面（用例、执行、缺陷、报告）；版本页（含建模）因为版本号不能沿用，回到新系统的概览。切换版本时，若当前就在版本、策略、任务或建模页，则换到同一段的新版本。
 
 ### 2.1 路由
 
 | 路径 | 页面 |
 |---|---|
+| `/versions/:versionId/model` | 模型图谱（当前版本） |
+| `/versions/:versionId/review` | 模型评审（当前版本） |
+| `/versions/:versionId/apis` | API 注册表（在当前版本上下文打开；接口仍按系统登记） |
 | `/versions/:versionId/strategy` | 策略（原策略页签上半） |
 | `/versions/:versionId/tasks` | 任务列表与新建任务 |
+| `/suts/:sutId/model`、`/review`、`/apis` | 重定向到当前版本的对应页；没有版本则回到概览 |
 | `/versions/:versionId?tab=strategy` | 重定向到 `/strategy`，其余查询参数保留 |
 | `/versions/:versionId?tab=tasks` | 重定向到 `/tasks` |
 | `/cases` | 重定向，见上 |
@@ -67,7 +71,7 @@
 | `sut-executions` | 执行列表带了 `sut_id`，或执行/运行详情且已解析出当前系统 |
 | `global-executions` | `/executions` 不带系统，或详情尚不知道系统 |
 | 缺陷 | 与执行同一规则，键为 `sut-defects` / `global-defects` |
-| `model-graph` / `model-review` / `model-apis` | 三个建模页 |
+| `model-graph` / `model-review` / `model-apis` | `/versions/:id/model`、`/review`、`/apis`（旧的 `/suts/:id/model` 等在重定向前也算） |
 | `global-reports` | `/reports` 与报告详情 |
 | `sut-list` 及人员、Agent、用户 | 对应列表页 |
 
@@ -84,7 +88,7 @@
 
 任务面包屑由「测试策略与任务 → `?tab=strategy`」改为「任务 → `/versions/{id}/tasks`」（kind 改为 `tasks`）。有版本的用例面包屑改为系统用例库。对象引用里测试策略的路径一并改掉（`services/labels.py`）。
 
-步骤条标题顺序仍是被测系统 → 模型 → 需求 → 策略 → 任务 → 用例 → 执行 → 结果。模型在菜单里归到「建模」，结果在菜单里是缺陷和测试报告。两边的共同阶段顺序一致。
+步骤条标题顺序仍是被测系统 → 模型 → 需求 → 策略 → 任务 → 用例 → 执行 → 结果。模型在菜单里归到当前系统区的「建模」，路径是 `/versions/{id}/model`；结果在菜单里是缺陷和测试报告。两边的共同阶段顺序一致。
 
 ## 3. 共享组件
 
