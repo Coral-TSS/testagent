@@ -56,7 +56,7 @@ describe("task–case binding", () => {
     renderPage(<TaskPage />, { path: "/tasks/:taskId", route: "/tasks/t1" });
     expect((await screen.findAllByText("需求验证", { selector: ".ant-tag" })).length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByTestId("rule-text").textContent).toBe("在就绪用例中：需求 REQ-001；类别 需求验证"));
-    expect(screen.getByTestId("rule-stats").textContent).toContain("By rule 1 · added manually 1 · removed manually 1");
+    expect(screen.getByTestId("rule-stats").textContent).toContain("按规则 1 · 手工加入 1 · 手工移除 1");
     expect(screen.getByText("规则", { selector: ".ant-tag" })).toBeTruthy();
     expect(screen.getByText("手工", { selector: ".ant-tag" })).toBeTruthy();
     expect(screen.getByText(/Case became ready, added automatically/)).toBeTruthy();

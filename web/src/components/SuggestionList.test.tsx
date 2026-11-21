@@ -72,7 +72,7 @@ describe("SuggestionList sources and batch accept (#6/#4)", () => {
     expect(screen.getByText("模型规则")).toBeTruthy();
     expect(screen.getAllByText("AI 推断")).toHaveLength(2);
     expect(screen.getByText("Basis: 50,000 or more need approval")).toBeTruthy();
-    expect(screen.getByText("Possible duplicate: Create purchase order")).toBeTruthy();
+    expect(screen.getByText("可能重复：Create purchase order")).toBeTruthy();
     expect(screen.getByRole("button", { name: "接受所选（2）" })).toBeTruthy();
     fireEvent.click(screen.getByLabelText("仅 AI 推断"));
     expect(screen.queryByText("OpenAPI")).toBeNull();

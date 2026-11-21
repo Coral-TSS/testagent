@@ -45,7 +45,7 @@ describe("MissingScriptsModal (#18)", () => {
         n++ === 0 ? { status: 409, body: { code: "MISSING_SCRIPTS", message: "no script", related: ["TC-002"] } } : { status: 201, body: { id: "r1" } },
     });
     renderPage(<TaskPage />, { path: "/tasks/:taskId", route: "/tasks/t1" });
-    expect((await screen.findByTestId("gap-tag")).textContent).toContain("1 without script");
+    expect((await screen.findByTestId("gap-tag")).textContent).toContain("1 个缺少脚本");
     fireEvent.click(screen.getByRole("button", { name: "立即执行" }));
     expect(await screen.findByText("该自动化任务中的部分用例还没有自动化脚本")).toBeTruthy();
     expect(screen.getByTestId("gap-list").textContent).toContain("TC-002 Refund");

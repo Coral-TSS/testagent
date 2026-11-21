@@ -144,7 +144,7 @@ export function EntityFields(props: { nodeId: string; sutId: string; entities?: 
               <Space orientation="vertical" size={0}>
                 <Typography.Text code>{f.name}</Typography.Text>
                 {f.display_name && <Typography.Text type="secondary">{f.display_name}</Typography.Text>}
-                {f.storage_name && <Typography.Text type="secondary">DB column: {f.storage_name}</Typography.Text>}
+                {f.storage_name && <Typography.Text type="secondary">数据库列：{f.storage_name}</Typography.Text>}
               </Space>
             ),
           },

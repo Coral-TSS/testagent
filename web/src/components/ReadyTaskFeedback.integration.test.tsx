@@ -52,7 +52,7 @@ describe("Ready task feedback (#11)", () => {
     const panel = await screen.findByRole("region", { name: "任务 TC-001 的关联" });
     expect(within(panel).getByText(/该系统还没有测试任务/)).toBeTruthy();
     expect(within(panel).getByRole("link", { name: "管理测试任务" }).getAttribute("href")).toBe("/versions/v1/tasks");
-    expect(within(panel).getByText(/Ready does not start a run/)).toBeTruthy();
+    expect(within(panel).getByText(/设为就绪不会开始执行/)).toBeTruthy();
   });
 
   it("warns when Ready was saved but a matching task was not confirmed", async () => {
@@ -74,7 +74,7 @@ describe("Ready task feedback (#11)", () => {
     fireEvent.click(within(panel).getByText("为何未加入 2 个任务"));
     expect(within(panel).getByText(/已手工移除；自动规则不会再把它加回来/)).toBeTruthy();
     expect(within(panel).getByText(/任务正在运行；其用例列表不会被更改/)).toBeTruthy();
-    expect(within(panel).getByText("Version V2")).toBeTruthy();
+    expect(within(panel).getByText("版本 V2")).toBeTruthy();
   });
 
   it("shows per-case feedback in a successful batch and opens the task from the dialog", async () => {

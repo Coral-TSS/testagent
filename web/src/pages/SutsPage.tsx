@@ -1,7 +1,7 @@
 import { ListTable } from "../components/ListView";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Form, Input, Modal, Popconfirm, Space, Typography } from "antd";
+import { Button, Form, Input, Popconfirm, Space, Typography } from "antd";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -10,6 +10,7 @@ import { useApiMutation } from "../api/hooks";
 import type { Schemas, Sut } from "../api/types";
 import { EmptyState } from "../components/EmptyState";
 import { SutExplainer } from "../components/SutExplainer";
+import { AppModal } from "../components/panel/AppModal";
 
 /** P01 SUT list */
 export function SutsPage() {
@@ -76,8 +77,9 @@ export function SutsPage() {
           },
         ]}
       />
-      <Modal
+      <AppModal
         title="新建被测系统"
+        help="编号用于仓库和地址，创建后一般不再修改。"
         open={open}
         onCancel={() => setOpen(false)}
         onOk={() => form.submit()}
@@ -99,7 +101,7 @@ export function SutsPage() {
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>
-      </Modal>
+      </AppModal>
     </>
   );
 }

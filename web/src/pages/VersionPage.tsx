@@ -114,7 +114,7 @@ export function VersionPage() {
           <Descriptions
             title={
               <Space>
-                Version {v.name} <VersionStatusTag status={v.status} />
+                版本 {v.name} <VersionStatusTag status={v.status} />
               </Space>
             }
             extra={

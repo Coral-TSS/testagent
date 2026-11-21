@@ -1,5 +1,5 @@
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Form, Input, Select, Space, Tag, Typography } from "antd";
+import { Button, Form, Input, Select, Space, Tag, Typography, type FormInstance } from "antd";
 import { useEffect } from "react";
 
 import type { EntityField, Link, ModelNode, Part, Structure } from "../api/types";
@@ -15,6 +15,12 @@ export const PARTS: [Part, string][] = [
   ["constraint", "约束"],
 ];
 
+export function cleanStructure(value: Structure | null | undefined): Structure {
+  return Object.fromEntries(
+    PARTS.map(([part]) => [part, (value?.[part] || []).filter((item) => item?.text?.trim()).map((item) => ({ text: item.text.trim(), node_id: item.node_id || null, attribute_id: item.attribute_id || null, link_id: item.link_id || null }))]),
+  ) as Structure;
+}
+
 /** Five-part requirement structure; each item may link to a model node, an entity field and a relation. */
 export function StructureEditor({
   value,
@@ -24,6 +30,8 @@ export function StructureEditor({
   disabled,
   saving,
   onSave,
+  form: external,
+  showSave = true,
 }: {
   value?: Structure | null;
   nodes: ModelNode[];
@@ -32,8 +40,11 @@ export function StructureEditor({
   disabled?: boolean;
   saving?: boolean;
   onSave: (s: Structure) => void;
+  form?: FormInstance;
+  showSave?: boolean;
 }) {
-  const [form] = Form.useForm();
+  const [own] = Form.useForm();
+  const form = external || own;
   useEffect(() => {
     form.setFieldsValue(Object.fromEntries(PARTS.map(([p]) => [p, value?.[p] || []])));
   }, [value, form]);
@@ -44,13 +55,7 @@ export function StructureEditor({
     <Form
       form={form}
       disabled={disabled}
-      onFinish={(v: Structure) =>
-        onSave(
-          Object.fromEntries(
-            PARTS.map(([p]) => [p, (v[p] || []).filter((i) => i?.text?.trim()).map((i) => ({ text: i.text.trim(), node_id: i.node_id || null, attribute_id: i.attribute_id || null, link_id: i.link_id || null }))]),
-          ),
-        )
-      }
+      onFinish={(v: Structure) => onSave(cleanStructure(v))}
     >
       {PARTS.map(([part, label]) => (
         <div key={part} style={{ marginBottom: 8 }}>
@@ -106,7 +111,7 @@ export function StructureEditor({
           </Form.List>
         </div>
       ))}
-      {!disabled && (
+      {!disabled && showSave && (
         <Button size="small" htmlType="submit" loading={saving}>
           保存结构
         </Button>

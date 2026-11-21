@@ -26,7 +26,7 @@ export function ReadyTaskFeedback({ feedback, onNavigate }: { feedback: TaskBind
     <li key={task.id} style={{ marginBottom: 8 }}>
       <Space wrap size={4}>
         <a href={`/tasks/${task.id}`} aria-label={`打开任务 ${task.name}`} onClick={(event) => go(event, `/tasks/${task.id}`)}>{task.name}</a>
-        <Tag>Version {task.version_name}</Tag>
+        <Tag>版本 {task.version_name}</Tag>
         <TaskStatusTag status={task.status} />
         {linked && <Tag>{task.source === "rule" ? "自动规则" : "已手工添加"}</Tag>}
       </Space>
@@ -42,7 +42,7 @@ export function ReadyTaskFeedback({ feedback, onNavigate }: { feedback: TaskBind
         title={feedback.sync_warning ? "就绪已保存；任务关联需要关注" : feedback.linked.length ? `已关联 ${feedback.linked.length} 个任务` : "已就绪，但未关联到任何任务"}
         description={
           <Space orientation="vertical" style={{ width: "100%" }}>
-            <Typography.Text>{feedback.code}: Ready does not start a run. Tasks run separately after they are set ready.</Typography.Text>
+            <Typography.Text>{feedback.code}：设为就绪不会开始执行。任务需要另外设为就绪后再执行。</Typography.Text>
             {feedback.linked.length > 0 && <ul style={{ paddingInlineStart: 18, margin: 0 }}>{feedback.linked.map((task) => item(task, true))}</ul>}
             {!feedback.linked.length && !feedback.not_added.length && <Typography.Text>该系统还没有测试任务。请创建策略或添加任务。</Typography.Text>}
             {feedback.not_added.length > 0 && (

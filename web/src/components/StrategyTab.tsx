@@ -165,7 +165,7 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
               <Select mode="tags" style={{ minWidth: 260 }} options={TEST_TYPES.map((t) => ({ value: t, label: t }))} />
             </Form.Item>
             <Form.Item name="intensity" label="深度">
-              <Select allowClear style={{ width: 140 }} options={["light", "standard", "thorough"].map((t) => ({ value: t, label: t }))} />
+              <Select allowClear style={{ width: 140 }} options={[{ value: "light", label: "轻量" }, { value: "standard", label: "标准" }, { value: "thorough", label: "充分" }]} />
             </Form.Item>
           </Space>
           <Form.Item name="notes" label="备注">
@@ -229,16 +229,16 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
           title="任务只引用用例：就绪用例按规则挑选（需求、类别、优先级等），也可以在任务中手工增删；手工变更优先。用例设为就绪时会自动加入匹配的任务。"
         />
         <Form form={taskForm} layout="inline" style={{ marginBottom: 12 }} initialValues={{ kind: "requirement", executor: "agent" }} onFinish={(vals) => createTask.mutate(vals, { onSuccess: () => taskForm.resetFields() })}>
-          <Form.Item name="name" rules={[{ required: true, message: "必填" }]}>
+          <Form.Item name="name" label="任务名称" rules={[{ required: true, message: "必填" }]}>
             <Input placeholder="任务名称" />
           </Form.Item>
-          <Form.Item name="kind">
+          <Form.Item name="kind" label="类型">
             <Select style={{ width: 120 }} options={(Object.keys(KIND_LABEL) as TaskKind[]).map((value) => ({ value, label: KIND_LABEL[value] }))} />
           </Form.Item>
-          <Form.Item name="executor">
-            <Select style={{ width: 100 }} options={Object.entries(EXECUTOR).map(([value, label]) => ({ value, label }))} />
+          <Form.Item name="executor" label="执行者">
+            <Select style={{ width: 120 }} options={Object.entries(EXECUTOR).map(([value, label]) => ({ value, label }))} />
           </Form.Item>
-          <Form.Item name="environment_id">
+          <Form.Item name="environment_id" label="环境">
             <Select allowClear placeholder="环境" style={{ width: 140 }} options={(envs.data || []).map((e) => ({ value: e.id, label: e.name }))} />
           </Form.Item>
           <Button htmlType="submit" loading={createTask.isPending}>
@@ -295,7 +295,7 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
                   {n}
                   {(t.script_gap_count || 0) > 0 && (
                     <Tooltip title="没有自动化脚本的用例：任务执行时会跳过（不执行）">
-                      <Tag color="orange">{t.script_gap_count} without script</Tag>
+                      <Tag color="orange">{t.script_gap_count} 个缺少脚本</Tag>
                     </Tooltip>
                   )}
                 </Space>

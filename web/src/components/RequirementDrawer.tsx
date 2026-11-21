@@ -1,17 +1,18 @@
 import { ReadingDrawer } from "./ReadingDrawer";
 import { RobotOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, Divider, Form, Input, Popconfirm, Select, Space, Tag, Typography } from "antd";
-import { useEffect } from "react";
+import { Alert, App, Button, Divider, Form, Input, Popconfirm, Select, Space, Tag, Typography } from "antd";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { api } from "../api/client";
+import { api, describeError } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import type { AiOutcome, EntityField, Graph, Link as ModelLink, Requirement } from "../api/types";
 import { fieldLabel } from "./EntityFields";
-import { PeopleRolePicker } from "./PeopleRolePicker";
+import { PeopleRolePicker, peoplePayload } from "./PeopleRolePicker";
+import { confirmDiscard } from "./panel/UnsavedGuard";
 import { RequirementStatusTag } from "./StatusTags";
-import { StructureEditor } from "./StructureEditor";
+import { StructureEditor, cleanStructure } from "./StructureEditor";
 import { RequirementCoverage } from "./CoverageDetail";
 import { SuggestionList } from "./SuggestionList";
 import { objLabel } from "./ObjLink";
@@ -26,7 +27,11 @@ export function RequirementDrawer(props: {
 }) {
   const { reqId, sutId, locked } = props;
   const qc = useQueryClient();
+  const { message, modal } = App.useApp();
   const [form] = Form.useForm();
+  const [peopleForm] = Form.useForm();
+  const [structureForm] = Form.useForm();
+  const [saving, setSaving] = useState(false);
   const req = useQuery({
     queryKey: ["requirement", reqId],
     queryFn: () => api<Requirement>(`/requirements/${reqId}`),
@@ -52,10 +57,26 @@ export function RequirementDrawer(props: {
     qc.invalidateQueries({ queryKey: ["requirements"] });
     qc.invalidateQueries({ queryKey: ["suggestions", sutId] });
   };
-  const opts = { onSuccess: refresh };
-  const update = useApiMutation((body: Record<string, unknown>) => api(`/requirements/${reqId}`, { method: "PATCH", body }), { ...opts, success: "已保存" });
-  const people = useApiMutation((body: unknown) => api(`/requirements/${reqId}/people`, { method: "PUT", body }), { ...opts, success: "人员已保存" });
-  const structure = useApiMutation((body: unknown) => api(`/requirements/${reqId}/structure`, { method: "PUT", body }), { ...opts, success: "结构已保存" });
+  const saveAll = async () => {
+    const basics = await form.validateFields();
+    setSaving(true);
+    try {
+      await api(`/requirements/${reqId}`, { method: "PATCH", body: basics });
+      await api(`/requirements/${reqId}/people`, { method: "PUT", body: peoplePayload(peopleForm.getFieldsValue()) });
+      await api(`/requirements/${reqId}/structure`, { method: "PUT", body: cleanStructure(structureForm.getFieldsValue()) });
+      message.success("已保存");
+      refresh();
+    } catch (err) {
+      message.error(describeError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const close = async () => {
+    const dirty = form.isFieldsTouched() || peopleForm.isFieldsTouched() || structureForm.isFieldsTouched();
+    if (dirty && !(await confirmDiscard(modal))) return;
+    props.onClose();
+  };
   const ai = useApiMutation(() => api<AiOutcome>(`/requirements/${reqId}/structure`, { method: "POST" }), {
     onSuccess: (out) => {
       refresh();
@@ -63,14 +84,22 @@ export function RequirementDrawer(props: {
       props.onOpenRun(out.agent_run_id);
     },
   });
-  const confirm = useApiMutation(() => api(`/requirements/${reqId}/confirm`, { method: "POST" }), { ...opts, success: "需求已确认" });
+  const confirm = useApiMutation(() => api(`/requirements/${reqId}/confirm`, { method: "POST" }), { onSuccess: refresh, success: "需求已确认" });
   const r = req.data;
   const editable = !locked;
 
   return (
     <ReadingDrawer kind="requirement"
       open={Boolean(reqId)}
-      onClose={props.onClose}
+      onClose={() => void close()}
+      footer={
+        r && editable ? (
+          <Space>
+            <Button onClick={() => void close()}>取消</Button>
+            <Button type="primary" loading={saving} onClick={() => void saveAll()}>保存</Button>
+          </Space>
+        ) : null
+      }
       title={
         r ? (
           <Space>
@@ -99,7 +128,7 @@ export function RequirementDrawer(props: {
       {r && (
         <>
           {locked && <Alert type="info" showIcon style={{ marginBottom: 12 }} title="该版本的需求已冻结且只读。要修改请先解冻版本（必须填写原因）。" />}
-          <Form name="requirement-detail" form={form} layout="vertical" disabled={!editable} onFinish={(v) => update.mutate(v)}>
+          <Form name="requirement-detail" form={form} layout="vertical" disabled={!editable}>
             <Form.Item name="title" label="标题" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
@@ -109,23 +138,19 @@ export function RequirementDrawer(props: {
             <Form.Item name="raw_text" label="需求正文">
               <Input.TextArea autoSize={{ minRows: 4 }} />
             </Form.Item>
-            {editable && (
-              <Button size="small" htmlType="submit" loading={update.isPending}>
-                保存基本信息
-              </Button>
-            )}
           </Form>
           <Divider titlePlacement="start">负责人</Divider>
-          <PeopleRolePicker value={r.people} disabled={!editable} saving={people.isPending} onSave={(p) => people.mutate(p)} />
+          <PeopleRolePicker form={peopleForm} showSave={false} value={r.people} disabled={!editable} onSave={() => undefined} />
           <Divider titlePlacement="start">结构（执行者 / 前置条件 / 动作 / 预期结果 / 约束）</Divider>
           <StructureEditor
+            form={structureForm}
+            showSave={false}
             value={r.structured}
             nodes={graph.data?.nodes || []}
             fields={fields.data || []}
             links={links.data || []}
             disabled={!editable}
-            saving={structure.isPending}
-            onSave={(s) => structure.mutate(s)}
+            onSave={() => undefined}
           />
           {(r.fields?.length || 0) > 0 && (
             <Space wrap style={{ marginTop: 8 }}>
@@ -147,7 +172,7 @@ export function RequirementDrawer(props: {
               ))}
             </Space>
           )}
-          <Divider titlePlacement="start">Linked cases ({r.cases?.length || 0})</Divider>
+          <Divider titlePlacement="start">关联用例（{r.cases?.length || 0}）</Divider>
           {r.cases?.length ? (
             <Space wrap>
               {r.cases.map((c) => (
@@ -172,7 +197,7 @@ export function RequirementDrawer(props: {
             </>
           )}
           <Typography.Paragraph type="secondary" style={{ marginTop: 16, fontSize: 12 }}>
-            All AI output is a draft: structuring results need human confirmation, model suggestions need human acceptance.
+            AI 的输出都是草稿：结构化结果需要人工确认，模型建议需要人工采纳。
           </Typography.Paragraph>
         </>
       )}

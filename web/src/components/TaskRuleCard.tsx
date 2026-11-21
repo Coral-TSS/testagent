@@ -58,7 +58,7 @@ export function TaskRuleCard({ task, editable, onChanged }: { task: TaskDetail; 
       </Typography.Paragraph>
       {stats && (
         <Typography.Paragraph type="secondary" data-testid="rule-stats">
-          By rule {stats.rule} · added manually {stats.manual} · removed manually {stats.excluded}. Cases join tasks with a matching rule automatically when set “Ready” (not while the task is running or archived); cases removed by hand are not added back by the rule, and cases added by hand are not removed by it.
+          按规则 {stats.rule} · 手工加入 {stats.manual} · 手工移除 {stats.excluded}。用例设为就绪后会自动加入匹配的任务（任务运行中或已归档时不会）；手工移除的不会被规则加回，手工加入的也不会被规则移除。
         </Typography.Paragraph>
       )}
       <Form form={form} layout="vertical" disabled={!editable}>

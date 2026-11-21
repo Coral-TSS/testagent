@@ -23,7 +23,7 @@ describe("SutsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /新建被测系统/ }));
     fireEvent.change(await screen.findByLabelText("编号"), { target: { value: "shop" } });
     fireEvent.change(screen.getByLabelText("名称"), { target: { value: "Shop" } });
-    fireEvent.click(screen.getByRole("button", { name: /确定/ }));
+    fireEvent.click(screen.getByRole("button", { name: /保存/ }));
 
     await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
     expect(calls.find((c) => c.method === "POST")!.body).toMatchObject({ code: "shop", name: "Shop" });
@@ -36,7 +36,7 @@ describe("SutsPage", () => {
     expect(await screen.findByText("暂无被测系统")).toBeTruthy(); // helpful empty state
     fireEvent.click((await screen.findAllByRole("button", { name: /新建被测系统/ }))[1]);
     fireEvent.change(await screen.findByLabelText("编号"), { target: { value: "1bad" } });
-    fireEvent.click(screen.getByRole("button", { name: /确定/ }));
+    fireEvent.click(screen.getByRole("button", { name: /保存/ }));
     expect(await screen.findByText("以字母开头；允许数字、- 和 _")).toBeTruthy();
     expect(calls.every((c) => c.method === "GET")).toBe(true);
   });

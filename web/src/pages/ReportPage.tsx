@@ -44,7 +44,7 @@ export function ReportPage() {
         style={{ marginBottom: 16 }}
         title={
           <>
-            {SCOPE_LABEL[r.scope_type]}: {c.scope.type === "version" ? `Version ${c.scope.version_name}` : `${c.scope.task_name} · version ${c.scope.version_name}`}
+            {SCOPE_LABEL[r.scope_type]}：{c.scope.type === "version" ? `版本 ${c.scope.version_name}` : `${c.scope.task_name} · 版本 ${c.scope.version_name}`}
           </>
         }
         extra={

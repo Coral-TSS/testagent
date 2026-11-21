@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Button, Form, Select } from "antd";
+import { Button, Form, Select, type FormInstance } from "antd";
 import { useEffect } from "react";
 
 import { api } from "../api/client";
@@ -12,19 +12,28 @@ export const ROLES: [Role, string][] = [
 ];
 
 /** Picks owner/developer/tester people for a requirement (BR: confirm requires an owner). */
+export function peoplePayload(values: Partial<Record<Role, string[]>>): { person_id: string; role: Role }[] {
+  return ROLES.flatMap(([role]) => (values[role] || []).map((person_id) => ({ person_id, role })));
+}
+
 export function PeopleRolePicker({
   value,
   disabled,
   saving,
   onSave,
+  form: external,
+  showSave = true,
 }: {
   value: RequirementPerson[];
   disabled?: boolean;
   saving?: boolean;
   onSave: (people: { person_id: string; role: Role }[]) => void;
+  form?: FormInstance;
+  showSave?: boolean;
 }) {
   const persons = useQuery({ queryKey: ["persons", false], queryFn: () => api<Person[]>("/persons") });
-  const [form] = Form.useForm();
+  const [own] = Form.useForm();
+  const form = external || own;
   useEffect(() => {
     form.setFieldsValue(Object.fromEntries(ROLES.map(([role]) => [role, value.filter((p) => p.role === role).map((p) => p.person_id)])));
   }, [value, form]);
@@ -35,18 +44,18 @@ export function PeopleRolePicker({
       layout="horizontal"
       labelCol={{ span: 4 }}
       disabled={disabled}
-      onFinish={(v: Record<Role, string[] | undefined>) =>
-        onSave(ROLES.flatMap(([role]) => (v[role] || []).map((person_id) => ({ person_id, role }))))
-      }
+      onFinish={(v: Partial<Record<Role, string[]>>) => onSave(peoplePayload(v))}
     >
       {ROLES.map(([role, label]) => (
         <Form.Item key={role} name={role} label={label} style={{ marginBottom: 8 }}>
-          <Select mode="multiple" options={options} optionFilterProp="label" placeholder={`Choose ${label}`} />
+          <Select mode="multiple" options={options} optionFilterProp="label" placeholder={`选择${label}`} />
         </Form.Item>
       ))}
-      <Button size="small" htmlType="submit" loading={saving}>
-        保存人员
-      </Button>
+      {showSave && (
+        <Button size="small" htmlType="submit" loading={saving}>
+          保存人员
+        </Button>
+      )}
     </Form>
   );
 }

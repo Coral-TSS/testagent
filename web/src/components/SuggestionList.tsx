@@ -217,7 +217,7 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
       content: (
         <>
           <Input aria-label="节点名称" defaultValue={v.name} onChange={(e) => (v.name = e.target.value)} />
-          {s.payload.similar_to && <Typography.Text type="warning">Possible duplicate of “{s.payload.similar_to}”</Typography.Text>}
+          {s.payload.similar_to && <Typography.Text type="warning">可能与「{s.payload.similar_to}」重复</Typography.Text>}
           {noteField(s, v, dialog)}
         </>
       ),
@@ -292,7 +292,7 @@ export function SuggestionList({ sutId, items, onChanged, loading, error, onRetr
                   {s.source !== "requirement" && s.requirement_code && <Tag>{s.requirement_code}</Tag>}
                   {describeSuggestion(s)}
                   {s.payload.api && <Typography.Text code>{s.payload.api}</Typography.Text>}
-                  {s.payload.similar_to && <Tag color="gold">Possible duplicate: {s.payload.similar_to}</Tag>}
+                  {s.payload.similar_to && <Tag color="gold">可能重复：{s.payload.similar_to}</Tag>}
                 </span>
                 {s.evidence && <Typography.Text type="secondary">Basis: {s.evidence}</Typography.Text>}
                 {s.reason && <Typography.Text type="secondary">{s.reason}</Typography.Text>}

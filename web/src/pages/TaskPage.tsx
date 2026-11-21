@@ -139,7 +139,7 @@ export function TaskPage() {
               {(t.script_gaps?.length || 0) > 0 && (
                 <Tooltip title="没有自动化脚本的自动化任务用例：任务执行时会被跳过（不执行）">
                   <Tag color="orange" data-testid="gap-tag" style={{ cursor: "pointer" }} onClick={() => setGapAction("run")}>
-                    {t.script_gaps!.length} without script
+                    {t.script_gaps!.length} 个缺少脚本
                   </Tag>
                 </Tooltip>
               )}

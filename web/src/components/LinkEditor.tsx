@@ -1,6 +1,7 @@
 import { ListTable } from "./ListView";
 import { useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Form, Input, Modal, Select, Space, Switch, Tag, Typography } from "antd";
+import { Alert, App, Button, Form, Input, Select, Space, Switch, Tag, Typography } from "antd";
+import { AppModal } from "./panel/AppModal";
 import { useEffect } from "react";
 
 import { ApiError, api, describeError } from "../api/client";
@@ -131,11 +132,12 @@ export function LinkEditor({
   const apiRule = { pattern: API_NAME, message: "以小写字母开头；只能包含字母、数字和下划线（例如 supplier、purchaseOrders）" };
 
   return (
-    <Modal
+    <AppModal
+      size="md"
       title={link ? "编辑关系" : "新建关系"}
+      help="用一句话写清谁和谁是什么关系，两个方向都要能读。"
       open={open}
       onCancel={onClose}
-      width={720}
       forceRender
       footer={
         <Space>
@@ -232,7 +234,7 @@ export function LinkEditor({
           <Input.TextArea rows={2} placeholder="例如：每个采购订单恰好对应一个供应商" />
         </Form.Item>
       </Form>
-    </Modal>
+    </AppModal>
   );
 }
 

@@ -12,6 +12,7 @@ import { AutomationTag } from "./AutomationTag";
 import { EmptyState } from "./EmptyState";
 import { EnvironmentStatus } from "./EnvironmentStatus";
 import { CaseForm, formToBody, type CaseFormValues } from "./CaseForm";
+import { AppModal } from "./panel/AppModal";
 import { CaseStatusTag, ScenarioTag } from "./CaseTags";
 import { CoverageView } from "./CoverageView";
 import { CaseCoverageTags, coverageSummary } from "./CoverageDetail";
@@ -356,10 +357,11 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
           { title: "修订", dataIndex: "revision", width: 60 },
         ]}
       />
-      <Modal
+      <AppModal
+        size="lg"
         title="新建用例"
+        help="步骤、测试数据和预期会写进用例；自动化脚本可以稍后生成。"
         open={creating}
-        width={860}
         onCancel={() => setCreating(false)}
         onOk={() => form.submit()}
         confirmLoading={create.isPending}
@@ -375,7 +377,7 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
             create.mutate({ ...body!, ...(versionId ? { origin_version_id: versionId } : {}) });
           }}
         />
-      </Modal>
+      </AppModal>
       <Modal
         title={`将 ${selected.length} 个用例加入任务`}
         open={picking}
@@ -416,7 +418,7 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
         />
         <div style={{ marginTop: 12 }}>
           <Checkbox checked={automateOn} onChange={(e) => setGenAutomate(e.target.checked)}>
-            Also generate an automation script for each case (in the background, with self-check)
+            同时为每条用例在后台生成自动化脚本（含自检）
           </Checkbox>
         </div>
         {automateOn && (

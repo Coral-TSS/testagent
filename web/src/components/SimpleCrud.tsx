@@ -1,7 +1,8 @@
 import type { TableProps } from "antd";
 import { ListTable } from "./ListView";
 import { PlusOutlined } from "@ant-design/icons";
-import { Button, Form, Modal, Popconfirm, Space, Typography } from "antd";
+import { Button, Form, Popconfirm, Space, Typography } from "antd";
+import { AppModal } from "./panel/AppModal";
 import type { ColumnsType } from "antd/es/table";
 import { useState, type ReactNode } from "react";
 
@@ -72,7 +73,7 @@ export function SimpleCrud<T extends { id: string }>(props: {
         expandable={props.expandable}
         locale={
           props.emptyTitle
-            ? { emptyText: <EmptyState title={props.emptyTitle} hint={props.emptyHint} actionLabel={`Add ${props.title.replace(/ \(.*$/, "")}`} onAction={() => open(null)} /> }
+            ? { emptyText: <EmptyState title={props.emptyTitle} hint={props.emptyHint} actionLabel={`添加${props.title.replace(/ \(.*$/, "")}`} onAction={() => open(null)} /> }
             : undefined
         }
         columns={[
@@ -85,7 +86,7 @@ export function SimpleCrud<T extends { id: string }>(props: {
                 {props.extraActions?.(row)}
                 {props.onUpdate && <a onClick={() => open(row)}>编辑</a>}
                 {props.onDelete && (
-                  <Popconfirm title={`${props.deleteLabel || "删除"}? `} onConfirm={() => props.onDelete!(row)}>
+                  <Popconfirm title={`确定${props.deleteLabel || "删除"}？`} onConfirm={() => props.onDelete!(row)}>
                     <a>{props.deleteLabel || "删除"}</a>
                   </Popconfirm>
                 )}
@@ -94,8 +95,8 @@ export function SimpleCrud<T extends { id: string }>(props: {
           },
         ]}
       />
-      <Modal
-        title={editing ? `Edit ${props.title}` : `Add ${props.title}`}
+      <AppModal
+        title={editing ? `编辑${props.title}` : `新建${props.title}`}
         open={editing !== undefined}
         onCancel={() => setEditing(undefined)}
         onOk={() => form.submit()}
@@ -106,7 +107,7 @@ export function SimpleCrud<T extends { id: string }>(props: {
         <Form form={form} layout="vertical" onFinish={submit}>
           {props.fields}
         </Form>
-      </Modal>
+      </AppModal>
     </>
   );
 }
