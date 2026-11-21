@@ -2,8 +2,10 @@ import {
   Background,
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
+  getSmoothStepPath,
   type EdgeProps,
+  type NodeChange,
+  type ReactFlowInstance,
   Controls,
   Handle,
   MarkerType,
@@ -15,12 +17,13 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Graph, ModelNode } from "../../api/types";
 import { CARD_SHORT } from "../links";
 import { KIND_COLOR } from "../StatusTags";
-import { computeLayout } from "./layout";
+import { computeLayout, type Positioned } from "./layout";
+import { clearGraphPosition, readGraphPositions, writeGraphPosition, type Point } from "./positions";
 
 type Data = { node: ModelNode; selected: boolean };
 
@@ -57,7 +60,9 @@ function BoxNode({ data }: NodeProps<FlowNode<Data>>) {
         minWidth: 110,
         textAlign: "center",
         fontSize: 13,
+        cursor: "grab",
       }}
+      title="拖动以调整位置"
     >
       {handles}
       <div style={{ fontWeight: 600 }}>{node.name}</div>
@@ -71,7 +76,15 @@ type LinkData = { forward: string; reverse: string; card: string; via?: string |
 /** A relation drawn between two entities: "属于 →" / "← 供应" with the cardinality in the middle. */
 function LinkEdge(props: EdgeProps<FlowEdge<LinkData>>) {
   const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, selected } = props;
-  const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  const [path, labelX, labelY] = getSmoothStepPath({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    borderRadius: 12,
+  });
   const color = KIND_COLOR.relation;
   return (
     <>
@@ -124,12 +137,25 @@ function sides(a?: { x: number; y: number }, b?: { x: number; y: number }) {
 }
 const ROLE_LABEL: Record<string, string> = { source: "来源", target: "目标", actor: "执行者", object: "对象", ref: "引用" };
 
-export function toFlow(graph: Graph, selectedId?: string | null) {
-  const layout = computeLayout(graph);
+const layoutCache = new WeakMap<Graph, Map<string, Positioned>>();
+
+export function toFlow(graph: Graph, selectedId?: string | null, placed?: ReadonlyMap<string, Point>) {
+  let layout = layoutCache.get(graph);
+  if (!layout) {
+    layout = computeLayout(graph);
+    layoutCache.set(graph, layout);
+  }
+  const at = (id: string) => {
+    const custom = placed?.get(id);
+    if (custom && Number.isFinite(custom.x) && Number.isFinite(custom.y)) return custom;
+    const point = layout.get(id);
+    return point ? { x: point.x, y: point.y } : undefined;
+  };
   const nodes: FlowNode<Data>[] = graph.nodes.map((n) => ({
     id: n.id,
     type: n.kind,
-    position: { x: layout.get(n.id)?.x ?? 0, y: layout.get(n.id)?.y ?? 0 },
+    position: { x: at(n.id)?.x ?? 0, y: at(n.id)?.y ?? 0 },
+    draggable: true,
     data: { node: n, selected: n.id === selectedId },
   }));
   const ids = new Set(graph.nodes.map((n) => n.id));
@@ -139,7 +165,8 @@ export function toFlow(graph: Graph, selectedId?: string | null) {
       id: e.id,
       source: e.source_node_id,
       target: e.target_node_id,
-      ...sides(layout.get(e.source_node_id), layout.get(e.target_node_id)),
+      type: "smoothstep",
+      ...sides(at(e.source_node_id), at(e.target_node_id)),
       label: ROLE_LABEL[e.role] || e.role,
       markerEnd: { type: MarkerType.ArrowClosed },
       style: { strokeDasharray: "4 4", stroke: "#bbb" },
@@ -151,7 +178,7 @@ export function toFlow(graph: Graph, selectedId?: string | null) {
       type: "link",
       source: l.from_node_id,
       target: l.to_node_id,
-      ...sides(layout.get(l.from_node_id), layout.get(l.to_node_id)),
+      ...sides(at(l.from_node_id), at(l.to_node_id)),
       markerEnd: { type: MarkerType.ArrowClosed, color: KIND_COLOR.relation },
       data: {
         forward: l.forward_name,
@@ -182,7 +209,37 @@ export function GraphCanvas({
   onConnect?: (source: string, target: string) => void;
   height?: number | "fill";
 }) {
-  const { nodes, edges } = useMemo(() => toFlow(graph, selectedId), [graph, selectedId]);
+  const [dragged, setDragged] = useState<Map<string, Point>>(() => new Map());
+  const placed = useMemo(() => {
+    const merged = readGraphPositions();
+    for (const [id, point] of dragged) merged.set(id, point);
+    return merged;
+  }, [dragged]);
+  const { nodes, edges } = useMemo(() => toFlow(graph, selectedId, placed), [graph, selectedId, placed]);
+  const flow = useRef<ReactFlowInstance<FlowNode<Data>, FlowEdge> | null>(null);
+  const nodeKey = useMemo(() => graph.nodes.map((node) => node.id).sort().join("\0"), [graph]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => flow.current?.fitView());
+    return () => cancelAnimationFrame(frame);
+  }, [nodeKey]);
+  const onNodesChange = (changes: NodeChange<FlowNode<Data>>[]) => {
+    setDragged((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const change of changes) {
+        if (change.type === "position" && change.position) {
+          next.set(change.id, { x: change.position.x, y: change.position.y });
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  };
+  const remember = (id: string, point: Point) => {
+    const base = computeLayout(graph).get(id);
+    if (base && Math.hypot(base.x - point.x, base.y - point.y) < 8) clearGraphPosition(id);
+    else writeGraphPosition(id, point);
+  };
   return (
     <div className={onConnect ? "graph-canvas connectable" : "graph-canvas"} style={{ height: height === "fill" ? "100%" : height, border: "1px solid #f0f0f0", borderRadius: 8 }} data-testid="graph-canvas">
       <ReactFlow
@@ -190,6 +247,9 @@ export function GraphCanvas({
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        nodesDraggable
+        onNodesChange={onNodesChange}
+        onNodeDragStop={(_, node) => remember(node.id, node.position)}
         onNodeClick={(_, n) => onSelect(n.id)}
         onEdgeClick={(_, e) => {
           if (e.id.startsWith("link:")) onLinkClick?.(e.id.slice(5));
@@ -198,7 +258,10 @@ export function GraphCanvas({
         onConnect={(connection) => {
           if (connection.source && connection.target && connection.source !== connection.target) onConnect?.(connection.source, connection.target);
         }}
-        fitView
+        onInit={(instance) => {
+          flow.current = instance;
+          instance.fitView();
+        }}
         minZoom={0.2}
       >
         <Background />

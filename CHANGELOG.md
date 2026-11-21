@@ -77,6 +77,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Model graph: actions sit with the entities they are connected to, instead of one row under
+  every entity. Nodes can be dragged; a position a person has moved is remembered in the
+  browser (`testagent:graph-node-positions`). Edge handles follow the node that is closer,
+  and relation lines use a short orthogonal path so they cross less.
 - The bundled demo is the supply-chain system (`supply-chain`, 供应链执行（演示）), with v1.0 and
   v2.0 models and the fixed requirements REQ-001–REQ-016. `ops/restore_supply_chain.py` rebuilds
   it. The procurement demo is removed.
