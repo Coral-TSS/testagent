@@ -113,13 +113,15 @@ def _check_value(attr: dict, value, label: str) -> str | None:
     return None
 
 
-def validate_rules(cur, sut_id, data: dict, *, strict: bool = True) -> dict:
+def validate_rules(cur, sut_id, data: dict, *, strict: bool = True, version_id=None) -> dict:
     """Validate ``preconditions`` / ``effects`` present in ``data``; binds Entity.field to ids.
 
     strict=False (AI suggestions) drops items that do not resolve instead of failing."""
     from testagent.services.attributes import AttributeService
+    from testagent.services.model_scope import AUTO, resolve_version
 
     attrs = AttributeService(None, None)
+    chosen = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
     out: dict[str, list] = {}
     field_errors: list[dict] = []
 
@@ -127,9 +129,9 @@ def validate_rules(cur, sut_id, data: dict, *, strict: bool = True) -> dict:
         ref = item.get("attribute_id") or item.get("field")
         if not ref:
             return None
-        attr = attrs.resolve(cur, sut_id, ref)
+        attr = attrs.resolve(cur, sut_id, ref, version_id=version_id)
         if attr is None and item.get("attribute_id") and item.get("field"):
-            attr = attrs.resolve(cur, sut_id, item["field"])
+            attr = attrs.resolve(cur, sut_id, item["field"], version_id=version_id)
         if attr is None:
             field_errors.append({"field": f"{key}[{i}].field", "msg": f"Field {ref} does not exist"})
             return None
@@ -158,8 +160,9 @@ def validate_rules(cur, sut_id, data: dict, *, strict: bool = True) -> dict:
             elif item["kind"] in ("create_object", "delete_object"):
                 cur.execute(
                     "SELECT id, name FROM model_node WHERE sut_id=%s AND kind='entity'"
-                    " AND deleted_at IS NULL AND (id::text=%s OR name=%s)",
-                    (sut_id, str(item.get("node_id") or ""), item.get("entity") or ""),
+                    " AND deleted_at IS NULL AND version_id IS NOT DISTINCT FROM %s"
+                    " AND (id::text=%s OR name=%s)",
+                    (sut_id, chosen, str(item.get("node_id") or ""), item.get("entity") or ""),
                 )
                 row = cur.fetchone()
                 if row is None:
@@ -168,8 +171,9 @@ def validate_rules(cur, sut_id, data: dict, *, strict: bool = True) -> dict:
                     item["node_id"], item["entity"] = str(row["id"]), row["name"]
             else:
                 cur.execute(
-                    "SELECT id FROM model_link WHERE id::text=%s AND sut_id=%s AND deleted_at IS NULL",
-                    (str(item["link_id"]), sut_id),
+                    "SELECT id FROM model_link WHERE id::text=%s AND sut_id=%s AND deleted_at IS NULL"
+                    " AND version_id IS NOT DISTINCT FROM %s",
+                    (str(item["link_id"]), sut_id, chosen),
                 )
                 if cur.fetchone() is None:
                     field_errors.append({"field": f"{key}[{i}].link_id", "msg": "Link not found"})

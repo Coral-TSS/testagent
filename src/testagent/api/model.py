@@ -49,13 +49,19 @@ def list_nodes(
     q: str | None = None,
     attr: Literal["conditions", "states", "constraints"] | None = None,
     attr_text: str | None = None,
+    version_id: UUID | None = None,
 ):
-    return _model(request).list_nodes(sut_id, kind=kind, module_id=module_id, q=q, attr=attr, attr_text=attr_text)
+    return _model(request).list_nodes(
+        sut_id, kind=kind, module_id=module_id, q=q, attr=attr, attr_text=attr_text, version_id=version_id
+    )
 
 
 @router.post("/suts/{sut_id}/nodes", status_code=201)
-def create_node(request: Request, sut_id: UUID, body: NodeIn):
-    return _model(request).create_node(sut_id, body.model_dump())
+def create_node(request: Request, sut_id: UUID, body: NodeIn, version_id: UUID | None = None):
+    data = body.model_dump()
+    if version_id is not None:
+        data["version_id"] = version_id
+    return _model(request).create_node(sut_id, data)
 
 
 @router.get("/nodes/{node_id}")
@@ -97,8 +103,8 @@ def delete_edge(request: Request, edge_id: UUID):
 
 # ---- graph
 @router.get("/suts/{sut_id}/graph")
-def graph(request: Request, sut_id: UUID, module: UUID | None = None):
-    return _model(request).graph(sut_id, module)
+def graph(request: Request, sut_id: UUID, module: UUID | None = None, version_id: UUID | None = None):
+    return _model(request).graph(sut_id, module, version_id)
 
 
 # ---- API registry
@@ -136,13 +142,13 @@ def node_io_from_apis(request: Request, node_id: UUID, body: NodeIoFromApisIn):
 
 
 @router.post("/suts/{sut_id}/apis/import-openapi")
-def import_openapi(request: Request, sut_id: UUID, body: OpenApiImportIn):
+def import_openapi(request: Request, sut_id: UUID, body: OpenApiImportIn, version_id: UUID | None = None):
     db, bus = request.app.state.db, request.app.state.bus
     result = OpenApiImportService(db, bus).import_from(sut_id, body.environment_id, body.url)
     # entity fields follow the API field names: propose renames / missing fields
-    created = suggest_alignment(db, bus, sut_id)
+    created = suggest_alignment(db, bus, sut_id, version_id)
     # reference / <resource>_id fields imply links
-    links = suggest_links(db, bus, sut_id)
+    links = suggest_links(db, bus, sut_id, version_id)
     return {**result, "field_suggestions": len(created), "link_suggestions": len(links)}
 
 
@@ -152,8 +158,8 @@ def _links(request: Request) -> LinkService:
 
 
 @router.get("/suts/{sut_id}/links")
-def list_links(request: Request, sut_id: UUID, node_id: UUID | None = None):
-    return _links(request).list(sut_id, node_id)
+def list_links(request: Request, sut_id: UUID, node_id: UUID | None = None, version_id: UUID | None = None):
+    return _links(request).list(sut_id, node_id, version_id)
 
 
 @router.post("/suts/{sut_id}/links", status_code=201)
@@ -189,8 +195,8 @@ def _fields(request: Request) -> AttributeService:
 
 
 @router.get("/suts/{sut_id}/fields")
-def list_sut_fields(request: Request, sut_id: UUID):
-    return _fields(request).list_for_sut(sut_id)
+def list_sut_fields(request: Request, sut_id: UUID, version_id: UUID | None = None):
+    return _fields(request).list_for_sut(sut_id, version_id=version_id)
 
 
 @router.get("/nodes/{node_id}/fields")

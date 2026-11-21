@@ -36,8 +36,8 @@ export function ScopePreview({
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const nodes = useQuery({
-    queryKey: ["nodes", sutId],
-    queryFn: () => api<NodeRow[]>(`/suts/${sutId}/nodes`),
+    queryKey: ["nodes", sutId, versionId],
+    queryFn: () => api<NodeRow[]>(`/suts/${sutId}/nodes`, { params: { version_id: versionId } }),
   });
 
   const load = async (ids: string[]) => {

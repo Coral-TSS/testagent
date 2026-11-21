@@ -159,8 +159,9 @@ def test_relation_nodes_are_migrated_to_links(client, db, world):
     fk = world["field"](ids["Payment"], "order_id", "reference", ref_node_id=ids["PurchaseOrder"])
     with db.tx() as cur:
         cur.execute(
-            "INSERT INTO model_node(sut_id, kind, name) VALUES (%s,'relation','Payment-PurchaseOrder') RETURNING id",
-            (sut,),
+            "INSERT INTO model_node(sut_id, version_id, kind, name)"
+            " VALUES (%s,%s,'relation','Payment-PurchaseOrder') RETURNING id",
+            (sut, world["version"]),
         )
         rel = str(cur.fetchone()["id"])
         for end, role in ((ids["Payment"], "source"), (ids["PurchaseOrder"], "target")):

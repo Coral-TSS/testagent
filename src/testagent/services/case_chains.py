@@ -91,7 +91,7 @@ class ChainService:
                 from testagent.core.errors import AppError
 
                 raise AppError("NOT_FOUND", "Version not found")
-            graph = self.scopes.load_graph(cur, version["sut_id"])
+            graph = self.scopes.load_graph(cur, version["sut_id"], version["id"])
             derived = derive_chains(graph)
             cur.execute("SELECT id FROM test_strategy WHERE version_id=%s", (version_id,))
             strategy = cur.fetchone()
@@ -163,7 +163,7 @@ class ChainService:
         with self.db.tx() as cur:
             cur.execute("SELECT sut_id FROM version WHERE id=%s", (version_id,))
             sut_id = cur.fetchone()["sut_id"]
-            graph = self.scopes.load_graph(cur, sut_id)
+            graph = self.scopes.load_graph(cur, sut_id, version_id)
         reqs = list({r["id"]: r for chain in chains for r in chain["requirements"]}.values())
         manifest = chain_tool_scope(graph, chains, reqs)
         if not reqs:

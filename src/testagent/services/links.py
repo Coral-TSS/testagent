@@ -98,17 +98,20 @@ def _camel_plural(stem: str) -> str:
     return word + ("es" if word.endswith("s") else "s")
 
 
-def resource_stems(cur, sut_id) -> dict[str, str]:
+def resource_stems(cur, sut_id, version_id=None) -> dict[str, str]:
     """{'order': PurchaseOrder id, 'payment': Payment id} from the collection paths of the APIs bound to
     actions acting on an entity (POST/GET …/orders → object entity of the action)."""
+    from testagent.services.model_scope import AUTO, resolve_version
+
+    version_id = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
     cur.execute(
         "SELECT a.method, a.path, e.target_node_id AS entity_id FROM api_endpoint a"
         " JOIN node_api_link l ON l.api_id=a.id AND l.invalid_at IS NULL"
         " JOIN model_node n ON n.id=l.node_id AND n.kind='action' AND n.deleted_at IS NULL"
         " JOIN model_edge e ON e.source_node_id=n.id AND e.role='object' AND e.invalid_at IS NULL"
         " JOIN model_node t ON t.id=e.target_node_id AND t.kind='entity' AND t.deleted_at IS NULL"
-        " WHERE a.sut_id=%s",
-        (sut_id,),
+        " WHERE a.sut_id=%s AND n.version_id IS NOT DISTINCT FROM %s",
+        (sut_id, version_id),
     )
     found: dict[str, set] = {}
     for row in cur.fetchall():
@@ -127,12 +130,25 @@ class LinkService:
 
     # ------------------------------------------------------------ queries
     @staticmethod
-    def list_rows(cur, sut_id, node_id=None, include_deleted=False) -> list[dict]:
+    def list_rows(cur, sut_id, node_id=None, include_deleted=False, version_id=None) -> list[dict]:
+        from testagent.services.model_scope import AUTO, resolve_version
+
+        chosen = None
+        version_sql = ""
+        params: list = [sut_id, include_deleted, node_id, node_id]
+        if node_id is None:
+            chosen = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
+            version_sql = " AND l.version_id IS NOT DISTINCT FROM %s"
+            params.append(chosen)
+        elif version_id is not None and version_id is not AUTO:
+            version_sql = " AND l.version_id IS NOT DISTINCT FROM %s"
+            params.append(version_id)
         cur.execute(
             SELECT + " WHERE l.sut_id=%s AND (%s OR l.deleted_at IS NULL)"
             " AND (%s::uuid IS NULL OR %s::uuid IN (l.from_node_id, l.to_node_id, l.via_node_id))"
-            " ORDER BY f.name, t.name, l.forward_name",
-            (sut_id, include_deleted, node_id, node_id),
+            + version_sql
+            + " ORDER BY f.name, t.name, l.forward_name",
+            params,
         )
         return cur.fetchall()
 
@@ -144,9 +160,9 @@ class LinkService:
         )
         return cur.fetchall()
 
-    def list(self, sut_id, node_id=None) -> list[dict]:
+    def list(self, sut_id, node_id=None, version_id=None) -> list[dict]:
         with self.db.tx() as cur:
-            return self.list_rows(cur, sut_id, node_id)
+            return self.list_rows(cur, sut_id, node_id, version_id=version_id)
 
     @staticmethod
     def _get(cur, link_id, lock=False) -> dict:
@@ -338,12 +354,20 @@ class LinkService:
         link.setdefault("required", False)
         link = self._validate(cur, sut_id, {**link, "_auto_fk": not data.get("fk_attribute_id")})
         link.pop("_auto_fk", None)
+        cur.execute("SELECT version_id FROM model_node WHERE id=%s", (link["from_node_id"],))
+        version_id = cur.fetchone()["version_id"]
+        cur.execute("SELECT version_id FROM model_node WHERE id=%s", (link["to_node_id"],))
+        other = cur.fetchone()["version_id"]
+        from testagent.services.model_scope import same_version
+
+        if not same_version(version_id, other):
+            raise AppError("VALIDATION", "Both ends of a link must belong to the same version")
         values = {k: (str(v) if k.endswith("_id") and v else v) for k, v in link.items()}
         cols = ", ".join(values)
         cur.execute(
-            f"INSERT INTO model_link(sut_id, legacy_node_id, {cols})"
-            f" VALUES (%s, %s, {', '.join(['%s'] * len(values))}) RETURNING id",
-            (sut_id, data.get("legacy_node_id"), *values.values()),
+            f"INSERT INTO model_link(sut_id, version_id, legacy_node_id, {cols})"
+            f" VALUES (%s, %s, %s, {', '.join(['%s'] * len(values))}) RETURNING id",
+            (sut_id, version_id, data.get("legacy_node_id"), *values.values()),
         )
         link_id = cur.fetchone()["id"]
         log_change(cur, "model_link", link_id, "create", self.actor, values)
@@ -394,15 +418,17 @@ def _differs(new, old) -> bool:
 
 
 # ---------------------------------------------------------------- suggestions
-def link_suggestions(cur, sut_id) -> list[dict]:
+def link_suggestions(cur, sut_id, version_id=None) -> list[dict]:
     """Pending-suggestion payloads for links implied by fields: a reference-type field
     (Payment.order_id → PurchaseOrder) or a ``<resource>_id`` field whose resource is the collection of
     another entity's APIs (order_id ↔ POST /orders → PurchaseOrder). Fields already backing a link and
     entity pairs already linked are skipped."""
     from testagent.services.attributes import AttributeService
+    from testagent.services.model_scope import AUTO, resolve_version
 
-    fields = AttributeService(None, None).list_for_sut(sut_id, cur=cur)
-    links = LinkService.list_rows(cur, sut_id)
+    version_id = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
+    fields = AttributeService(None, None).list_for_sut(sut_id, cur=cur, version_id=version_id)
+    links = LinkService.list_rows(cur, sut_id, version_id=version_id)
     used = {
         str(x)
         for lk in links
@@ -411,11 +437,12 @@ def link_suggestions(cur, sut_id) -> list[dict]:
     }
     pairs = {frozenset((str(lk["from_node_id"]), str(lk["to_node_id"]))) for lk in links}
     cur.execute(
-        "SELECT id::text AS id, name FROM model_node WHERE sut_id=%s AND kind='entity' AND deleted_at IS NULL",
-        (sut_id,),
+        "SELECT id::text AS id, name FROM model_node WHERE sut_id=%s AND kind='entity'"
+        " AND deleted_at IS NULL AND version_id IS NOT DISTINCT FROM %s",
+        (sut_id, version_id),
     )
     entities = {r["id"]: r["name"] for r in cur.fetchall()}
-    stems = resource_stems(cur, sut_id)
+    stems = resource_stems(cur, sut_id, version_id)
     owner_stem = {v: k for k, v in stems.items()}
     out = []
     for f in fields:
@@ -469,12 +496,14 @@ def link_suggestions(cur, sut_id) -> list[dict]:
     return out
 
 
-def suggest_links(db, bus, sut_id) -> list[dict]:
+def suggest_links(db, bus, sut_id, version_id=None) -> list[dict]:
     """Store the link suggestions (pending, de-duplicated); returns the created rows."""
     from testagent.services.suggestions import SuggestionService
 
     with db.tx() as cur:
-        return SuggestionService(db, bus).add_many(cur, sut_id, link_suggestions(cur, sut_id))
+        return SuggestionService(db, bus).add_many(
+            cur, sut_id, link_suggestions(cur, sut_id, version_id), version_id=version_id
+        )
 
 
 # ---------------------------------------------------------------- relation nodes → links

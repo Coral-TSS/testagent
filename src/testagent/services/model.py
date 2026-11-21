@@ -24,7 +24,7 @@ KINDS = ("entity", "action", "relation")
 END_ROLES = ("source", "target")
 MAX_DEPTH = 5
 NODE_COLUMNS = (
-    "id, sut_id, module_id, kind, name, description, data_schema, attributes, code_ref, "
+    "id, sut_id, version_id, module_id, kind, name, description, data_schema, attributes, code_ref, "
     "inputs, outputs, input_format, output_format, preconditions, effects, deleted_at,"
     " created_at, updated_at"
 )
@@ -69,16 +69,23 @@ def normalize_name(name: str) -> str:
     return _NOISE.sub("", text).lower()
 
 
-def find_similar_node(cur, sut_id, kind: str | None, name: str) -> dict | None:
+def find_similar_node(cur, sut_id, kind: str | None, name: str, version_id=None) -> dict | None:
     """Existing node with the same normalized name, else one whose name contains / is contained
-    in the other (min 2 chars). Exact matches win; then the closest length."""
+    in the other (min 2 chars). Exact matches win; then the closest length.
+
+    ``version_id`` omitted means the current version (or the provisional model)."""
+    from testagent.services.model_scope import AUTO, resolve_version
+
+    if version_id is None:
+        version_id = AUTO
+    version_id = resolve_version(cur, sut_id, version_id)
     wanted = normalize_name(name)
     if len(wanted) < 2:
         return None
     cur.execute(
         "SELECT id, kind, name FROM model_node WHERE sut_id=%s AND deleted_at IS NULL"
-        " AND (%s::text IS NULL OR kind=%s)",
-        (sut_id, kind, kind),
+        " AND version_id IS NOT DISTINCT FROM %s AND (%s::text IS NULL OR kind=%s)",
+        (sut_id, version_id, kind, kind),
     )
     best, best_score = None, None
     for row in cur.fetchall():
@@ -102,13 +109,13 @@ def _j(value):
     return None if value is None else Jsonb(value, dumps=_dumps)
 
 
-def check_rules(cur, sut_id, kind: str, data: dict) -> dict:
+def check_rules(cur, sut_id, kind: str, data: dict, version_id=None) -> dict:
     """Preconditions / effects (actions only)."""
     from testagent.services.action_rules import validate_rules
 
     if not any(k in data for k in RULE_KEYS):
         return {}
-    out = validate_rules(cur, sut_id, {k: data[k] for k in RULE_KEYS if k in data})
+    out = validate_rules(cur, sut_id, {k: data[k] for k in RULE_KEYS if k in data}, version_id=version_id)
     if kind != "action" and any(out.values()):
         raise AppError(
             "VALIDATION",
@@ -118,12 +125,12 @@ def check_rules(cur, sut_id, kind: str, data: dict) -> dict:
     return out
 
 
-def check_io(cur, sut_id, kind: str, data: dict, *, strict: bool = True) -> dict:
+def check_io(cur, sut_id, kind: str, data: dict, *, strict: bool = True, version_id=None) -> dict:
     """Validate inputs/outputs/formats in `data` (only actions may have them)."""
     out = {}
     for key in ("inputs", "outputs"):
         if key in data:
-            out[key] = validate_params(cur, sut_id, data[key], key, strict=strict)
+            out[key] = validate_params(cur, sut_id, data[key], key, strict=strict, version_id=version_id)
     for key in ("input_format", "output_format"):
         if key in data:
             text = (data[key] or "").strip() or None
@@ -175,6 +182,11 @@ class ModelService:
             raise AppError("VALIDATION", "Both ends of an edge cannot be the same node")
         source = self._node(cur, source_id, sut_id=sut_id)
         target = self._node(cur, target_id, sut_id=sut_id)
+        from testagent.services.model_scope import same_version
+
+        if not same_version(source["version_id"], target["version_id"]):
+            raise AppError("VALIDATION", "Both ends of an edge must belong to the same version")
+        version_id = source["version_id"]
         if role in END_ROLES:
             if source["kind"] != "relation":
                 raise AppError("VALIDATION", "source/target edges can only start from link nodes")
@@ -189,8 +201,9 @@ class ModelService:
         elif role in ("actor", "object") and source["kind"] != "action":
             raise AppError("VALIDATION", "actor/object edges can only start from action nodes")
         cur.execute(
-            "INSERT INTO model_edge(sut_id, source_node_id, target_node_id, role) VALUES (%s,%s,%s,%s) RETURNING *",
-            (sut_id, source_id, target_id, role),
+            "INSERT INTO model_edge(sut_id, version_id, source_node_id, target_node_id, role)"
+            " VALUES (%s,%s,%s,%s,%s) RETURNING *",
+            (sut_id, version_id, source_id, target_id, role),
         )
         return cur.fetchone()
 
@@ -218,15 +231,19 @@ class ModelService:
         with self.db.tx() as cur:
             self._check_sut(cur, sut_id)
             self._check_module(cur, data.get("module_id"), sut_id)
-            io = check_io(cur, sut_id, kind, data)
-            rules = check_rules(cur, sut_id, kind, data)
+            from testagent.services.model_scope import AUTO, resolve_version
+
+            version_id = resolve_version(cur, sut_id, data["version_id"] if "version_id" in data else AUTO)
+            io = check_io(cur, sut_id, kind, data, version_id=version_id)
+            rules = check_rules(cur, sut_id, kind, data, version_id=version_id)
             cur.execute(
-                "INSERT INTO model_node(sut_id, module_id, kind, name, description, data_schema,"
+                "INSERT INTO model_node(sut_id, version_id, module_id, kind, name, description, data_schema,"
                 " attributes, code_ref, inputs, outputs, input_format, output_format,"
                 " preconditions, effects)"
-                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
                 (
                     sut_id,
+                    version_id,
                     data.get("module_id"),
                     kind,
                     data["name"],
@@ -303,8 +320,8 @@ class ModelService:
                 self._insert_edge(cur, node["sut_id"], node_id, other, role)
             allowed = ("name", "description", "data_schema", "attributes", "code_ref", "module_id")
             values = {k: v for k, v in data.items() if k in allowed}
-            values.update(check_io(cur, node["sut_id"], node["kind"], data))
-            values.update(check_rules(cur, node["sut_id"], node["kind"], data))
+            values.update(check_io(cur, node["sut_id"], node["kind"], data, version_id=node["version_id"]))
+            values.update(check_rules(cur, node["sut_id"], node["kind"], data, version_id=node["version_id"]))
             if values:
                 sets = ", ".join(f"{k}=%s" for k in values)
                 params = [
@@ -408,7 +425,10 @@ class ModelService:
         q: str | None = None,
         attr: str | None = None,
         attr_text: str | None = None,
+        version_id=None,
     ) -> list[dict]:
+        from testagent.services.model_scope import AUTO, resolve_version
+
         where, params = ["sut_id=%s", "deleted_at IS NULL"], [sut_id]
         if kind:
             where.append("kind=%s")
@@ -430,6 +450,9 @@ class ModelService:
             params += [fields, f"%{attr_text}%"]
         with self.db.tx() as cur:
             self._check_sut(cur, sut_id)
+            chosen = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
+            where.append("version_id IS NOT DISTINCT FROM %s")
+            params.append(chosen)
             cur.execute(
                 f"SELECT {NODE_COLUMNS} FROM model_node WHERE {' AND '.join(where)} ORDER BY kind, name",
                 params,
@@ -439,10 +462,12 @@ class ModelService:
     def find_by_attribute(self, sut_id, attr: str, item: dict) -> list[dict]:
         """Exact attribute-item match; served by the GIN jsonb_path_ops index."""
         with self.db.tx() as cur:
+            from testagent.services.model_scope import current_version_id
+
             cur.execute(
                 f"SELECT {NODE_COLUMNS} FROM model_node WHERE sut_id=%s AND deleted_at IS NULL"
-                " AND attributes @> %s ORDER BY name",
-                (sut_id, _j({attr: [item]})),
+                " AND version_id IS NOT DISTINCT FROM %s AND attributes @> %s ORDER BY name",
+                (sut_id, current_version_id(cur, sut_id), _j({attr: [item]})),
             )
             return cur.fetchall()
 
@@ -475,15 +500,19 @@ class ModelService:
         self.bus.publish("model_edge.deleted", {"id": str(edge_id)})
 
     # ------------------------------------------------------------------ graph
-    def graph(self, sut_id, module_id=None) -> dict:
+    def graph(self, sut_id, module_id=None, version_id=None) -> dict:
+        from testagent.services.model_scope import AUTO, resolve_version
+
         with self.db.tx() as cur:
             self._check_sut(cur, sut_id)
             if module_id:
                 self._check_module(cur, module_id, sut_id)
+            chosen = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
             cur.execute(
                 f"SELECT {NODE_COLUMNS} FROM model_node WHERE sut_id=%s AND deleted_at IS NULL"
+                " AND version_id IS NOT DISTINCT FROM %s"
                 " AND (%s::uuid IS NULL OR module_id=%s::uuid) ORDER BY kind, name",
-                (sut_id, module_id, module_id),
+                (sut_id, chosen, module_id, module_id),
             )
             nodes = cur.fetchall()
             ids = [n["id"] for n in nodes]
@@ -498,7 +527,7 @@ class ModelService:
             keep = {str(i) for i in ids}
             links = [
                 lk
-                for lk in LinkService.list_rows(cur, sut_id)
+                for lk in LinkService.list_rows(cur, sut_id, version_id=chosen)
                 if str(lk["from_node_id"]) in keep and str(lk["to_node_id"]) in keep
             ]
         return {"nodes": nodes, "edges": edges, "links": links}
@@ -543,8 +572,8 @@ class ModelService:
             return cur.fetchall()
 
     # ------------------------------------------------------------------ snapshot
-    def snapshot_content(self, sut_id) -> dict:
-        graph = self.graph(sut_id)
+    def snapshot_content(self, sut_id, version_id=None) -> dict:
+        graph = self.graph(sut_id, version_id=version_id)
         with self.db.tx() as cur:
             cur.execute(
                 "SELECT a.id, a.method, a.path, a.name, a.description, a.code_ref,"
@@ -578,7 +607,7 @@ class ModelService:
                         "storage_name",
                     )
                 }
-                for f in AttributeService(self.db, self.bus).list_for_sut(sut_id, cur=cur)
+                for f in AttributeService(self.db, self.bus).list_for_sut(sut_id, cur=cur, version_id=version_id)
             ]
         keep = (
             "id",
@@ -622,7 +651,7 @@ class ModelService:
 
     def create_snapshot(self, sut_id, version_id=None, cur=None) -> dict:
         """Immutable model snapshot (used by version freeze in M1-05)."""
-        content = self.snapshot_content(sut_id)
+        content = self.snapshot_content(sut_id, version_id)
         digest = hashlib.sha256(_dumps(content).encode()).hexdigest()
         query = (
             "INSERT INTO model_snapshot(sut_id, version_id, content, digest)"

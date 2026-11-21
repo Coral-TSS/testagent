@@ -54,19 +54,26 @@ class AttributeService:
         self.actor = actor or current_actor()
 
     # ------------------------------------------------------------ queries
-    def list_for_sut(self, sut_id, cur=None) -> list[dict]:
+    def list_for_sut(self, sut_id, cur=None, version_id=None) -> list[dict]:
+        from testagent.services.model_scope import AUTO, resolve_version
+
         query = (
             f"SELECT {COLUMNS}, n.name AS node_name FROM entity_attribute a"
             " JOIN model_node n ON n.id=a.node_id"
             " WHERE a.sut_id=%s AND a.deleted_at IS NULL AND n.deleted_at IS NULL"
+            " AND n.version_id IS NOT DISTINCT FROM %s"
             " ORDER BY n.name, a.position, a.name"
         )
-        if cur is not None:
-            cur.execute(query, (sut_id,))
-            return cur.fetchall()
-        with self.db.tx() as c:
-            c.execute(query, (sut_id,))
+
+        def run(c):
+            chosen = resolve_version(c, sut_id, AUTO if version_id is None else version_id)
+            c.execute(query, (sut_id, chosen))
             return c.fetchall()
+
+        if cur is not None:
+            return run(cur)
+        with self.db.tx() as c:
+            return run(c)
 
     def list_for_node(self, node_id, cur=None) -> list[dict]:
         query = (
@@ -120,16 +127,19 @@ class AttributeService:
         )
         return cur.fetchall()
 
-    def resolve(self, cur, sut_id, ref: str) -> dict | None:
+    def resolve(self, cur, sut_id, ref: str, version_id=None) -> dict | None:
         """Find an attribute by id or by "Entity.field" / "entity.field" (names or display names)."""
+        from testagent.services.model_scope import AUTO, resolve_version
+
         ref = str(ref).strip()
+        chosen = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
         cur.execute(
             f"SELECT {COLUMNS}, n.name AS node_name FROM entity_attribute a"
             " JOIN model_node n ON n.id=a.node_id WHERE a.sut_id=%s AND a.deleted_at IS NULL"
-            " AND n.deleted_at IS NULL AND (a.id::text=%s"
+            " AND n.deleted_at IS NULL AND n.version_id IS NOT DISTINCT FROM %s AND (a.id::text=%s"
             " OR lower(n.name || '.' || a.name)=lower(%s)"
             " OR lower(n.name || '.' || coalesce(a.display_name, ''))=lower(%s))",
-            (sut_id, ref, ref, ref),
+            (sut_id, chosen, ref, ref, ref),
         )
         return cur.fetchone()
 

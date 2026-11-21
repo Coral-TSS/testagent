@@ -114,6 +114,7 @@ class SuggestionService:
         source: str | None = None,
         dropped: Dropped | None = None,
         strict_nodes: bool = False,
+        version_id=None,
     ) -> list[dict]:
         """Insert suggestions, skipping ones already pending or already present in the model.
 
@@ -132,9 +133,21 @@ class SuggestionService:
             evidence = (payload.pop("evidence", None) or "").strip() or None
             if item_source not in SOURCES:
                 item_source = "ai_inferred"
+            from testagent.services.model_scope import AUTO, resolve_version
+
+            item_version = version_id
+            if requirement_id:
+                cur.execute("SELECT version_id FROM requirement WHERE id=%s", (requirement_id,))
+                req_row = cur.fetchone()
+                if req_row is not None:
+                    item_version = req_row["version_id"]
+            if item_version is None:
+                item_version = resolve_version(cur, sut_id, AUTO)
             for key in ("inputs", "outputs"):  # bind Entity.field now; unknown refs become notes
                 if payload.get(key):
-                    payload[key] = validate_params(cur, sut_id, payload[key], key, strict=False)
+                    payload[key] = validate_params(
+                        cur, sut_id, payload[key], key, strict=False, version_id=item_version
+                    )
                 elif key in payload:
                     payload.pop(key)
             if payload["kind"] == "link":
@@ -159,7 +172,7 @@ class SuggestionService:
                 if not (new_in or new_out or new_purpose):
                     continue  # nothing the action does not already describe
             elif payload["kind"] == "node":
-                if not self._node_payload(cur, sut_id, payload, seen, dropped, strict_nodes):
+                if not self._node_payload(cur, sut_id, payload, seen, dropped, strict_nodes, item_version):
                     continue
             elif payload["kind"] == "field":
                 cur.execute(
@@ -205,11 +218,12 @@ class SuggestionService:
                 if cur.fetchone():
                     continue
             cur.execute(
-                "INSERT INTO model_suggestion(sut_id, requirement_id, agent_run_id, payload, kind,"
-                " dedup_key, source, evidence) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
-                " ON CONFLICT (sut_id, dedup_key) WHERE status='pending' DO NOTHING RETURNING *",
+                "INSERT INTO model_suggestion(sut_id, version_id, requirement_id, agent_run_id, payload, kind,"
+                " dedup_key, source, evidence) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                " ON CONFLICT (sut_id, version_id, dedup_key) WHERE status='pending' DO NOTHING RETURNING *",
                 (
                     sut_id,
+                    item_version,
                     requirement_id,
                     agent_run_id,
                     Jsonb(payload),
@@ -225,14 +239,14 @@ class SuggestionService:
         return created
 
     @staticmethod
-    def _node_payload(cur, sut_id, payload: dict, seen: set, dropped: Dropped, strict: bool) -> bool:
+    def _node_payload(cur, sut_id, payload: dict, seen: set, dropped: Dropped, strict: bool, version_id) -> bool:
         """#4: False (and the reason in `dropped`) when a new node should not be suggested."""
         kind, name = payload["node_kind"], str(payload.get("name") or "").strip()
         payload["name"] = name
         if strict and (len(name) < 2 or (kind == "action" and len(str(payload.get("description") or "").strip()) < 5)):
             dropped.add("invalid", f"{name or '(no name)'}: a name and, for an action, what it does are required")
             return False
-        if find_similar_node(cur, sut_id, kind, name):
+        if find_similar_node(cur, sut_id, kind, name, version_id):
             dropped.add("duplicate_node")  # 7(d): an equivalent node already exists
             return False
         api = parse_api(payload.get("api")) if kind == "action" else None
@@ -243,9 +257,9 @@ class SuggestionService:
             cur.execute(
                 "SELECT a.id, (SELECT n.name FROM node_api_link l JOIN model_node n ON n.id=l.node_id"
                 "  WHERE l.api_id=a.id AND l.invalid_at IS NULL AND n.deleted_at IS NULL AND n.kind='action'"
-                " LIMIT 1) AS bound_to"
+                "  AND n.version_id IS NOT DISTINCT FROM %s LIMIT 1) AS bound_to"
                 " FROM api_endpoint a WHERE a.sut_id=%s AND a.method=%s AND a.path=%s",
-                (sut_id, api[0], api[1]),
+                (version_id, sut_id, api[0], api[1]),
             )
             row = cur.fetchone()
             if row and row["bound_to"]:
@@ -259,8 +273,9 @@ class SuggestionService:
             return False
         cur.execute(
             "SELECT status, payload->>'name' AS name FROM model_suggestion WHERE sut_id=%s AND kind='node'"
+            " AND version_id IS NOT DISTINCT FROM %s"
             " AND status IN ('pending','rejected') AND payload->>'node_kind'=%s",
-            (sut_id, kind),
+            (sut_id, version_id, kind),
         )
         for prior in cur.fetchall():
             if _names_match(prior["name"] or "", name):
@@ -274,8 +289,9 @@ class SuggestionService:
         if api:
             seen.add((kind, payload["api"]))
         cur.execute(
-            "SELECT name FROM model_node WHERE sut_id=%s AND kind=%s AND deleted_at IS NULL",
-            (sut_id, kind),
+            "SELECT name FROM model_node WHERE sut_id=%s AND kind=%s AND deleted_at IS NULL"
+            " AND version_id IS NOT DISTINCT FROM %s",
+            (sut_id, kind, version_id),
         )
         similar = next((r["name"] for r in cur.fetchall() if loosely_similar(r["name"], name)), None)
         if similar:
@@ -414,7 +430,7 @@ class SuggestionService:
         elif sugg["kind"] == "node":
             name = overrides.get("name") or payload["name"]
             with self.db.tx() as cur:
-                similar = find_similar_node(cur, sugg["sut_id"], payload["node_kind"], name)
+                similar = find_similar_node(cur, sugg["sut_id"], payload["node_kind"], name, sugg.get("version_id"))
             if similar is not None and not overrides.get("name"):
                 node = model.get_node(similar["id"])  # 7(d): link instead of duplicating
             else:
@@ -429,6 +445,8 @@ class SuggestionService:
                     for key in ("inputs", "outputs", "input_format", "output_format"):
                         if payload.get(key):
                             data[key] = payload[key]
+                if sugg.get("version_id"):
+                    data["version_id"] = sugg["version_id"]
                 node = model.create_node(sugg["sut_id"], data)
                 if payload["node_kind"] == "action" and payload.get("api_id"):
                     from testagent.services.apis import ApiService

@@ -24,6 +24,7 @@ class _In(BaseModel):
 
 class VersionIn(_In):
     name: Name
+    source_version_id: UUID | None = None
 
 
 class UnfreezeIn(_In):
@@ -114,7 +115,7 @@ def list_versions(request: Request, sut_id: UUID):
 
 @router.post("/suts/{sut_id}/versions", status_code=201)
 def create_version(request: Request, sut_id: UUID, body: VersionIn):
-    return _versions(request).create(sut_id, body.name)
+    return _versions(request).create(sut_id, body.name, body.source_version_id)
 
 
 @router.get("/versions/{version_id}")

@@ -56,12 +56,16 @@ class CaseScopeService:
         self.actor = actor or current_actor()
 
     # ---------------------------------------------------------------- graph
-    def load_graph(self, cur, sut_id) -> Graph:
+    def load_graph(self, cur, sut_id, version_id=None) -> Graph:
+        from testagent.services.model_scope import AUTO, resolve_version
+
+        version_id = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
         graph = Graph()
         cur.execute(
             "SELECT id::text AS id, name, attributes FROM model_node"
-            " WHERE sut_id=%s AND kind='entity' AND deleted_at IS NULL",
-            (sut_id,),
+            " WHERE sut_id=%s AND kind='entity' AND deleted_at IS NULL"
+            " AND version_id IS NOT DISTINCT FROM %s",
+            (sut_id, version_id),
         )
         for row in cur.fetchall():
             attrs = row["attributes"] or {}
@@ -73,8 +77,9 @@ class CaseScopeService:
         cur.execute(
             "SELECT a.id::text AS id, a.node_id::text AS entity_id, a.name, a.required, n.name AS entity"
             " FROM entity_attribute a JOIN model_node n ON n.id=a.node_id"
-            " WHERE a.sut_id=%s AND a.deleted_at IS NULL AND n.deleted_at IS NULL",
-            (sut_id,),
+            " WHERE a.sut_id=%s AND a.deleted_at IS NULL AND n.deleted_at IS NULL"
+            " AND n.version_id IS NOT DISTINCT FROM %s",
+            (sut_id, version_id),
         )
         for row in cur.fetchall():
             graph.fields[row["id"]] = FieldRec(
@@ -82,8 +87,9 @@ class CaseScopeService:
             )
         cur.execute(
             "SELECT id::text AS id, name, preconditions, effects, inputs, outputs FROM model_node"
-            " WHERE sut_id=%s AND kind='action' AND deleted_at IS NULL",
-            (sut_id,),
+            " WHERE sut_id=%s AND kind='action' AND deleted_at IS NULL"
+            " AND version_id IS NOT DISTINCT FROM %s",
+            (sut_id, version_id),
         )
         for row in cur.fetchall():
             graph.actions[row["id"]] = ActionRec(
@@ -96,8 +102,8 @@ class CaseScopeService:
             )
         cur.execute(
             "SELECT source_node_id::text AS source, target_node_id::text AS target, role FROM model_edge"
-            " WHERE sut_id=%s AND invalid_at IS NULL",
-            (sut_id,),
+            " WHERE sut_id=%s AND invalid_at IS NULL AND version_id IS NOT DISTINCT FROM %s",
+            (sut_id, version_id),
         )
         for row in cur.fetchall():
             action = graph.actions.get(row["source"])
@@ -111,15 +117,17 @@ class CaseScopeService:
                 action.ref_ids.append(row["target"])
         cur.execute(
             "SELECT a.id::text AS id, a.method, a.path, l.node_id::text AS action_id FROM node_api_link l"
-            " JOIN api_endpoint a ON a.id=l.api_id WHERE a.sut_id=%s AND l.invalid_at IS NULL",
-            (sut_id,),
+            " JOIN api_endpoint a ON a.id=l.api_id"
+            " JOIN model_node n ON n.id=l.node_id AND n.version_id IS NOT DISTINCT FROM %s"
+            " WHERE a.sut_id=%s AND l.invalid_at IS NULL",
+            (version_id, sut_id),
         )
         for row in cur.fetchall():
             graph.apis[row["id"]] = ApiRec(row["id"], row["method"], row["path"], row["action_id"])
             action = graph.actions.get(row["action_id"])
             if action is not None:
                 action.api_ids.append(row["id"])
-        for link in LinkService.list_rows(cur, sut_id):
+        for link in LinkService.list_rows(cur, sut_id, version_id=version_id):
             graph.links[str(link["id"])] = LinkRec(
                 str(link["id"]),
                 str(link["from_node_id"]),
@@ -292,7 +300,7 @@ class CaseScopeService:
             reqs = self._requirements(cur, version_id, requirement_ids)
             if not reqs:
                 raise AppError("VALIDATION", "This version has no requirements yet")
-            graph = self.load_graph(cur, version["sut_id"])
+            graph = self.load_graph(cur, version["sut_id"], version["id"])
             views = []
             for req in reqs:
                 depth = self._depth(cur, req, depths.get(str(req["id"])))
@@ -318,7 +326,7 @@ class CaseScopeService:
             version = self._version(cur, version_id)
             reqs = self._requirements(cur, version_id, [requirement_id])
             req = reqs[0]
-            graph = self.load_graph(cur, version["sut_id"])
+            graph = self.load_graph(cur, version["sut_id"], version["id"])
             refs = self.load_refs(cur, req)
             chosen = self._depth(cur, req, depth)
             if depth is not None:
@@ -368,7 +376,7 @@ class CaseScopeService:
         """Manifests the generator must use. Computes a default snapshot when none is stored."""
         with self.db.tx() as cur:
             version = self._version(cur, version_id)
-            graph = self.load_graph(cur, version["sut_id"])
+            graph = self.load_graph(cur, version["sut_id"], version["id"])
             out = []
             blocked = []
             for req in reqs:

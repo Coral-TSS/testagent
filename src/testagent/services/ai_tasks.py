@@ -482,7 +482,7 @@ class AiTaskService:
                 "code": req["code"],
                 "title": req["title"],
                 "text": req["raw_text"],
-                "model": model_catalog(self.db, req["sut_id"]),
+                "model": model_catalog(self.db, req["sut_id"], req["version_id"]),
             },
             sut_id=req["sut_id"],
             context={"requirement": {"code": req["code"], "title": req["title"]}},
@@ -505,7 +505,7 @@ class AiTaskService:
                 similar = None
                 if kind:
                     with self.db.tx() as cur:  # 7(d): link an existing similar node instead
-                        similar = find_similar_node(cur, req["sut_id"], kind, name)
+                        similar = find_similar_node(cur, req["sut_id"], kind, name, req["version_id"])
                 if similar is not None:
                     node_id, sugg = str(similar["id"]), None
                 elif sugg is None and kind:
@@ -548,7 +548,7 @@ class AiTaskService:
         inputs = {
             "sut_id": str(sut_id),
             "version_id": str(version_id) if version_id else None,
-            "model": model_catalog(self.db, sut_id),
+            "model": model_catalog(self.db, sut_id, version_id),
         }
         run = self.runtime.run("complete_model", inputs, sut_id=sut_id)
         result = self._summary(run)

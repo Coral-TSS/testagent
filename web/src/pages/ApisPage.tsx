@@ -14,7 +14,7 @@ import { AppModal } from "../components/panel/AppModal";
 
 /** P04 API registry: method, path, purpose, inputs/outputs (parameters, body, response fields) and formats */
 export function ApisPage() {
-  const { sutId, ready } = usePageSut();
+  const { sutId, versionId, ready } = usePageSut();
   const key = ["apis", sutId];
   const apis = useQuery({ queryKey: key, queryFn: () => api<ApiEndpoint[]>(`/suts/${sutId}/apis`), enabled: ready });
   const remove = useApiMutation((id: string) => api(`/apis/${id}`, { method: "DELETE" }), { invalidate: [key] });
@@ -23,7 +23,7 @@ export function ApisPage() {
   const [importForm] = Form.useForm();
   const importer = useApiMutation(
     (body: { environment_id?: string; url?: string }) =>
-      api<{ created: number; updated: number; total: number; field_suggestions?: number; link_suggestions?: number }>(`/suts/${sutId}/apis/import-openapi`, { method: "POST", body }),
+      api<{ created: number; updated: number; total: number; field_suggestions?: number; link_suggestions?: number }>(`/suts/${sutId}/apis/import-openapi`, { method: "POST", body, params: versionId ? { version_id: versionId } : undefined }),
     {
       invalidate: [key],
       onSuccess: (r) => {

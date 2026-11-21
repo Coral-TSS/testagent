@@ -101,7 +101,11 @@ export function CaseForm({
     queryFn: () => api<Requirement[]>(`/versions/${versionId}/requirements`),
     enabled: Boolean(versionId),
   });
-  const graph = useQuery({ queryKey: ["graph", sutId, null], queryFn: () => api<Graph>(`/suts/${sutId}/graph`), enabled: Boolean(sutId) });
+  const graph = useQuery({
+    queryKey: ["graph", sutId, versionId || null],
+    queryFn: () => api<Graph>(`/suts/${sutId}/graph`, { params: versionId ? { version_id: versionId } : undefined }),
+    enabled: Boolean(sutId),
+  });
   return (
     <Form form={form} layout="vertical" disabled={disabled} onFinish={onFinish} initialValues={{ priority: "P1", type_tag: "functional", category: "requirement", quality_tags: [], mode: "manual", steps: [] }}>
       <Row gutter={12}>

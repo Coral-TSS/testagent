@@ -37,15 +37,21 @@ export function RequirementDrawer(props: {
     queryFn: () => api<Requirement>(`/requirements/${reqId}`),
     enabled: Boolean(reqId),
   });
-  const graph = useQuery({ queryKey: ["graph", sutId, null], queryFn: () => api<Graph>(`/suts/${sutId}/graph`), enabled: Boolean(reqId) });
+  const versionId = req.data?.version_id;
+  const graph = useQuery({
+    queryKey: ["graph", sutId, versionId || null],
+    queryFn: () => api<Graph>(`/suts/${sutId}/graph`, { params: versionId ? { version_id: versionId } : undefined }),
+    enabled: Boolean(reqId),
+  });
+  const scope = versionId ? { version_id: versionId } : undefined;
   const links = useQuery({
-    queryKey: ["links", sutId],
-    queryFn: () => api<ModelLink[]>(`/suts/${sutId}/links`),
+    queryKey: ["links", sutId, versionId || null],
+    queryFn: () => api<ModelLink[]>(`/suts/${sutId}/links`, { params: scope }),
     enabled: Boolean(reqId),
   });
   const fields = useQuery({
-    queryKey: ["sut-fields", sutId],
-    queryFn: () => api<EntityField[]>(`/suts/${sutId}/fields`),
+    queryKey: ["sut-fields", sutId, versionId || null],
+    queryFn: () => api<EntityField[]>(`/suts/${sutId}/fields`, { params: scope }),
     enabled: Boolean(reqId),
   });
   useEffect(() => {

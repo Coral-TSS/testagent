@@ -80,19 +80,22 @@ QUERIES = (
     (
         "Model node",
         "SELECT id::text AS id, name || CASE WHEN deleted_at IS NULL THEN '' ELSE '（已归档）'"
-        " END AS label, '/suts/' || sut_id || '/model?node=' || id AS path FROM model_node"
+        " END AS label, CASE WHEN version_id IS NULL THEN '/suts/' || sut_id || '/model?node=' || id"
+        " ELSE '/versions/' || version_id || '/model?node=' || id END AS path FROM model_node"
         " WHERE id = ANY(%(ids)s)",
     ),
     (
         "Field ",
         "SELECT a.id::text AS id, n.name || '.' || a.name AS label,"
-        " '/suts/' || a.sut_id || '/model?node=' || n.id AS path FROM entity_attribute a"
+        " CASE WHEN n.version_id IS NULL THEN '/suts/' || a.sut_id || '/model?node=' || n.id"
+        " ELSE '/versions/' || n.version_id || '/model?node=' || n.id END AS path FROM entity_attribute a"
         " JOIN model_node n ON n.id=a.node_id WHERE a.id = ANY(%(ids)s)",
     ),
     (
         "Link",
         "SELECT l.id::text AS id, f.name || ' ' || l.forward_name || ' ' || t.name AS label,"
-        " '/suts/' || l.sut_id || '/model?view=links' AS path FROM model_link l"
+        " CASE WHEN l.version_id IS NULL THEN '/suts/' || l.sut_id || '/model?view=links'"
+        " ELSE '/versions/' || l.version_id || '/model?view=links' END AS path FROM model_link l"
         " JOIN model_node f ON f.id=l.from_node_id JOIN model_node t ON t.id=l.to_node_id"
         " WHERE l.id = ANY(%(ids)s)",
     ),

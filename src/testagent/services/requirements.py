@@ -353,8 +353,9 @@ class RequirementService:
                     node_ids.add(str(node_id))
         if node_ids:
             cur.execute(
-                "SELECT id::text AS id FROM model_node WHERE id = ANY(%s::uuid[]) AND sut_id=%s AND deleted_at IS NULL",
-                (list(node_ids), req["sut_id"]),
+                "SELECT id::text AS id FROM model_node WHERE id = ANY(%s::uuid[]) AND sut_id=%s"
+                " AND deleted_at IS NULL AND version_id IS NOT DISTINCT FROM %s",
+                (list(node_ids), req["sut_id"], req["version_id"]),
             )
             valid = {r["id"] for r in cur.fetchall()}
             bad = sorted(node_ids - valid)

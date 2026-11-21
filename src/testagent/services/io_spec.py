@@ -76,7 +76,7 @@ def _errors(exc: ValidationError, prefix: str) -> list[dict]:
     return [{"field": prefix + "." + ".".join(str(p) for p in e["loc"]), "msg": e["msg"]} for e in exc.errors()]
 
 
-def validate_params(cur, sut_id, raw: Any, prefix: str, *, strict: bool = True) -> list[dict]:
+def validate_params(cur, sut_id, raw: Any, prefix: str, *, strict: bool = True, version_id=None) -> list[dict]:
     """Validate a parameter list and bind `field` to an entity attribute of the same system.
 
     strict=False (AI suggestions): an unknown field reference is kept as text in the
@@ -119,7 +119,7 @@ def validate_params(cur, sut_id, raw: Any, prefix: str, *, strict: bool = True) 
         ref = data.pop("attribute_id", None) or data.get("field")
         data.pop("field", None)
         if ref:
-            attr = attrs.resolve(cur, sut_id, ref)
+            attr = attrs.resolve(cur, sut_id, ref, version_id=version_id)
             if attr is not None:
                 data["attribute_id"] = str(attr["id"])
                 data["field"] = label(attr).split(" (")[0]

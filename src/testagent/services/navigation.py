@@ -213,22 +213,26 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
             None if envs else {"label": "添加环境", "path": base},
         )
 
+        model_version = version["id"] if version else None
         cur.execute(
             "SELECT count(*) FILTER (WHERE kind='entity') AS entities,"
             " count(*) FILTER (WHERE kind='action') AS actions"
-            " FROM model_node WHERE sut_id=%s AND deleted_at IS NULL",
-            (sut_id,),
+            " FROM model_node WHERE sut_id=%s AND deleted_at IS NULL"
+            " AND version_id IS NOT DISTINCT FROM %s",
+            (sut_id, model_version),
         )
         nodes = cur.fetchone()
         links = _count(
             cur,
-            "SELECT count(*) AS n FROM model_link WHERE sut_id=%s AND deleted_at IS NULL",
-            (sut_id,),
+            "SELECT count(*) AS n FROM model_link WHERE sut_id=%s AND deleted_at IS NULL"
+            " AND version_id IS NOT DISTINCT FROM %s",
+            (sut_id, model_version),
         )
         pending = _count(
             cur,
-            "SELECT count(*) AS n FROM model_suggestion WHERE sut_id=%s AND status='pending'",
-            (sut_id,),
+            "SELECT count(*) AS n FROM model_suggestion WHERE sut_id=%s AND status='pending'"
+            " AND version_id IS NOT DISTINCT FROM %s",
+            (sut_id, model_version),
         )
         model_done = nodes["entities"] > 0 and nodes["actions"] > 0
         summary = f"实体 {nodes['entities']} · 动作 {nodes['actions']} · 关系 {links}"

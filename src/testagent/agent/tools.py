@@ -304,21 +304,21 @@ def _rules(node: dict, link_names: dict[str, str] | None = None) -> dict:
     return out
 
 
-def _link_names(cur, sut_id) -> dict[str, str]:
+def _link_names(cur, sut_id, version_id=None) -> dict[str, str]:
     from testagent.services.links import LinkService
 
     return {
         str(lk["id"]): f"{lk['from_name']} {lk['forward_name']} {lk['to_name']}"
-        for lk in LinkService.list_rows(cur, sut_id)
+        for lk in LinkService.list_rows(cur, sut_id, version_id=version_id)
     }
 
 
-def link_summaries(db, sut_id) -> list[dict]:
+def link_summaries(db, sut_id, version_id=None) -> list[dict]:
     """Links between entities (both readings, cardinality, foreign key / junction entity)."""
     from testagent.services.links import LinkService, link_summary
 
     with db.tx() as cur:
-        return [link_summary(lk) for lk in LinkService.list_rows(cur, sut_id)]
+        return [link_summary(lk) for lk in LinkService.list_rows(cur, sut_id, version_id=version_id)]
 
 
 def _slim(node: dict, fields: list[dict] | None = None, links: dict | None = None) -> dict:
@@ -456,18 +456,22 @@ def check_request_bodies(db, sut_id, steps: list[tuple[str, str, str | None]]) -
     return errors
 
 
-def model_catalog(db, sut_id) -> dict:
+def model_catalog(db, sut_id, version_id=None) -> dict:
     """Compact model summary injected into structuring/completion inputs (names, not just IDs)."""
     from testagent.services.attributes import AttributeService
 
     with db.tx() as cur:
         cur.execute("SELECT code, name FROM sut WHERE id=%s", (sut_id,))
         sut = cur.fetchone()
+        from testagent.services.model_scope import AUTO, resolve_version
+
+        version_id = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
         cur.execute(
             "SELECT id, kind, name, description, inputs, outputs, input_format, output_format,"
             " preconditions, effects FROM model_node WHERE sut_id=%s AND deleted_at IS NULL"
+            " AND version_id IS NOT DISTINCT FROM %s"
             " AND kind <> 'relation' ORDER BY kind, name",
-            (sut_id,),
+            (sut_id, version_id),
         )
         nodes = cur.fetchall()
         cur.execute(
@@ -478,8 +482,8 @@ def model_catalog(db, sut_id) -> dict:
         linked: dict[str, list] = {}
         for row in cur.fetchall():
             linked.setdefault(str(row["node_id"]), []).append(row["api"])
-        fields = AttributeService(db, None).list_for_sut(sut_id, cur=cur)
-        names = _link_names(cur, sut_id)
+        fields = AttributeService(db, None).list_for_sut(sut_id, cur=cur, version_id=version_id)
+        names = _link_names(cur, sut_id, version_id)
     by_node: dict[str, list] = {}
     for f in fields:
         by_node.setdefault(str(f["node_id"]), []).append(_field(f))
@@ -498,7 +502,7 @@ def model_catalog(db, sut_id) -> dict:
             }
             for n in nodes
         ],
-        "links": link_summaries(db, sut_id),
+        "links": link_summaries(db, sut_id, version_id),
     }
 
 
@@ -553,17 +557,23 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
     attrs = AttributeService(db, bus, actor="agent")
     registry.resolver = IdResolver(db)
 
-    def fields_by_node(sut_id) -> dict[str, list]:
+    def _ver(ctx: dict | None):
+        if not ctx:
+            return None
+        return (ctx.get("inputs") or {}).get("version_id") or ctx.get("version_id")
+
+    def fields_by_node(sut_id, version_id=None) -> dict[str, list]:
         out: dict[str, list] = {}
-        for f in attrs.list_for_sut(sut_id):
+        for f in attrs.list_for_sut(sut_id, version_id=version_id):
             out.setdefault(str(f["node_id"]), []).append(f)
         return out
 
     def list_nodes(sut_id: str | None = None, ctx: dict | None = None) -> str:
-        fields = fields_by_node(sut_id)
+        version_id = _ver(ctx)
+        fields = fields_by_node(sut_id, version_id)
         with db.tx() as cur:
-            names = _link_names(cur, sut_id)
-        rows = [_slim(n, fields.get(str(n["id"])), names) for n in model.list_nodes(sut_id)]
+            names = _link_names(cur, sut_id, version_id)
+        rows = [_slim(n, fields.get(str(n["id"])), names) for n in model.list_nodes(sut_id, version_id=version_id)]
         return to_text(_filter_rows(ctx, rows, "node"))
 
     def get_node(node_id: str, ctx: dict | None = None) -> str:
@@ -599,13 +609,16 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
         )
 
     def search_nodes(query: str, kind: str | None = None, sut_id: str | None = None, ctx: dict | None = None) -> str:
-        fields = fields_by_node(sut_id)
-        rows = model.list_nodes(sut_id, kind=kind, q=query)
+        version_id = _ver(ctx)
+        fields = fields_by_node(sut_id, version_id)
+        rows = model.list_nodes(sut_id, kind=kind, q=query, version_id=version_id)
         seen = {str(r["id"]) for r in rows}
-        for f in attrs.list_for_sut(sut_id):  # a field match returns its entity
+        for f in attrs.list_for_sut(sut_id, version_id=version_id):  # a field match returns its entity
             hay = f"{f['name']} {f.get('display_name') or ''}".lower()
             if query.lower() in hay and str(f["node_id"]) not in seen:
-                rows += [n for n in model.list_nodes(sut_id) if str(n["id"]) == str(f["node_id"])]
+                rows += [
+                    n for n in model.list_nodes(sut_id, version_id=version_id) if str(n["id"]) == str(f["node_id"])
+                ]
                 seen.add(str(f["node_id"]))
         allowed = _scope_sets(ctx)
         if allowed is not None:
@@ -613,7 +626,7 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
             for n in rows:
                 _lookup(ctx, "node", n["id"], True)
         with db.tx() as cur:
-            names = _link_names(cur, sut_id)
+            names = _link_names(cur, sut_id, version_id)
         return to_text([_slim(n, fields.get(str(n["id"])), names) for n in rows])
 
     def get_graph_neighbors(node_id: str, depth: int = 1) -> str:

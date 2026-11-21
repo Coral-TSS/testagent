@@ -77,6 +77,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Models belong to a version. Graph, review and the fields, links and action rules they
+  use are read and written for that version. Creating a later version copies the source
+  version's model (nodes, fields, links, edges, action rules and API bindings); the first
+  version starts empty, unless nodes were saved before any version existed, in which case
+  that first version adopts them. API definitions stay registered on the system.
 - Sidebar: 「全部被测系统」 is its own top-level entry. After a system is open, the current
   system and version switchers and the workflow (including 建模) stay in a current-system
   area. Modeling follows the current version (`/versions/:id/model`, `/review`, `/apis`);

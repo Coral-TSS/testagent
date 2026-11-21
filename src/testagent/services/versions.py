@@ -25,14 +25,17 @@ class VersionService:
             raise AppError("NOT_FOUND", "Version not found")
         return row
 
-    def create(self, sut_id, name: str) -> dict:
+    def create(self, sut_id, name: str, source_version_id=None) -> dict:
+        from testagent.services.model_copy import bind_new_version
+
         with self.db.tx() as cur:
             cur.execute("SELECT 1 FROM sut WHERE id=%s", (sut_id,))
             if cur.fetchone() is None:
                 raise AppError("NOT_FOUND", "SUT not found")
             cur.execute("INSERT INTO version(sut_id, name) VALUES (%s,%s) RETURNING *", (sut_id, name))
             row = cur.fetchone()
-            log_change(cur, "version", row["id"], "create", self.actor, {"name": name})
+            copied = bind_new_version(cur, sut_id, row["id"], source_version_id)
+            log_change(cur, "version", row["id"], "create", self.actor, {"name": name, **copied})
         self.bus.publish("version.created", {"id": str(row["id"])})
         return row
 

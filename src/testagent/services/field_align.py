@@ -36,15 +36,16 @@ def rename_match(field_name: str, api_name: str) -> bool:
     return (f, a) in SYNONYMS or (a, f) in SYNONYMS
 
 
-def entity_api_fields(cur, sut_id) -> dict[str, dict]:
+def entity_api_fields(cur, sut_id, version_id=None) -> dict[str, dict]:
     """{entity_id: {"name": entity, "fields": {api_field_name: (param, source)}}} from the
     responses that return the entity itself (with its id) of actions with one object entity."""
     cur.execute(
         "SELECT n.id, n.name, t.id AS owner_id, t.name AS owner_name FROM model_node n"
         " JOIN model_edge e ON e.source_node_id=n.id AND e.role='object' AND e.invalid_at IS NULL"
         " JOIN model_node t ON t.id=e.target_node_id AND t.kind='entity' AND t.deleted_at IS NULL"
-        " WHERE n.sut_id=%s AND n.kind='action' AND n.deleted_at IS NULL ORDER BY n.name",
-        (sut_id,),
+        " WHERE n.sut_id=%s AND n.kind='action' AND n.deleted_at IS NULL"
+        " AND n.version_id IS NOT DISTINCT FROM %s ORDER BY n.name",
+        (sut_id, version_id),
     )
     rows = cur.fetchall()
     owners: dict[str, list] = {}
@@ -71,13 +72,15 @@ def entity_api_fields(cur, sut_id) -> dict[str, dict]:
     return out
 
 
-def field_suggestions(cur, sut_id) -> list[dict]:
+def field_suggestions(cur, sut_id, version_id=None) -> list[dict]:
     """Rename / new-field suggestions that make entity fields match the API field names."""
     from testagent.services.attributes import AttributeService
+    from testagent.services.model_scope import AUTO, resolve_version
 
-    fields = AttributeService(None, None).list_for_sut(sut_id, cur=cur)
+    version_id = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
+    fields = AttributeService(None, None).list_for_sut(sut_id, cur=cur, version_id=version_id)
     suggestions: list[dict] = []
-    for entity_id, entry in entity_api_fields(cur, sut_id).items():
+    for entity_id, entry in entity_api_fields(cur, sut_id, version_id).items():
         own = [f for f in fields if str(f["node_id"]) == entity_id]
         have = {f["name"].lower() for f in own}
         api_names = {n.lower() for n in entry["fields"]}
@@ -114,10 +117,10 @@ def field_suggestions(cur, sut_id) -> list[dict]:
     return suggestions
 
 
-def suggest_alignment(db, bus, sut_id) -> list[dict]:
+def suggest_alignment(db, bus, sut_id, version_id=None) -> list[dict]:
     """Store the alignment suggestions (pending, de-duplicated); returns the created rows."""
     from testagent.services.suggestions import SuggestionService
 
     with db.tx() as cur:
-        items = field_suggestions(cur, sut_id)
-        return SuggestionService(db, bus).add_many(cur, sut_id, items)
+        items = field_suggestions(cur, sut_id, version_id)
+        return SuggestionService(db, bus).add_many(cur, sut_id, items, version_id=version_id)

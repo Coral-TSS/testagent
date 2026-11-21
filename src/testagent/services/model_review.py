@@ -118,11 +118,14 @@ class ModelReviewService:
         return cov
 
     # ------------------------------------------------------------ review
-    def get(self, sut_id) -> dict:
+    def get(self, sut_id, version_id=None) -> dict:
         with self.db.tx() as cur:
-            return self._review(cur, sut_id)
+            return self._review(cur, sut_id, version_id)
 
-    def _review(self, cur, sut_id) -> dict:
+    def _review(self, cur, sut_id, version_id=None) -> dict:
+        from testagent.services.model_scope import AUTO, resolve_version
+
+        version_id = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
         cur.execute("SELECT id, code, name, description FROM sut WHERE id=%s", (sut_id,))
         sut = cur.fetchone()
         if sut is None:
@@ -135,14 +138,15 @@ class ModelReviewService:
             (sut_id,),
         )
         marks = {(r["target_type"], r["target_id"]): r for r in cur.fetchall()}
-        links = LinkService.list_rows(cur, sut_id)
+        links = LinkService.list_rows(cur, sut_id, version_id=version_id)
 
         cur.execute(
             "SELECT id::text AS id, kind, name, description, inputs, outputs, input_format,"
             " output_format, preconditions, effects FROM model_node"
             " WHERE sut_id=%s AND deleted_at IS NULL AND kind IN ('entity','action')"
+            " AND version_id IS NOT DISTINCT FROM %s"
             " ORDER BY kind, created_at",
-            (sut_id,),
+            (sut_id, version_id),
         )
         nodes = cur.fetchall()
         cur.execute(
@@ -150,8 +154,11 @@ class ModelReviewService:
             " a.data_type, a.required, a.enum_values, a.unit, a.format, a.storage_name,"
             " a.description, r.name AS ref_node_name FROM entity_attribute a"
             " LEFT JOIN model_node r ON r.id=a.ref_node_id"
-            " WHERE a.sut_id=%s AND a.deleted_at IS NULL ORDER BY a.position, a.created_at",
-            (sut_id,),
+            " WHERE a.sut_id=%s AND a.deleted_at IS NULL"
+            " AND EXISTS (SELECT 1 FROM model_node n WHERE n.id=a.node_id"
+            " AND n.version_id IS NOT DISTINCT FROM %s)"
+            " ORDER BY a.position, a.created_at",
+            (sut_id, version_id),
         )
         fields_by_node: dict[str, list] = {}
         for f in cur.fetchall():
@@ -241,13 +248,15 @@ class ModelReviewService:
             link_items.append(finish(item, "link"))
 
         cur.execute(
-            "SELECT kind, count(*) AS n FROM model_suggestion WHERE sut_id=%s AND status='pending' GROUP BY kind",
-            (sut_id,),
+            "SELECT kind, count(*) AS n FROM model_suggestion WHERE sut_id=%s AND status='pending'"
+            " AND version_id IS NOT DISTINCT FROM %s GROUP BY kind",
+            (sut_id, version_id),
         )
         by_kind = {r["kind"]: r["n"] for r in cur.fetchall()}
         cur.execute(
-            "SELECT source, count(*) AS n FROM model_suggestion WHERE sut_id=%s AND status='pending' GROUP BY source",
-            (sut_id,),
+            "SELECT source, count(*) AS n FROM model_suggestion WHERE sut_id=%s AND status='pending'"
+            " AND version_id IS NOT DISTINCT FROM %s GROUP BY source",
+            (sut_id, version_id),
         )
         by_source = {r["source"]: r["n"] for r in cur.fetchall()}
         everything = entities + link_items + actions
@@ -279,12 +288,12 @@ class ModelReviewService:
         }
 
     # ------------------------------------------------------------ marks
-    def mark(self, sut_id, data: dict) -> dict:
+    def mark(self, sut_id, data: dict, version_id=None) -> dict:
         kind, target = data["target_type"], str(data["target_id"])
         if kind not in TARGETS:
             raise AppError("VALIDATION", "Invalid review target type")
         with self.db.tx() as cur:
-            review = self._review(cur, sut_id)
+            review = self._review(cur, sut_id, version_id)
             pool = {
                 "entity": review["entities"],
                 "action": review["actions"],
@@ -315,8 +324,8 @@ class ModelReviewService:
             return {**row, "stale": False}
 
     # ------------------------------------------------------------ markdown
-    def markdown(self, sut_id) -> tuple[str, str]:
-        r = self.get(sut_id)
+    def markdown(self, sut_id, version_id=None) -> tuple[str, str]:
+        r = self.get(sut_id, version_id)
         s = r["summary"]
         lines = [
             f"# Model review: {sut_label(r['sut'])}",
