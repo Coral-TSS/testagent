@@ -51,7 +51,7 @@ describe("Ready task feedback (#11)", () => {
     renderPage(<CasePage />, { path: "/cases/:caseId", route: "/cases/c1" });
     const panel = await screen.findByRole("region", { name: "任务 TC-001 的关联" });
     expect(within(panel).getByText(/该系统还没有测试任务/)).toBeTruthy();
-    expect(within(panel).getByRole("link", { name: "管理测试任务" }).getAttribute("href")).toBe("/versions/v1?tab=strategy");
+    expect(within(panel).getByRole("link", { name: "管理测试任务" }).getAttribute("href")).toBe("/versions/v1/tasks");
     expect(within(panel).getByText(/Ready does not start a run/)).toBeTruthy();
   });
 

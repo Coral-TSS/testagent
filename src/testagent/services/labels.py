@@ -109,7 +109,7 @@ QUERIES = (
     (
         "Test strategy",
         "SELECT s.id::text AS id, '测试策略 · 版本 ' || v.name AS label,"
-        " '/versions/' || v.id || '?tab=strategy' AS path FROM test_strategy s"
+        " '/versions/' || v.id || '/strategy' AS path FROM test_strategy s"
         " JOIN version v ON v.id=s.version_id WHERE s.id = ANY(%(ids)s)",
     ),
     (

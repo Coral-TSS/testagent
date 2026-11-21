@@ -508,7 +508,7 @@ def test_next_step_runs_tasks(client, db):
     client.post(f"{V1}/tasks/{task}/status", json={"status": "ready"})
     assert runs_action() == {
         "label": "执行任务",
-        "path": f"/versions/{w['version']}?tab=strategy",
+        "path": f"/versions/{w['version']}/tasks",
         "kind": "run_tasks",
         "version_id": w["version"],
     }

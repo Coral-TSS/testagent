@@ -2,11 +2,11 @@ import { FileTextOutlined, LockOutlined, PlusOutlined, RobotOutlined, UnlockOutl
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Tabs, Tag, Timeline } from "antd";
 import { useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
-import type { CaseRow, CompletionOutcome, Requirement, Suggestion, Task, Version } from "../api/types";
+import type { CaseRow, CompletionOutcome, Requirement, Suggestion, Version } from "../api/types";
 import { AgentRunDrawer } from "../components/AgentRunDrawer";
 import { CaseList } from "../components/CaseList";
 import { ListSection, ListTable, listTitle } from "../components/ListView";
@@ -14,7 +14,6 @@ import { BatchBar } from "../components/BatchBar";
 import { EmptyState } from "../components/EmptyState";
 import { RequirementDrawer } from "../components/RequirementDrawer";
 import { RequirementStatusTag, VersionStatusTag } from "../components/StatusTags";
-import { StrategyTab } from "../components/StrategyTab";
 import { RunTasksModal } from "../components/RunTasksModal";
 import { SuggestionList, completionNote } from "../components/SuggestionList";
 import { fmtTime } from "../utils/time";
@@ -36,7 +35,6 @@ export function VersionPage() {
   const sutId = version.data?.sut_id || "";
   // Observe the tables' existing caches without fetching unvisited tabs just to show a number.
   const caseCount = useQuery({ queryKey: ["cases", sutId, versionId, null, null, ""], queryFn: () => api<CaseRow[]>(`/suts/${sutId}/cases`, { params: { version_id: versionId } }), enabled: false });
-  const taskCount = useQuery({ queryKey: ["tasks", versionId], queryFn: () => api<Task[]>(`/versions/${versionId}/tasks`), enabled: false });
   const reqs = useQuery({
     queryKey: ["requirements", versionId],
     queryFn: () => api<Requirement[]>(`/versions/${versionId}/requirements`),
@@ -101,6 +99,13 @@ export function VersionPage() {
   const [runTasks, setRunTasks] = useState(false);
   const v = version.data;
   const locked = Boolean(v && v.status !== "planning");
+  const tab = params.get("tab");
+  if (tab === "strategy" || tab === "tasks") {
+    const next = new URLSearchParams(params);
+    next.delete("tab");
+    const qs = next.toString();
+    return <Navigate to={`/versions/${versionId}/${tab}${qs ? `?${qs}` : ""}`} replace />;
+  }
   return (
     <>
       {v && <RunTasksModal open={runTasks} versionId={v.id} startTesting={v.status === "requirements_frozen"} onClose={() => setRunTasks(false)} onDone={refreshVersion} />}
@@ -281,11 +286,6 @@ export function VersionPage() {
               key: "cases",
               label: listTitle("测试用例与覆盖", caseCount.data?.length),
               children: sutId && <CaseList sutId={sutId} versionId={versionId} onOpenRun={(id) => setParam("run", id)} />,
-            },
-            {
-              key: "strategy",
-              label: listTitle("测试策略与任务", taskCount.data?.length),
-              children: v && <StrategyTab version={v} onOpenRun={(id) => setParam("run", id)} />,
             },
             {
               key: "history",

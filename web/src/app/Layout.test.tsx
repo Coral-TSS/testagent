@@ -27,4 +27,32 @@ describe("Layout", () => {
     expect(screen.getByRole("link", { name: "Version v1" })).toBeTruthy();
     expect(await screen.findByTestId("flow-steps")).toBeTruthy();
   });
+
+  it("keeps one sidebar and highlights the workflow stage", async () => {
+    mockFetch({
+      "GET /suts": () => ({ body: [{ id: "s1", code: "PROC", name: "Procurement system" }, { id: "s2", code: "SHOP", name: "Shop" }] }),
+      "GET /nav/context": () => ({ body: { sut: { id: "s1", code: "PROC", name: "Procurement system" }, version: { id: "v1", name: "v1", status: "frozen" }, crumbs: [] } }),
+      "GET /suts/s1/progress": () => ({ body: progress }),
+    });
+    renderPage(<Layout />, { path: "*", route: "/suts/s1/model" });
+    const model = await screen.findByRole("link", { name: "模型图谱" });
+    expect(model.getAttribute("href")).toBe("/suts/s1/model");
+    expect(model.closest(".ant-menu-item")?.className).toContain("ant-menu-item-selected");
+    expect((await screen.findByRole("link", { name: "版本与需求" })).getAttribute("href")).toBe("/versions/v1");
+    expect(screen.getByRole("link", { name: "策略" }).getAttribute("href")).toBe("/versions/v1/strategy");
+    expect(screen.getByRole("link", { name: "任务" }).getAttribute("href")).toBe("/versions/v1/tasks");
+    expect(screen.getByRole("link", { name: "用例" }).getAttribute("href")).toBe("/suts/s1/cases?version_id=v1");
+    expect(screen.getByRole("link", { name: "模型评审" }).getAttribute("href")).toBe("/suts/s1/review");
+    expect(screen.getByRole("link", { name: "API 注册表" }).getAttribute("href")).toBe("/suts/s1/apis");
+    expect(screen.getAllByRole("link", { name: "执行" }).map((el) => el.getAttribute("href"))).toEqual([
+      "/executions?sut_id=s1&version_id=v1",
+      "/executions",
+    ]);
+    expect(screen.getByRole("link", { name: "测试报告" }).getAttribute("href")).toBe("/reports?sut_id=s1&version_id=v1");
+    expect(screen.getAllByText("人员").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Agent").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("link", { name: "测试用例" })).toBeNull();
+    expect(screen.getByLabelText("切换被测系统")).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "PROC" })).toBeNull();
+  });
 });

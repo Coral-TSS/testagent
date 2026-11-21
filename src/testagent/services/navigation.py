@@ -52,7 +52,7 @@ class _Chain:
     def add_task(self, task_id):
         row = _one(self.cur, "SELECT id, version_id, name FROM test_task WHERE id=%s", (task_id,))
         self.add_version(row["version_id"])
-        self.add("strategy", None, "测试策略与任务", f"/versions/{row['version_id']}?tab=strategy")
+        self.add("tasks", None, "任务", f"/versions/{row['version_id']}/tasks")
         self.add("task", row["id"], row["name"], f"/tasks/{row['id']}")
 
     def add_run(self, run_id):
@@ -72,7 +72,7 @@ class _Chain:
         if with_parents:
             if row["version_id"]:
                 self.add_version(row["version_id"])
-                self.add("cases", None, "用例", f"/versions/{row['version_id']}?tab=cases")
+                self.add("cases", None, "用例", f"/suts/{row['sut_id']}/cases?version_id={row['version_id']}")
             else:
                 self.add_sut(row["sut_id"])
                 self.add("cases", None, "用例库", f"/suts/{row['sut_id']}/cases")
@@ -279,7 +279,8 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
                 action,
             )
 
-            spath = f"{vpath}?tab=strategy"
+            spath = f"/versions/{vid}/strategy"
+            tpath = f"/versions/{vid}/tasks"
             cur.execute("SELECT status FROM test_strategy WHERE version_id=%s", (vid,))
             strategy = cur.fetchone()
             if strategy and strategy["status"] == "confirmed":
@@ -303,11 +304,11 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
                 "tasks",
                 "done" if tasks["ready"] else ("doing" if tasks["n"] else "todo"),
                 f"任务 {tasks['n']}（就绪/执行 {tasks['ready']}）",
-                spath,
-                None if tasks["ready"] else {"label": "设为就绪" if tasks["n"] else "新建任务", "path": spath},
+                tpath,
+                None if tasks["ready"] else {"label": "设为就绪" if tasks["n"] else "新建任务", "path": tpath},
             )
 
-            cpath = f"{vpath}?tab=cases"
+            cpath = f"/suts/{sut_id}/cases?version_id={vid}"
             cur.execute(
                 "SELECT count(*) AS n, count(*) FILTER (WHERE c.status='ready') AS ready,"
                 " count(*) FILTER (WHERE c.code_path IS NOT NULL) AS automated"
@@ -345,11 +346,11 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
                 # #13: the button runs the tasks (the UI opens the "Run tasks" dialog), it does
                 # not just jump to the page; with nothing ready it says what is missing
                 action = (
-                    {"label": "执行任务", "path": spath, "kind": "run_tasks", "version_id": str(vid)}
+                    {"label": "执行任务", "path": tpath, "kind": "run_tasks", "version_id": str(vid)}
                     if tasks["ready"]
-                    else {"label": "将任务设为就绪" if tasks["n"] else "新建任务", "path": spath}
+                    else {"label": "将任务设为就绪" if tasks["n"] else "新建任务", "path": tpath}
                 )
-                step("runs", "todo", "尚未执行", spath, action)
+                step("runs", "todo", "尚未执行", tpath, action)
 
             cur.execute(
                 "SELECT count(*) AS n, count(*) FILTER (WHERE status IN ('open','in_progress'))"

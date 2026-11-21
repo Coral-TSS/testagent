@@ -1,4 +1,4 @@
-import { Navigate, type RouteObject } from "react-router-dom";
+import { Navigate, useSearchParams, type RouteObject } from "react-router-dom";
 
 import { AgentConfigPage } from "../pages/AgentConfigPage";
 import { AgentRunsPage } from "../pages/AgentRunsPage";
@@ -23,10 +23,23 @@ import { SutOverviewPage } from "../pages/SutOverviewPage";
 import { SutsPage } from "../pages/SutsPage";
 import { UsersPage } from "../pages/UsersPage";
 import { VersionPage } from "../pages/VersionPage";
+import { VersionSectionPage } from "../pages/VersionSectionPage";
 import { VersionsPage } from "../pages/VersionsPage";
 import { Layout } from "./Layout";
 
-// Page codes follow the spec page list (P01–P15). P07/P08 live in the version page's strategy tab.
+/** Old case-library URL: the current system's cases, or the system list when none is named. */
+function CasesRedirect() {
+  const [params] = useSearchParams();
+  const sut = params.get("sut") || params.get("sut_id");
+  if (!sut) return <Navigate to="/suts" replace />;
+  const q = new URLSearchParams();
+  const version = params.get("version_id");
+  if (version) q.set("version_id", version);
+  const s = q.toString();
+  return <Navigate to={`/suts/${sut}/cases${s ? `?${s}` : ""}`} replace />;
+}
+
+// Page codes follow the spec page list (P01–P15). Strategy and tasks have their own routes.
 export const routes: RouteObject[] = [
   {
     path: "/",
@@ -39,8 +52,10 @@ export const routes: RouteObject[] = [
       { path: "suts/:sutId/review", element: <ModelReviewPage /> }, // model review
       { path: "suts/:sutId/apis", element: <ApisPage /> }, // P04
       { path: "suts/:sutId/versions", element: <VersionsPage /> }, // P05
-      { path: "versions/:versionId", element: <VersionPage /> }, // P05 detail, P06, P07, P08, P09 list+coverage
-      { path: "cases", element: <CasesPage /> }, // P09 case library
+      { path: "versions/:versionId/strategy", element: <VersionSectionPage section="strategy" /> },
+      { path: "versions/:versionId/tasks", element: <VersionSectionPage section="tasks" /> },
+      { path: "versions/:versionId", element: <VersionPage /> }, // P05 detail, P06, P09 list+coverage
+      { path: "cases", element: <CasesRedirect /> },
       { path: "suts/:sutId/cases", element: <CasesPage /> },
       { path: "cases/:caseId", element: <CasePage /> }, // P09 case detail
       { path: "executions", element: <ExecutionsPage /> },

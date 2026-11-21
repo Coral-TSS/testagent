@@ -33,7 +33,7 @@ export function ReadyTaskFeedback({ feedback, onNavigate }: { feedback: TaskBind
       <div>{linked ? task.reason : REASON[task.reason] || "无法确认任务关联。"}</div>
     </li>
   );
-  const manage = feedback.version_id ? `/versions/${feedback.version_id}?tab=strategy` : `/suts/${feedback.sut_id}/versions`;
+  const manage = feedback.version_id ? `/versions/${feedback.version_id}/tasks` : `/suts/${feedback.sut_id}/versions`;
   return (
     <section aria-label={`任务 ${feedback.code} 的关联`}>
       <Alert

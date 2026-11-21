@@ -11,11 +11,11 @@ export interface RouteObject {
 }
 
 const SUT_PAGES: Record<string, string> = {
-  model: "模型",
+  model: "模型图谱",
   review: "模型评审",
   apis: "API 注册表",
-  versions: "版本",
-  cases: "用例库",
+  versions: "版本与需求",
+  cases: "用例",
 };
 const DETAIL: Record<string, NavKind> = {
   versions: "version",
@@ -27,16 +27,20 @@ const DETAIL: Record<string, NavKind> = {
   reports: "report",
 };
 const LIST_PAGES: Record<string, string> = {
-  cases: "测试用例",
   executions: "执行",
-  reports: "报告",
+  reports: "测试报告",
   defects: "缺陷",
 };
 const VERSION_TABS: Record<string, string> = {
   suggestions: "模型建议",
-  cases: "测试用例与覆盖",
-  strategy: "测试策略与任务",
+  cases: "用例",
+  strategy: "策略",
+  tasks: "任务",
   history: "变更日志",
+};
+const VERSION_SECTIONS: Record<string, string> = {
+  strategy: "策略",
+  tasks: "任务",
 };
 
 export function routeObject(pathname: string, search: string): RouteObject {
@@ -47,12 +51,14 @@ export function routeObject(pathname: string, search: string): RouteObject {
   if (parts[0] === "suts" && parts[1]) {
     return { kind: "sut", id: parts[1], page: SUT_PAGES[parts[2] || ""], sutId: parts[1], versionId: versionQ };
   }
+  if (parts[0] === "versions" && parts[1]) {
+    const section = VERSION_SECTIONS[parts[2] || ""];
+    if (section && !q.get("req")) return { kind: "version", id: parts[1], page: section };
+    const req = q.get("req");
+    if (req) return { kind: "requirement", id: req };
+    return { kind: "version", id: parts[1], page: VERSION_TABS[q.get("tab") || ""] };
+  }
   if (parts.length === 2 && DETAIL[parts[0]]) {
-    if (parts[0] === "versions") {
-      const req = q.get("req");
-      if (req) return { kind: "requirement", id: req };
-      return { kind: "version", id: parts[1], page: VERSION_TABS[q.get("tab") || ""] };
-    }
     return { kind: DETAIL[parts[0]], id: parts[1] };
   }
   if (parts.length === 1 && LIST_PAGES[parts[0]]) {
@@ -66,12 +72,8 @@ export function routeObject(pathname: string, search: string): RouteObject {
 /** Global pages keep the current SUT / version in their query string. */
 export function withContext(path: string, sutId?: string, versionId?: string): string {
   const q = new URLSearchParams();
-  if (path === "/cases") {
-    if (sutId) q.set("sut", sutId);
-  } else {
-    if (sutId) q.set("sut_id", sutId);
-    if (versionId) q.set("version_id", versionId);
-  }
+  if (sutId) q.set("sut_id", sutId);
+  if (versionId) q.set("version_id", versionId);
   const s = q.toString();
   return s ? `${path}?${s}` : path;
 }

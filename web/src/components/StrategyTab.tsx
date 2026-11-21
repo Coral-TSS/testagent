@@ -19,8 +19,8 @@ import { ListTable } from "./ListView";
 const TEST_TYPES = ["功能", "API", "UI", "回归", "冒烟"];
 const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "已自动化", human: "手工" };
 
-/** Test strategy (human-confirmed) and test tasks */
-export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRun: (id: string) => void }) {
+/** Test strategy (human-confirmed) and test tasks. `section` splits the two routes; `all` keeps both. */
+export function StrategyTab({ version, onOpenRun, section = "all" }: { version: Version; onOpenRun: (id: string) => void; section?: "all" | "strategy" | "tasks" }) {
   const vid = version.id;
   const [form] = Form.useForm();
   const strategy = useQuery({
@@ -118,7 +118,7 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
           action={<Button onClick={() => tasks.refetch()} loading={tasks.isFetching}>重试任务</Button>}
         />
       )}
-      {activeTasks.length > 0 && (
+      {section !== "strategy" && activeTasks.length > 0 && (
         <Alert
           type="info"
           showIcon
@@ -132,7 +132,7 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
           }
         />
       )}
-      <Card
+      {section !== "tasks" && <Card
         size="small"
         title={
           <Space>
@@ -175,8 +175,8 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
             保存策略
           </Button>
         </Form>
-      </Card>
-      {(gaps.data?.length ?? 0) > 0 && (
+      </Card>}
+      {section !== "tasks" && (gaps.data?.length ?? 0) > 0 && (
         <Card size="small" title="需求缺口：还没有就绪用例" data-testid="gaps">
           <Typography.Paragraph type="secondary">
             任务只引用已有用例。以下需求还没有就绪用例：点击“生成草稿用例”，让 AI 起草若干（仅为草稿）；评审并设为就绪后，它们会自动加入匹配的任务。
@@ -202,7 +202,7 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
           />
         </Card>
       )}
-      <Card
+      {section !== "strategy" && <Card
         size="small"
         title="测试任务"
         id="strategy-tasks"
@@ -331,7 +331,7 @@ export function StrategyTab({ version, onOpenRun }: { version: Version; onOpenRu
             },
           ]}
         />
-      </Card>
+      </Card>}
     </Space>
   );
 }

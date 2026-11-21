@@ -34,6 +34,9 @@
   }
 }
 
+/* Disabled menu rows still show their hint. */
+.nav-hint { pointer-events: auto; display: inline-block; width: 100%; }
+
 /* Reading drawers keep controls reachable while their content gets more space. */
 .drawer-width-handle {
   position: absolute;

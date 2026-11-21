@@ -32,14 +32,14 @@ describe("main-flow step navigation (#12)", () => {
       await user.keyboard(input === "Enter" ? "{Enter}" : " ");
     }
 
-    expect(screen.getByLabelText("当前页").textContent).toBe("/versions/v1?tab=strategy");
+    expect(screen.getByLabelText("当前页").textContent).toBe("/versions/v1/strategy");
     await user.click(screen.getByRole("button", { name: "返回" }));
     expect(screen.getByLabelText("当前页").textContent).toBe("/start");
   });
 
   it.each([
     ["completed", /模型 3 个实体/, "/suts/s1/model"],
-    ["pending", /用例 0 个用例/, "/versions/v1?tab=cases"],
+    ["pending", /用例 0 个用例/, "/suts/s1/cases?version_id=v1"],
   ])("opens a %s step with a single history entry", async (_status, name, path) => {
     const user = userEvent.setup();
     renderPage(<FlowNavigation />, { path: "*", route: "/start" });
@@ -53,6 +53,6 @@ describe("main-flow step navigation (#12)", () => {
     const user = userEvent.setup();
     renderPage(<FlowNavigation value={{ ...progress, next: null }} />, { path: "*", route: "/start" });
     await user.click(screen.getByRole("button", { name: /策略草稿/ }));
-    expect(screen.getByLabelText("当前页").textContent).toBe("/versions/v1?tab=strategy");
+    expect(screen.getByLabelText("当前页").textContent).toBe("/versions/v1/strategy");
   });
 });

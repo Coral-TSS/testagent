@@ -57,6 +57,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The left navigation no longer adds a group named after the system under test. It stays fixed: **被测系统** (switcher, then overview, version and requirements, strategy, tasks, cases, executions, defects), **建模** (graph, review, API registry), cross-system executions, defects and test reports, then people, agent and users. Strategy and tasks have their own routes (`/versions/{id}/strategy`, `/versions/{id}/tasks`); `?tab=strategy` and `?tab=tasks` redirect. `/cases` redirects to the current system's cases, or to the system list. The menu highlights the workflow stage. Progress paths follow the same routes; step keys are unchanged.
 - The web UI and the agent's default output language are now Simplified Chinese (Ant Design `zh_CN`, `index.html` `lang="zh-CN"`, and `TESTAGENT_AGENT_LANGUAGE` defaulting to `Simplified Chinese`). Set `TESTAGENT_AGENT_LANGUAGE` to override the agent language (for example `English`).
 - The default `UV_IMAGE` is now the Nanjing University GHCR mirror (`ghcr.nju.edu.cn/astral-sh/uv:0.13`). Set `UV_IMAGE=ghcr.io/astral-sh/uv:0.13` in `.env` to use the official GitHub Container Registry.
 - Leftover English UI chrome from the first Simplified Chinese pass is now translated (stepper, SUT overview, model graph/list/relations/review, API registry, cases, people, reports, and related toasts/help). `TESTAGENT_AGENT_LANGUAGE` in `docker-compose.yml` now also defaults to `Simplified Chinese` (it previously still defaulted to `English`).

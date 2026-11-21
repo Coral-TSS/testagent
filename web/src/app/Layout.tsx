@@ -4,7 +4,6 @@ import {
   AppstoreOutlined,
   BarChartOutlined,
   BugOutlined,
-  ExperimentOutlined,
   FileTextOutlined,
   PlayCircleOutlined,
   RobotOutlined,
@@ -16,7 +15,7 @@ import {
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Breadcrumb, Button, Dropdown, Layout as AntLayout, Menu, Modal, Select, Space, Tooltip, Typography } from "antd";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { api } from "../api/client";
@@ -24,6 +23,7 @@ import type { NavContext, Sut, SutProgress } from "../api/types";
 import { FlowSteps } from "../components/FlowSteps";
 import { ChangePasswordForm, useAuth } from "./AuthGate";
 import { routeObject, withContext } from "./navContext";
+import { menuSelection, sutLinks, switchSutTarget, switchVersionTarget } from "./navMenu";
 
 const { Sider, Header, Content } = AntLayout;
 
@@ -110,52 +110,100 @@ export function UserMenu() {
   );
 }
 
+function disabledItem(key: string, label: string, tip: string) {
+  return {
+    key,
+    disabled: true,
+    label: (
+      <Tooltip title={tip}>
+        <span className="nav-hint">{label}</span>
+      </Tooltip>
+    ),
+  };
+}
+
+function linkItem(key: string, to: string, label: string, icon?: ReactNode) {
+  return { key, icon, label: <Link to={to}>{label}</Link> };
+}
+
 export function Layout() {
   const { me } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { obj, ctx, sutId, versionId, progress } = useNavState();
   const suts = useQuery({ queryKey: ["suts"], queryFn: () => api<Sut[]>("/suts") });
-  const sutName = progress?.sut.code || ctx?.sut?.code;
-  const vq = versionId ? `?version_id=${versionId}` : "";
+  const links = sutId ? sutLinks(sutId, versionId) : null;
+  const selected = menuSelection(location.pathname, location.search, sutId);
+  const [openKeys, setOpenKeys] = useState(["nav-suts", "nav-model"]);
+  useEffect(() => {
+    const parent = selected.startsWith("model-") ? "nav-model" : selected.startsWith("sut-") ? "nav-suts" : null;
+    if (parent) setOpenKeys((keys) => (keys.includes(parent) ? keys : [...keys, parent]));
+  }, [selected]);
 
-  const items: { key: string; icon: ReactNode; label: ReactNode; children?: unknown[] }[] = [
-    { key: "/suts", icon: <AppstoreOutlined />, label: <Link to="/suts">被测系统</Link> },
-  ];
-  if (sutId) {
-    items.push({
-      key: `sut-${sutId}`,
-      icon: <ApartmentOutlined />,
-      label: sutName || "…",
+  const versionTip = "请先创建版本";
+  const sutChildren = sutId && links
+    ? [
+        {
+          key: "sut-switcher",
+          label: (
+            <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+              <Select
+                aria-label="切换被测系统"
+                size="small"
+                style={{ width: "100%" }}
+                value={sutId}
+                onChange={(id) => navigate(switchSutTarget(location.pathname, location.search, id))}
+                options={(suts.data || []).map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
+              />
+            </div>
+          ),
+        },
+        linkItem("sut-overview", links.overview, "概览"),
+        versionId ? linkItem("sut-requirements", links.requirements, "版本与需求") : disabledItem("sut-requirements", "版本与需求", versionTip),
+        versionId ? linkItem("sut-strategy", links.strategy, "策略") : disabledItem("sut-strategy", "策略", versionTip),
+        versionId ? linkItem("sut-tasks", links.tasks, "任务") : disabledItem("sut-tasks", "任务", versionTip),
+        linkItem("sut-cases", links.cases, "用例"),
+        linkItem("sut-executions", links.executions, "执行"),
+        linkItem("sut-defects", links.defects, "缺陷"),
+        linkItem("sut-list", "/suts", "全部被测系统"),
+      ]
+    : [
+        linkItem("sut-list", "/suts", "被测系统列表"),
+        ...(suts.data || []).map((s) => linkItem(`pick-${s.id}`, `/suts/${s.id}`, `${s.name} (${s.code})`)),
+      ];
+  const modelChildren = sutId && links
+    ? [
+        linkItem("model-graph", links.model, "模型图谱"),
+        linkItem("model-review", links.review, "模型评审"),
+        linkItem("model-apis", links.apis, "API 注册表"),
+      ]
+    : [disabledItem("model-need-sut", "请先选择被测系统", "请先在「被测系统」中选择一个系统")];
+
+  const items = [
+    { key: "nav-suts", icon: <AppstoreOutlined />, label: "被测系统", children: sutChildren },
+    { key: "nav-model", icon: <ApartmentOutlined />, label: "建模", children: modelChildren },
+    linkItem("global-executions", "/executions", "执行", <PlayCircleOutlined />),
+    linkItem("global-defects", "/defects", "缺陷", <BugOutlined />),
+    linkItem("global-reports", withContext("/reports", sutId, versionId), "测试报告", <FileTextOutlined />),
+    {
+      type: "group" as const,
+      label: "人员",
       children: [
-        { key: `/suts/${sutId}`, label: <Link to={`/suts/${sutId}${vq}`}>概览</Link> },
-        { key: `/suts/${sutId}/model`, label: <Link to={`/suts/${sutId}/model${vq}`}>模型</Link> },
-        { key: `/suts/${sutId}/review`, label: <Link to={`/suts/${sutId}/review${vq}`}>模型评审</Link> },
-        { key: `/suts/${sutId}/apis`, label: <Link to={`/suts/${sutId}/apis${vq}`}>API 注册表</Link> },
-        { key: `/suts/${sutId}/versions`, label: <Link to={`/suts/${sutId}/versions${vq}`}>版本</Link> },
-        { key: `/suts/${sutId}/cases`, label: <Link to={`/suts/${sutId}/cases${vq}`}>用例库</Link> },
+        linkItem("persons", "/persons", "人员", <TeamOutlined />),
+        linkItem("people-stats", "/stats/people", "人员统计", <BarChartOutlined />),
       ],
-    });
-  }
-  const global = (path: string, icon: ReactNode, label: string) => ({
-    key: path,
-    icon,
-    label: <Link to={withContext(path, sutId, versionId)}>{label}</Link>,
-  });
-  items.push(
-    global("/cases", <ExperimentOutlined />, "测试用例"),
-    global("/executions", <PlayCircleOutlined />, "执行"),
-    global("/reports", <FileTextOutlined />, "报告"),
-    global("/defects", <BugOutlined />, "缺陷"),
-    { key: "/persons", icon: <TeamOutlined />, label: <Link to="/persons">人员</Link> },
-    { key: "/stats/people", icon: <BarChartOutlined />, label: <Link to="/stats/people">人员统计</Link> },
-    { key: "/agent/config", icon: <SettingOutlined />, label: <Link to="/agent/config">Agent 设置</Link> },
-    { key: "/agent/runs", icon: <RobotOutlined />, label: <Link to="/agent/runs">Agent 运行</Link> },
-    { key: "/agent/tools", icon: <ToolOutlined />, label: <Link to="/agent/tools">Agent 工具</Link> },
-  );
-  if (me?.role === "admin") {
-    items.push({ key: "/users", icon: <UsergroupAddOutlined />, label: <Link to="/users">用户</Link> });
-  }
+    },
+    {
+      type: "group" as const,
+      label: "Agent",
+      children: [
+        linkItem("agent-config", "/agent/config", "设置", <SettingOutlined />),
+        linkItem("agent-runs", "/agent/runs", "运行", <RobotOutlined />),
+        linkItem("agent-tools", "/agent/tools", "工具", <ToolOutlined />),
+      ],
+    },
+    ...(me?.role === "admin" ? [linkItem("users", "/users", "用户", <UsergroupAddOutlined />)] : []),
+  ];
 
   const crumbs = [
     { title: <Link to="/suts">首页</Link> },
@@ -165,19 +213,16 @@ export function Layout() {
     ...(obj.page ? [{ title: <span>{obj.page}</span> }] : []),
   ];
 
-  const onSut = (id: string) => navigate(`/suts/${id}`);
-  const onVersion = (id: string) => {
-    if (location.pathname.startsWith("/suts/") || ["/cases", "/defects", "/reports", "/executions"].includes(location.pathname)) {
-      const q = new URLSearchParams(location.search);
-      q.set("version_id", id);
-      if (location.pathname === "/defects" || location.pathname === "/reports") q.set("sut_id", sutId || "");
-      navigate(`${location.pathname}?${q.toString()}`);
-    } else navigate(`/versions/${id}`);
-  };
+  const onSut = (id: string) => navigate(switchSutTarget(location.pathname, location.search, id));
+  const onVersion = (id: string) => navigate(switchVersionTarget(location.pathname, location.search, id, sutId));
 
   return (
     <AntLayout style={{ minHeight: "100vh" }}>
-      <Sider width={220} theme="light" style={{ borderRight: "1px solid #f0f0f0" }}>
+      <Sider
+        width={240}
+        theme="light"
+        style={{ borderRight: "1px solid #f0f0f0", position: "sticky", top: 0, height: "100vh", overflow: "auto" }}
+      >
         <div style={{ padding: "16px 20px" }}>
           <Typography.Title level={4} style={{ margin: 0 }}>
             TestAgent
@@ -185,10 +230,10 @@ export function Layout() {
         </div>
         <Menu
           mode="inline"
-          selectedKeys={[location.pathname]}
-          defaultOpenKeys={sutId ? [`sut-${sutId}`] : []}
-          key={sutId || "none"}
-          items={items as never}
+          selectedKeys={[selected]}
+          openKeys={openKeys}
+          onOpenChange={setOpenKeys}
+          items={items}
         />
       </Sider>
       <AntLayout>

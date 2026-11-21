@@ -49,16 +49,16 @@ def test_context_chains_for_every_detail_page(client, db):
     assert paths[-1] == f"/versions/{w['version']}?req={w['reqs']['REQ-001']}"
 
     _, labels, paths = crumbs(client, "task", task)
-    assert [k for k, _ in labels] == ["sut", "version", "strategy", "task"]
-    assert labels[-1] == ("task", "Regression task") and paths[2].endswith("?tab=strategy")
+    assert [k for k, _ in labels] == ["sut", "version", "tasks", "task"]
+    assert labels[-1] == ("task", "Regression task") and paths[2] == f"/versions/{w['version']}/tasks"
     assert client.get(f"{V1}/tasks/{task}").json()["version_name"] == "v1"
 
     _, labels, paths = crumbs(client, "run", run["id"])
-    assert [k for k, _ in labels] == ["sut", "version", "strategy", "task", "run"]
+    assert [k for k, _ in labels] == ["sut", "version", "tasks", "task", "run"]
     assert labels[-1][1].startswith("执行 ") and paths[-1] == f"/runs/{run['id']}"
 
     body, labels, _ = crumbs(client, "execution", execution)
-    assert [k for k, _ in labels] == ["sut", "version", "strategy", "task", "run", "execution"]
+    assert [k for k, _ in labels] == ["sut", "version", "tasks", "task", "run", "execution"]
     assert labels[-1] == ("execution", "Amount approval (TC-001) 的执行")
     assert body["version"]["name"] == "v1"
 
@@ -69,7 +69,7 @@ def test_context_chains_for_every_detail_page(client, db):
         ("cases", "用例"),
         ("case", "Amount approval (TC-001)"),
     ]
-    assert paths[2] == f"/versions/{w['version']}?tab=cases"
+    assert paths[2] == f"/suts/{w['sut']}/cases?version_id={w['version']}"
 
     _, labels, _ = crumbs(client, "defect", defect["id"])
     assert [k for k, _ in labels] == ["sut", "version", "defects", "defect"]

@@ -135,7 +135,7 @@ export function TaskPage() {
           }
           extra={
             <Space>
-              <Link to={`/versions/${t.version_id}?tab=strategy`}>{t.version_name ? `测试策略与任务（版本 ${t.version_name}）` : "测试策略与任务"}</Link>
+              <Link to={`/versions/${t.version_id}/tasks`}>{t.version_name ? `任务（版本 ${t.version_name}）` : "任务"}</Link>
               {(t.script_gaps?.length || 0) > 0 && (
                 <Tooltip title="没有自动化脚本的自动化任务用例：任务执行时会被跳过（不执行）">
                   <Tag color="orange" data-testid="gap-tag" style={{ cursor: "pointer" }} onClick={() => setGapAction("run")}>
