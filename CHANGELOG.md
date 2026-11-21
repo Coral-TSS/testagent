@@ -80,8 +80,9 @@ All notable changes to this project are documented here. The format follows
 - Model graph: actions sit with the entities they are connected to, instead of one row under
   every entity. Nodes can be dragged; a position a person has moved is remembered in the
   browser (`testagent:graph-node-positions`). **重排** runs that layout again and forgets
-  those saved positions. Action–entity lines are labelled 作用于 / 执行人 / 引用了.
-  Relation lines and action lines are both solid curves: relations `#d46b08`, actions `#0958d9`.
+  those saved positions. Action lines run from the action to the entity. Their labels are
+  修改, or 新建 / 删除 when the action's effects create or delete that entity, plus 读取 and
+  执行人. Relation lines and action lines are both solid curves: relations `#d46b08`, actions `#0958d9`.
 - The bundled demo is the supply-chain system (`supply-chain`, 供应链执行（演示）), with v1.0 and
   v2.0 models and the fixed requirements REQ-001–REQ-016. `ops/restore_supply_chain.py` rebuilds
   it. The procurement demo is removed.

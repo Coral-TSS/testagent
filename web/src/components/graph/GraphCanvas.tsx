@@ -24,23 +24,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Graph, ModelNode } from "../../api/types";
 import { CARD_SHORT } from "../links";
 import { KIND_COLOR } from "../StatusTags";
+import { actionEdgeLabel } from "./edgeLabel";
 import { computeLayout, type Positioned } from "./layout";
 import { clearGraphPosition, clearGraphPositions, readGraphPositions, writeGraphPosition, type Point } from "./positions";
 
 /** Solid curves. Relation orange vs action blue, dark enough to read on the white canvas. */
 export const EDGE_COLOR = { action: "#0958d9", relation: "#d46b08" } as const;
-
-/**
- * Short labels for the line between an action and another node.
- * object is the thing the action works on, not a bare role name.
- */
-export const ROLE_LABEL: Record<string, string> = {
-  object: "作用于",
-  actor: "执行人",
-  ref: "引用了",
-  source: "起点",
-  target: "终点",
-};
 
 type Data = { node: ModelNode; selected: boolean };
 
@@ -172,18 +161,28 @@ export function toFlow(graph: Graph, selectedId?: string | null, placed?: Readon
     data: { node: n, selected: n.id === selectedId },
   }));
   const ids = new Set(graph.nodes.map((n) => n.id));
+  const byId = new Map(graph.nodes.map((n) => [n.id, n]));
   const edges: FlowEdge[] = graph.edges
     .filter((e) => e.role !== "source" && e.role !== "target" && ids.has(e.source_node_id) && ids.has(e.target_node_id))
-    .map((e) => ({
-      id: e.id,
-      source: e.source_node_id,
-      target: e.target_node_id,
-      type: "default",
-      ...sides(at(e.source_node_id), at(e.target_node_id)),
-      label: ROLE_LABEL[e.role] || e.role,
-      markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLOR.action },
-      style: { stroke: EDGE_COLOR.action, strokeWidth: 2 },
-    }));
+    .map((e) => {
+      const sourceNode = byId.get(e.source_node_id);
+      const targetNode = byId.get(e.target_node_id);
+      const swap = sourceNode?.kind !== "action" && targetNode?.kind === "action";
+      const source = swap ? e.target_node_id : e.source_node_id;
+      const target = swap ? e.source_node_id : e.target_node_id;
+      const action = byId.get(source);
+      const entity = byId.get(target);
+      return {
+        id: e.id,
+        source,
+        target,
+        type: "default",
+        ...sides(at(source), at(target)),
+        label: actionEdgeLabel(e.role, action?.kind === "action" ? action : undefined, entity),
+        markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLOR.action },
+        style: { stroke: EDGE_COLOR.action, strokeWidth: 2 },
+      };
+    });
   for (const l of graph.links || []) {
     if (!ids.has(l.from_node_id) || !ids.has(l.to_node_id)) continue;
     edges.push({

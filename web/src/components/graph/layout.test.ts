@@ -3,7 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 
 import type { Edge, Graph, Link, ModelNode } from "../../api/types";
-import { EDGE_COLOR, GraphCanvas, ROLE_LABEL, curvedEdgePath, toFlow } from "./GraphCanvas";
+import { CANVAS_VERB, EDGE_ROLE_EN, EDGE_ROLE_ZH, objectVerb } from "./edgeLabel";
+import { EDGE_COLOR, GraphCanvas, curvedEdgePath, toFlow } from "./GraphCanvas";
 import { computeLayout, type Positioned } from "./layout";
 import { clearGraphPosition, clearGraphPositions, GRAPH_POSITIONS_KEY, readGraphPositions, writeGraphPosition } from "./positions";
 
@@ -283,6 +284,28 @@ describe("supply-chain layout", () => {
   });
 });
 
+describe("objectVerb", () => {
+  const po = node("po", "entity", "PurchaseOrder");
+  const action = (effects: ModelNode["effects"]): ModelNode => ({ ...node("act", "action", "下单"), effects });
+
+  it("says 修改 unless effects clearly create or delete that entity", () => {
+    expect(objectVerb(action([]), po)).toBe("修改");
+    expect(objectVerb(action([{ kind: "set_field", field: "PurchaseOrder.status", values: ["draft"] }]), po)).toBe("修改");
+    expect(objectVerb(action([{ kind: "create_object", node_id: "other", entity: "PurchaseOrder" }]), po)).toBe("修改");
+    expect(objectVerb(action([{ kind: "create_object", node_id: "po" }, { kind: "delete_object", entity: "PurchaseOrder" }]), po)).toBe("修改");
+  });
+
+  it("says 新建 or 删除 when that effect names the entity", () => {
+    expect(objectVerb(action([{ kind: "create_object", node_id: "po" }]), po)).toBe("新建");
+    expect(objectVerb(action([{ kind: "create_object", entity: "PurchaseOrder" }]), po)).toBe("新建");
+    expect(objectVerb(action([{ kind: "delete_object", node_id: "po", entity: "PurchaseOrder" }]), po)).toBe("删除");
+    expect(objectVerb(action([{ kind: "create_object", node_id: "other" }, { kind: "set_field", field: "PurchaseOrder.status", values: ["draft"] }]), po)).toBe("修改");
+    expect(CANVAS_VERB).toMatchObject({ modify: "修改", create: "新建", delete: "删除", read: "读取", actor: "执行人" });
+    expect(EDGE_ROLE_ZH).toEqual({ object: "修改（作用对象）", ref: "读取（只读引用）", actor: "执行人" });
+    expect(EDGE_ROLE_EN).toEqual({ object: "Modifies", create: "Creates", delete: "Deletes", ref: "Reads", actor: "Performed by" });
+  });
+});
+
 describe("toFlow", () => {
   it("draws links as labelled edges between entities with a cardinality badge", () => {
     const g: Graph = {
@@ -310,13 +333,15 @@ describe("toFlow", () => {
     const l2 = edges.find((e) => e.id === "link:l2")!;
     expect(l2.data).toMatchObject({ forward: "pays", reverse: "receives", card: "N:1" });
     const actionEdge = edges.find((e) => e.id === "e1")!;
-    expect(actionEdge.label).toBe("作用于");
+    expect(actionEdge.label).toBe("修改");
+    expect(actionEdge.source).toBe("act");
+    expect(actionEdge.target).toBe("po");
+    expect(actionEdge.markerEnd).toMatchObject({ type: "arrowclosed", color: EDGE_COLOR.action });
     expect(actionEdge.type).toBe("default");
     expect(actionEdge.style).toMatchObject({ stroke: EDGE_COLOR.action, strokeWidth: 2 });
     expect(actionEdge.style).not.toHaveProperty("strokeDasharray");
     expect(l1.style).toMatchObject({ stroke: EDGE_COLOR.relation, strokeWidth: 2 });
     expect(l1.style).not.toHaveProperty("strokeDasharray");
-    expect(ROLE_LABEL).toEqual({ object: "作用于", actor: "执行人", ref: "引用了", source: "起点", target: "终点" });
     expect(EDGE_COLOR.action).not.toBe(EDGE_COLOR.relation);
   });
 
@@ -333,9 +358,26 @@ describe("toFlow", () => {
     };
     const { edges } = toFlow(g);
     expect(edges.find((e) => e.id === "actor")?.label).toBe("执行人");
-    expect(edges.find((e) => e.id === "ref")?.label).toBe("引用了");
+    expect(edges.find((e) => e.id === "ref")?.label).toBe("读取");
     expect(edges.find((e) => e.id === "src")).toBeUndefined();
     expect(edges.find((e) => e.id === "dst")).toBeUndefined();
+  });
+
+  it("draws an object edge from the action to the entity and names create or delete", () => {
+    const po = node("po", "entity", "PurchaseOrder");
+    const act = { ...node("act", "action", "下单"), effects: [{ kind: "create_object" as const, node_id: "po" }] };
+    const storedBackwards: Graph = {
+      nodes: [po, act],
+      edges: [{ id: "e1", source_node_id: "po", target_node_id: "act", role: "object" }],
+      links: [],
+    };
+    const edge = toFlow(storedBackwards).edges.find((item) => item.id === "e1")!;
+    expect(edge.source).toBe("act");
+    expect(edge.target).toBe("po");
+    expect(edge.label).toBe("新建");
+    expect(edge.markerEnd).toMatchObject({ type: "arrowclosed", color: EDGE_COLOR.action });
+    const removed = { ...act, effects: [{ kind: "delete_object" as const, entity: "PurchaseOrder" }] };
+    expect(toFlow({ nodes: [po, removed], edges: storedBackwards.edges, links: [] }).edges[0].label).toBe("删除");
   });
 
   it("routes handles from a dragged position instead of the default layout", () => {
