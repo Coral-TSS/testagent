@@ -31,7 +31,7 @@ function scope(extra: Record<string, unknown> = {}) {
   return { id: "sc1", requirement_id: "r1", depth: 1, edited: false, confirmed: false, manifest, ...extra };
 }
 
-function routes(scopeBody = { scopes: [scope()] }) {
+function routes(scopeBody: { scopes: object[] } = { scopes: [scope()] }) {
   return {
     "GET /suts/s1/cases": () => ({ body: [] }),
     "GET /versions/v1/requirements": () => ({ body: [{ id: "r1", code: "REQ-001", title: "Approve" }] }),
