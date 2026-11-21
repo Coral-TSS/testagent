@@ -240,7 +240,21 @@ def test_strategy_generation_builds_rule_tasks_and_lists_gaps(client, world):
     assert sorted(t["name"] for t in again["strategy"]["tasks"]) == sorted(tasks)
 
 
+def _attach_ref(db, sut_id, requirement_id):
+    with db.tx() as cur:
+        cur.execute(
+            "INSERT INTO model_node(sut_id, kind, name) VALUES (%s,'action',%s) RETURNING id",
+            (sut_id, f"Action {requirement_id}"),
+        )
+        node_id = cur.fetchone()["id"]
+        cur.execute(
+            "INSERT INTO requirement_node_link(requirement_id, node_id, role) VALUES (%s,%s,'action')",
+            (requirement_id, node_id),
+        )
+
+
 def test_gap_drafts_stay_drafts_until_a_human_makes_them_ready(client, world):
+    _attach_ref(world["db"], world["sut"], world["reqs"]["REQ-002"])
     rule_task(client, world, req_rule(world, "REQ-002"), name="Requirement2")
     draft = {
         "title": "Requirement2 draft",
@@ -267,6 +281,7 @@ def test_gap_drafts_stay_drafts_until_a_human_makes_them_ready(client, world):
 
 # ------------------------------------------------------------------ AI category
 def test_generated_cases_carry_category(client, world):
+    _attach_ref(world["db"], world["sut"], world["reqs"]["REQ-001"])
     base = {
         "test_point": "Click",
         "steps": [{"action": "Do"}],

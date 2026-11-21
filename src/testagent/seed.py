@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from testagent.core.events import EventBus
 from testagent.services.apis import ApiService
+from testagent.services.attributes import AttributeService
 from testagent.services.links import LinkService
 from testagent.services.model import ModelService
 from testagent.services.registry import EnvironmentService, ModuleService, PersonService, SutService
@@ -70,6 +71,17 @@ RELATIONS = [
     ("PurchaseOrder-Supplier", "PurchaseOrder", "Supplier"),
     ("Payment-PurchaseOrder", "Payment", "PurchaseOrder"),
 ]
+# Registered fields. Legacy data_schema is kept for the old editor; coverage uses these rows.
+FIELDS = {
+    "PurchaseOrder": [
+        ("id", "string", None),
+        ("amount", "number", None),
+        ("status", "enum", ["draft", "pending_approval", "approved", "rejected", "paid"]),
+    ],
+    "Supplier": [("name", "string", None)],
+    "Payment": [("amount", "number", None)],
+}
+
 # links between entities, read both ways
 LINKS = [
     ("PurchaseOrder", "belongs to", "Supplier", "supplies", "supplier", "purchaseOrders"),
@@ -109,6 +121,13 @@ def seed_procurement(db, bus: EventBus | None = None, demo_url: str | None = Non
     for name, spec in ENTITIES.items():
         node = model.create_node(sut_id, {"kind": "entity", "name": name, "module_id": module["id"], **spec})
         ids[name] = node["id"]
+    fields = AttributeService(db, bus)
+    for entity, specs in FIELDS.items():
+        for name, data_type, enum in specs:
+            payload: dict = {"name": name, "data_type": data_type}
+            if enum:
+                payload["enum_values"] = enum
+            fields.create(ids[entity], payload)
     for name, (method, path, attrs) in ACTIONS.items():
         node = model.create_node(
             sut_id,

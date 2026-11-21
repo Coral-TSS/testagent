@@ -386,13 +386,26 @@ def test_case_generation_sees_links_and_action_rules(client, world):
         f"{V1}/nodes/{ids['Approve purchase order']}",
         json={"preconditions": [{"field": "PurchaseOrder.state", "value": "pending"}]},
     )
-    client.post(
+    req = client.post(
         f"{V1}/versions/{world['version']}/requirements",
         json={"title": "Approve", "raw_text": "Only pending purchase orders can be approved"},
+    ).json()
+    linked = client.put(
+        f"{V1}/requirements/{req['id']}/structure",
+        json={
+            "action": [{"text": "Approve", "node_id": ids["Approve purchase order"]}],
+            "condition": [{"text": "state", "attribute_id": world["fields"]["state"]}],
+        },
     )
+    assert linked.status_code == 200, linked.text
     fake = use_model(client, call("submit_result", {"cases": []}))
     client.post(f"{V1}/versions/{world['version']}/cases/generate", json={"automate": False})
-    seen = json.dumps([str(m.content) for m in fake.seen[0]], ensure_ascii=False)
-    assert "PurchaseOrder belongs to Supplier" in seen and "N:1" in seen
-    assert "PurchaseOrder.state == pending" in seen
-    assert "cardinality" in seen.lower()
+    human = next(m.content for m in fake.seen[0] if getattr(m, "type", "") == "human")
+    payload = json.loads(human)
+    assert "actions" not in payload and "apis" not in payload and "links" not in payload
+    scope = payload["scopes"][0]
+    assert any(n["name"] == "Approve purchase order" for n in scope["nodes"])
+    assert any(lk["name"] == "PurchaseOrder belongs to Supplier" for lk in scope["links"])
+    assert any(t.get("when") == "PurchaseOrder.state == pending" for t in scope["targets"])
+    seen = json.dumps(payload, ensure_ascii=False)
+    assert "N:1" in seen and "cardinality" in seen.lower()

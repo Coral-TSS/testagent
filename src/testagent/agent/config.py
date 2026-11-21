@@ -21,6 +21,7 @@ FIELDS = (
     "max_steps",
     "max_self_checks",
     "auto_automate",
+    "default_scope_depth",
 )
 
 
@@ -35,6 +36,7 @@ class LlmConfig:
     api_key: str | None
     max_self_checks: int = 5
     auto_automate: bool = True
+    default_scope_depth: int = 1
 
     @property
     def configured(self) -> bool:
@@ -70,6 +72,9 @@ class AgentConfigService:
             api_key=key,
             max_self_checks=row.get("max_self_checks") or 5,
             auto_automate=bool(row.get("auto_automate", True)),
+            default_scope_depth=int(
+                row.get("default_scope_depth") if row.get("default_scope_depth") is not None else 1
+            ),
         )
 
     def public(self) -> dict:

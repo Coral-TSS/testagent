@@ -10,12 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from testagent.agent.runtime import AgentRuntime, Entry
-from testagent.agent.tools import (
-    action_summaries,
-    api_summaries,
-    check_request_bodies,
-    link_summaries,
-)
+from testagent.agent.tools import check_request_bodies
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.cases import CaseService
@@ -144,28 +139,30 @@ def cases_entry(db) -> Entry:
         instructions=(
             "Write functional test cases for each target requirement: at least "
             f"{MIN_CASES_PER_REQUIREMENT} per requirement covering normal, boundary and exception "
-            "scenarios. Each case has a test point, concrete steps, test data, the expected "
-            "result, the requirement codes it verifies, the IDs of the model nodes "
-            "(actions/entities) and of the entity fields (attribute_ids) it exercises. Use IDs "
-            "returned by the tools only. When a step calls an API, write it as 'METHOD /path' "
-            "and put the exact JSON request body in the step data: field names, types and "
-            "units MUST follow the API schema (input `apis` / get_api_schema), never invent "
-            "fields. Input `actions` gives each action's purpose, inputs and outputs (types, "
-            "formats, enum values, Entity.field): derive boundary and invalid inputs from them and "
-            "state the expected outputs. Put the key values (e.g. the amount) into test_data "
-            "using the API field names. Each action lists its preconditions (e.g. PurchaseOrder.state == "
-            "pending) and effects (e.g. PurchaseOrder.state → approved | rejected, create link Payment pays "
-            "PurchaseOrder): cover the precondition being met and violated (expected refusal) and assert "
-            "every effect (field values, created objects, links). Input `links` gives the "
-            "relations between entities with both readings, cardinality, required flag and "
-            "foreign-key field: derive boundary/exception cases from them — a required N:1 "
-            "foreign key missing or pointing to a non-existent object, the '1' side of a 1:1 "
-            "already taken, several objects on the 'N' side (1:N/M:N), unlinking. Avoid "
-            "duplicating existing cases (list_cases). Give every case a category: requirement "
-            "(the requirement's business rules, including input validation and error "
-            "codes), quality (idempotency, concurrency/duplicate submission, "
-            "repeatability and data reset; add quality_tags) or regression (main-path smoke). "
-            "Boundary/exception are scenarios, never the type_tag."
+            "scenarios. The context lists one scope manifest per requirement (ids, names and "
+            "coverage targets only). Do not assume objects that are not in that manifest. "
+            "Read the requirement text and its structured refs with get_requirement. Read field "
+            "types, enums, preconditions, effects, link cardinality and API schemas with the "
+            "tools; a tool call for an id outside the manifest returns an error. Use only ids "
+            "the tools return. Each case has a test point, concrete steps, test data, the "
+            "expected result, the requirement codes it verifies, the model node ids and the "
+            "entity field ids (attribute_ids) it exercises. When a step calls an API, write it "
+            "as 'METHOD /path' and put the exact JSON request body in the step data: field "
+            "names, types and units MUST follow get_api_schema, never invent fields. Put the "
+            "key values (e.g. the amount) into test_data using the API field names. For every "
+            "coverage target, at least one case must hit it: a field target needs that "
+            "attribute_id; an action, precondition, effect or constraint target needs the "
+            "action or entity in node_ids; a link target needs an endpoint entity in node_ids. "
+            "Cover an in-scope action's precondition being met and each precondition being "
+            "violated (expected refusal), and assert every effect. For an in-scope link, cover "
+            "a missing foreign key (only a required link is a validation failure; an optional "
+            "link may be absent), a foreign key pointing at a missing object, and the "
+            "cardinality boundary named on the target (1:1 already taken, several objects on "
+            "the N side). Avoid duplicating existing cases (list_cases). Give every case a "
+            "category: requirement (the requirement's business rules, including input "
+            "validation and error codes), quality (idempotency, concurrency/duplicate "
+            "submission, repeatability and data reset; add quality_tags) or regression "
+            "(main-path smoke). Boundary/exception are scenarios, never the type_tag."
         ),
         validate=validate,
     )
@@ -207,6 +204,9 @@ class CaseGenerationService:
             raise AppError("NOT_FOUND", "Some requirements do not exist or do not belong to this version")
         if not reqs:
             raise AppError("VALIDATION", "This version has no requirements yet")
+        from testagent.services.case_scope import CaseScopeService
+
+        scopes = CaseScopeService(self.db).for_generate(version_id, reqs, require_confirmed=False)
         run = self.runtime.run(
             "generate_cases",
             {
@@ -214,9 +214,8 @@ class CaseGenerationService:
                 "sut_id": str(version["sut_id"]),
                 "requirement_codes": [r["code"] for r in reqs],
                 "requirements": [{"id": r["id"], "code": r["code"], "title": r["title"]} for r in reqs],
-                "apis": api_summaries(self.db, version["sut_id"]),
-                "actions": action_summaries(self.db, version["sut_id"]),
-                "links": link_summaries(self.db, version["sut_id"]),
+                "scopes": [s["manifest"] for s in scopes],
+                "scope_ids": [s["id"] for s in scopes],
             },
             sut_id=version["sut_id"],
         )

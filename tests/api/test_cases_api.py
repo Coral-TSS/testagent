@@ -36,6 +36,17 @@ def world(client):
     for title in ("Create purchase order", "Approve purchase order", "Export purchase orders"):
         req = client.post(f"{V1}/versions/{version}/requirements", json={"title": title}).json()
         reqs[req["code"]] = req["id"]
+    # Generation needs a structured model ref. Titles match the action names.
+    for code, name in (
+        ("REQ-001", "Create purchase order"),
+        ("REQ-002", "Approve purchase order"),
+        ("REQ-003", "Export purchase orders"),
+    ):
+        linked = client.put(
+            f"{V1}/requirements/{reqs[code]}/structure",
+            json={"action": [{"text": name, "node_id": nodes[name]}]},
+        )
+        assert linked.status_code == 200, linked.text
     return {"sut": sut, "version": version, "nodes": nodes, "reqs": reqs}
 
 

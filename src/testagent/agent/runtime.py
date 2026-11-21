@@ -237,6 +237,7 @@ class AgentRuntime:
                         content, status = f"Error: {exc.code} {exc.message}", "error"
                     except Exception as exc:  # tool failures go back to the model
                         content, status = f"Error: {type(exc).__name__}: {exc}", "error"
+                lookups = ctx.pop("scope_lookups", None)
                 self._append_step(
                     run_id,
                     {
@@ -246,6 +247,7 @@ class AgentRuntime:
                         **({"resolved_args": resolved} if resolved != args else {}),
                         "status": status,
                         "result": _short(content),
+                        **({"lookups": lookups} if lookups else {}),
                         "ms": int((time.monotonic() - started) * 1000),
                     },
                 )

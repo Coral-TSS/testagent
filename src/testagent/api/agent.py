@@ -23,6 +23,7 @@ class ConfigIn(BaseModel):
     max_steps: int | None = Field(default=None, ge=1, le=200)
     max_self_checks: int | None = Field(default=None, ge=1, le=20)
     auto_automate: bool | None = None
+    default_scope_depth: int | None = Field(default=None, ge=0, le=2)
 
 
 @router.get("/config")
@@ -34,7 +35,7 @@ def get_config(request: Request):
 def put_config(request: Request, body: ConfigIn):
     require_admin(request)  # the model endpoint and API key are admin-only
     values = body.model_dump(exclude_unset=True)
-    for key in ("temperature", "timeout_s", "max_steps", "max_self_checks", "auto_automate"):
+    for key in ("temperature", "timeout_s", "max_steps", "max_self_checks", "auto_automate", "default_scope_depth"):
         if key in values and values[key] is None:
             values.pop(key)
     return request.app.state.agent.config.update(values)

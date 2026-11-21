@@ -466,7 +466,16 @@ def three_cases(**extra) -> dict:
     }
 
 
+def _link_amount(client, world):
+    resp = client.put(
+        f"{V1}/requirements/{world['req']['id']}/structure",
+        json={"constraint": [{"text": "Amount over 10,000", "attribute_id": world["amount"]["id"]}]},
+    )
+    assert resp.status_code == 200, resp.text
+
+
 def test_generate_enqueues_automation_and_batch(client, world, db):
+    _link_amount(client, world)
     rid = world["req"]["id"]
     use_model(client, call("submit_result", three_cases(attribute_ids=[world["amount"]["id"]])))
     out = client.post(f"{V1}/versions/{world['version']}/cases/generate", json={"requirement_ids": [rid]})
@@ -497,6 +506,7 @@ def test_generate_enqueues_automation_and_batch(client, world, db):
 
 
 def test_generate_without_automation(client, world):
+    _link_amount(client, world)
     use_model(client, call("submit_result", three_cases()))
     out = client.post(
         f"{V1}/versions/{world['version']}/cases/generate",
@@ -506,6 +516,7 @@ def test_generate_without_automation(client, world):
 
 
 def test_generate_rejects_body_not_matching_schema(client, world, demo):
+    _link_amount(client, world)
     client.post(f"{V1}/suts/{world['sut']}/apis/import-openapi", json={"url": demo.url + "/openapi.json"})
     bad = three_cases()
     bad["cases"][0]["steps"] = [{"action": "Call POST /sample/orders", "data": '{"amount": 1}', "expected": "201"}]

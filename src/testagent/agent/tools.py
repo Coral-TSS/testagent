@@ -502,6 +502,49 @@ def model_catalog(db, sut_id) -> dict:
     }
 
 
+OUT_OF_SCOPE = "不在本次需求范围内"
+
+
+def _scope_sets(ctx: dict | None) -> dict[str, set[str]] | None:
+    if not ctx:
+        return None
+    from testagent.services.case_scope import scope_allowed
+
+    return scope_allowed((ctx.get("inputs") or {}).get("scopes"))
+
+
+def _lookup(ctx: dict | None, kind: str, id_: str | None, hit: bool) -> None:
+    if ctx is None:
+        return
+    ctx.setdefault("scope_lookups", []).append(
+        {"kind": kind, "id": None if id_ is None else str(id_), "hit": bool(hit)}
+    )
+
+
+def _in_scope(ctx: dict | None, kind: str, id_: str) -> None:
+    """Refuse an id outside the run's manifest. A run with no manifest is not filtered."""
+    allowed = _scope_sets(ctx)
+    if allowed is None:
+        return
+    hit = str(id_) in allowed[kind]
+    _lookup(ctx, kind, id_, hit)
+    if not hit:
+        raise AppError("FORBIDDEN", f"{id_} {OUT_OF_SCOPE}")
+
+
+def _filter_rows(ctx: dict | None, rows: list[dict], kind: str, key: str = "id") -> list[dict]:
+    allowed = _scope_sets(ctx)
+    if allowed is None:
+        return rows
+    kept = []
+    for row in rows:
+        ident = str(row[key])
+        if ident in allowed[kind]:
+            _lookup(ctx, kind, ident, True)
+            kept.append(row)
+    return kept
+
+
 def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
     from testagent.services.attributes import AttributeService
 
@@ -516,13 +559,15 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
             out.setdefault(str(f["node_id"]), []).append(f)
         return out
 
-    def list_nodes(sut_id: str | None = None) -> str:
+    def list_nodes(sut_id: str | None = None, ctx: dict | None = None) -> str:
         fields = fields_by_node(sut_id)
         with db.tx() as cur:
             names = _link_names(cur, sut_id)
-        return to_text([_slim(n, fields.get(str(n["id"])), names) for n in model.list_nodes(sut_id)])
+        rows = [_slim(n, fields.get(str(n["id"])), names) for n in model.list_nodes(sut_id)]
+        return to_text(_filter_rows(ctx, rows, "node"))
 
-    def get_node(node_id: str) -> str:
+    def get_node(node_id: str, ctx: dict | None = None) -> str:
+        _in_scope(ctx, "node", node_id)
         from testagent.services.links import link_summary
 
         node = model.get_node(node_id)
@@ -553,7 +598,7 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
             }
         )
 
-    def search_nodes(query: str, kind: str | None = None, sut_id: str | None = None) -> str:
+    def search_nodes(query: str, kind: str | None = None, sut_id: str | None = None, ctx: dict | None = None) -> str:
         fields = fields_by_node(sut_id)
         rows = model.list_nodes(sut_id, kind=kind, q=query)
         seen = {str(r["id"]) for r in rows}
@@ -562,6 +607,11 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
             if query.lower() in hay and str(f["node_id"]) not in seen:
                 rows += [n for n in model.list_nodes(sut_id) if str(n["id"]) == str(f["node_id"])]
                 seen.add(str(f["node_id"]))
+        allowed = _scope_sets(ctx)
+        if allowed is not None:
+            rows = [n for n in rows if str(n["id"]) in allowed["node"]]
+            for n in rows:
+                _lookup(ctx, "node", n["id"], True)
         with db.tx() as cur:
             names = _link_names(cur, sut_id)
         return to_text([_slim(n, fields.get(str(n["id"])), names) for n in rows])
@@ -569,18 +619,16 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
     def get_graph_neighbors(node_id: str, depth: int = 1) -> str:
         return to_text(model.neighbors(node_id, depth))
 
-    def list_fields(sut_id: str | None = None) -> str:
-        return to_text(
-            [
-                {**_field(f), "entity": f["node_name"], "entity_id": str(f["node_id"])}
-                for f in attrs.list_for_sut(sut_id)
-            ]
-        )
+    def list_fields(sut_id: str | None = None, ctx: dict | None = None) -> str:
+        rows = [
+            {**_field(f), "entity": f["node_name"], "entity_id": str(f["node_id"])} for f in attrs.list_for_sut(sut_id)
+        ]
+        return to_text(_filter_rows(ctx, rows, "field"))
 
-    def list_links(sut_id: str | None = None) -> str:
-        return to_text(link_summaries(db, sut_id))
+    def list_links(sut_id: str | None = None, ctx: dict | None = None) -> str:
+        return to_text(_filter_rows(ctx, link_summaries(db, sut_id), "link"))
 
-    def list_apis(sut_id: str | None = None) -> str:
+    def list_apis(sut_id: str | None = None, ctx: dict | None = None) -> str:
         rows = apis.list_for_sut(sut_id)
         out = []
         for r in rows:
@@ -592,7 +640,7 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
             if body:
                 item["body"] = body
             out.append(item)
-        return to_text(out)
+        return to_text(_filter_rows(ctx, out, "api"))
 
     def get_api_schema(api: str, ctx: dict) -> str:
         sut_id = ctx.get("sut_id")
@@ -610,6 +658,7 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
             row = cur.fetchone()
         if row is None:
             raise AppError("NOT_FOUND", f"API not found: {text} (use list_apis first)")
+        _in_scope(ctx, "api", str(row["id"]))
         from testagent.services.io_spec import api_io
 
         io = api_io(row)
@@ -634,7 +683,8 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
             }
         )
 
-    def get_requirement(requirement_id: str) -> str:
+    def get_requirement(requirement_id: str, ctx: dict | None = None) -> str:
+        _in_scope(ctx, "requirement", requirement_id)
         with db.tx() as cur:
             cur.execute(
                 "SELECT r.id, r.version_id, v.sut_id, v.name AS version, r.code, r.title,"
@@ -642,15 +692,40 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
                 " JOIN version v ON v.id=r.version_id WHERE r.id=%s",
                 (requirement_id,),
             )
-            return to_text(cur.fetchone())
+            row = cur.fetchone()
+            if row is None:
+                return to_text(None)
+            cur.execute(
+                "SELECT l.role, n.id, n.kind, n.name FROM requirement_node_link l"
+                " JOIN model_node n ON n.id=l.node_id WHERE l.requirement_id=%s ORDER BY l.role, n.name",
+                (requirement_id,),
+            )
+            row["nodes"] = cur.fetchall()
+            cur.execute(
+                "SELECT l.role, a.id, a.name, n.name AS entity FROM requirement_attribute_link l"
+                " JOIN entity_attribute a ON a.id=l.attribute_id JOIN model_node n ON n.id=a.node_id"
+                " WHERE l.requirement_id=%s ORDER BY n.name, a.name",
+                (requirement_id,),
+            )
+            row["fields"] = cur.fetchall()
+            cur.execute(
+                "SELECT x.role, k.id, f.name || ' ' || k.forward_name || ' ' || t.name AS name"
+                " FROM requirement_link_ref x JOIN model_link k ON k.id=x.link_id"
+                " JOIN model_node f ON f.id=k.from_node_id JOIN model_node t ON t.id=k.to_node_id"
+                " WHERE x.requirement_id=%s ORDER BY name",
+                (requirement_id,),
+            )
+            row["links"] = cur.fetchall()
+            return to_text(row)
 
-    def list_requirements(version_id: str | None = None) -> str:
+    def list_requirements(version_id: str | None = None, ctx: dict | None = None) -> str:
         with db.tx() as cur:
             cur.execute(
                 "SELECT id, code, title, priority, status FROM requirement WHERE version_id=%s ORDER BY code",
                 (version_id,),
             )
-            return to_text(cur.fetchall())
+            rows = cur.fetchall()
+        return to_text(_filter_rows(ctx, rows, "requirement"))
 
     def get_requirement_people(requirement_id: str) -> str:
         with db.tx() as cur:
@@ -664,10 +739,37 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
 
     cases = CaseService(db, bus, actor="agent")
 
-    def list_cases(sut_id: str | None = None, requirement_id: str | None = None) -> str:
+    def list_cases(sut_id: str | None = None, requirement_id: str | None = None, ctx: dict | None = None) -> str:
+        allowed = _scope_sets(ctx)
+        if allowed is not None and requirement_id:
+            _in_scope(ctx, "requirement", requirement_id)
         rows = cases.list(sut_id, requirement_id=requirement_id)
         keys = ("id", "code", "title", "test_point", "scenario", "status", "requirement_codes")
-        return to_text([{k: r[k] for k in keys} for r in rows if r["status"] != "deprecated"])
+        live = [{k: r[k] for k in keys} for r in rows if r["status"] != "deprecated"]
+        if allowed is None:
+            return to_text(live)
+        codes: set[str] = set()
+        node_cases: set[str] = set()
+        with db.tx() as cur:
+            if allowed["requirement"]:
+                cur.execute(
+                    "SELECT code FROM requirement WHERE id = ANY(%s::uuid[])",
+                    (list(allowed["requirement"]),),
+                )
+                codes = {r["code"] for r in cur.fetchall()}
+            if allowed["node"]:
+                cur.execute(
+                    "SELECT DISTINCT case_id::text AS id FROM case_node_link WHERE node_id = ANY(%s::uuid[])",
+                    (list(allowed["node"]),),
+                )
+                node_cases = {r["id"] for r in cur.fetchall()}
+        kept = []
+        for row in live:
+            related = bool(set(row["requirement_codes"] or []) & codes) or str(row["id"]) in node_cases
+            if related:
+                _lookup(ctx, "case", row["id"], True)
+                kept.append(row)
+        return to_text(kept)
 
     def get_case(case_id: str) -> str:
         return to_text(cases.get(case_id))
@@ -741,7 +843,7 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
         (
             "get_requirement",
             "requirement",
-            "Get one requirement.",
+            "Get one requirement, including its text and structured node, field and link refs.",
             RequirementArgs,
             get_requirement,
         ),
@@ -776,7 +878,27 @@ def register_read_tools(registry: ToolRegistry, db, bus) -> ToolRegistry:
         ),
         ("search_memory", "memory", "Search enabled agent memories.", MemoryArgs, search_memory),
     ]:
-        registry.register(ToolSpec(name, group, desc, schema, func))
+        registry.register(
+            ToolSpec(
+                name,
+                group,
+                desc,
+                schema,
+                func,
+                needs_ctx=name
+                in {
+                    "list_nodes",
+                    "get_node",
+                    "search_nodes",
+                    "list_fields",
+                    "list_links",
+                    "list_apis",
+                    "get_requirement",
+                    "list_requirements",
+                    "list_cases",
+                },
+            )
+        )
     registry.register(
         ToolSpec(
             "get_api_schema",

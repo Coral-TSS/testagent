@@ -160,7 +160,29 @@ def test_failed_digest_retryable(client, w):
 
 
 # ------------------------------------------------------------------ T-12.3
+def _attach_ref(db, sut_id, requirement_id):
+    with db.tx() as cur:
+        cur.execute(
+            "SELECT id FROM model_node WHERE sut_id=%s AND kind='action' AND name='Scoped action'"
+            " AND deleted_at IS NULL",
+            (sut_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            cur.execute(
+                "INSERT INTO model_node(sut_id, kind, name) VALUES (%s,'action','Scoped action') RETURNING id",
+                (sut_id,),
+            )
+            row = cur.fetchone()
+        cur.execute(
+            "INSERT INTO requirement_node_link(requirement_id, node_id, role) VALUES (%s,%s,'action')"
+            " ON CONFLICT DO NOTHING",
+            (requirement_id, row["id"]),
+        )
+
+
 def test_new_memory_injected_next_generation(client, w, db):
+    _attach_ref(db, w["sut"], w["reqs"]["REQ-001"])
     use_model(
         client,
         digest_script(
@@ -198,7 +220,8 @@ def test_new_memory_injected_next_generation(client, w, db):
 
 
 # ------------------------------------------------------------------ T-12.4
-def test_prompt_rollback(client, w):
+def test_prompt_rollback(client, w, db):
+    _attach_ref(db, w["sut"], w["reqs"]["REQ-001"])
     use_model(client, digest_script(patches=[PATCH]))
     correct(client, "case", w["case"], "missing negatives")
     work(client)

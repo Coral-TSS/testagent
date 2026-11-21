@@ -59,6 +59,29 @@ class CaseStatusIn(_In):
     status: Literal["draft", "ready", "deprecated"]
 
 
+class ScopeDepths(_In):
+    requirement_ids: list[UUID] | None = None
+    depths: dict[UUID, Literal[0, 1, 2]] | None = None
+
+
+class ScopeRef(_In):
+    kind: Literal["node", "entity", "action", "field", "link", "api"]
+    id: UUID
+    reference_only: bool = False
+
+
+class ScopeUpdateIn(_In):
+    requirement_id: UUID
+    depth: Literal[0, 1, 2] | None = None
+    recompute: bool = False
+    remove: list[ScopeRef] = Field(default_factory=list)
+    add: list[ScopeRef] = Field(default_factory=list)
+
+
+class ScopeConfirmIn(_In):
+    requirement_ids: list[UUID] = Field(min_length=1)
+
+
 class GenerateIn(_In):
     requirement_ids: list[UUID] | None = None
     automate: bool | None = None
@@ -226,6 +249,36 @@ def batch_cases(request: Request, body: BatchIn):
 @router.get("/cases/{case_id}/revisions")
 def case_revisions(request: Request, case_id: UUID):
     return _cases(request).revisions(case_id)
+
+
+@router.post("/versions/{version_id}/case-gen/scope")
+def compute_case_scope(request: Request, version_id: UUID, body: ScopeDepths):
+    """Compute each requirement's scope manifest. Does not call the model."""
+    from testagent.services.case_scope import CaseScopeService
+
+    depths = {str(k): v for k, v in (body.depths or {}).items()}
+    return CaseScopeService(request.app.state.db).compute(version_id, body.requirement_ids, depths)
+
+
+@router.put("/versions/{version_id}/case-gen/scope")
+def update_case_scope(request: Request, version_id: UUID, body: ScopeUpdateIn):
+    from testagent.services.case_scope import CaseScopeService
+
+    return CaseScopeService(request.app.state.db).update(
+        version_id,
+        body.requirement_id,
+        depth=body.depth,
+        recompute=body.recompute,
+        remove=[item.model_dump(mode="json") for item in body.remove],
+        add=[item.model_dump(mode="json") for item in body.add],
+    )
+
+
+@router.post("/versions/{version_id}/case-gen/scope/confirm")
+def confirm_case_scope(request: Request, version_id: UUID, body: ScopeConfirmIn):
+    from testagent.services.case_scope import CaseScopeService
+
+    return CaseScopeService(request.app.state.db).confirm(version_id, body.requirement_ids)
 
 
 @router.post("/versions/{version_id}/cases/generate")

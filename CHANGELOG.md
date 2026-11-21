@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Case generation scope (phase 1): each requirement gets a deterministic scope manifest
+  (default depth 1) from its structured node, field and link refs. The prompt receives only
+  that short manifest. Model tools refuse ids outside it, and each lookup is stored on the
+  agent run. A requirement with no structured refs is refused instead of falling back to a
+  whole-system summary. `POST` and `PUT /versions/{id}/case-gen/scope` compute and edit the
+  manifest; confirmation is stored but not yet required to generate.
+- The procurement demo registers its entity fields (`PurchaseOrder.id` / `amount` / `status`,
+  `Supplier.name`, `Payment.amount`) as `entity_attribute` rows.
 - Accounts and sign-in: users with roles `admin` / `member`, argon2id passwords, server-side sessions in
   an HttpOnly cookie (12 h idle, 7 days at most), CSRF token for writes, per-address rate limit and a
   15-minute lock after 5 wrong passwords, change password, admin **Users** page (create, role, reset
@@ -57,6 +65,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `generate_cases` no longer injects whole-system `action_summaries`, `link_summaries` or
+  `api_summaries` into the prompt. Details are read with tools inside the requirement's scope.
+  This is a breaking change for clients that depended on those prompt sections.
 - API registry, requirement and relation editors share one save action. The API registry uses the same docked panel for the description and the field tables. Dialogs use 520 / 720 / 960. Leftover English chrome (create/edit titles, linked cases, version names, strategy depth, task form labels, duplicate hints) is Simplified Chinese.
 - A model node opens in a docked panel beside the graph (no mask, default 520px, resizable, same remembered width). The graph fills the viewport, and dragging from one node to another drafts a relation between entities or an edge otherwise. Fields, inputs and outputs, conditions, states, constraints, preconditions, effects and relations are inline tables; one **保存** writes the whole panel, including API bindings and edges. The old data schema is read-only under 高级.
 - The left navigation no longer adds a group named after the system under test. It stays fixed: **被测系统** (switcher, then overview, version and requirements, strategy, tasks, cases, executions, defects), **建模** (graph, review, API registry), cross-system executions, defects and test reports, then people, agent and users. Strategy and tasks have their own routes (`/versions/{id}/strategy`, `/versions/{id}/tasks`); `?tab=strategy` and `?tab=tasks` redirect. `/cases` redirects to the current system's cases, or to the system list. The menu highlights the workflow stage. Progress paths follow the same routes; step keys are unchanged.
