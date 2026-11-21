@@ -1,4 +1,4 @@
-"""Seed the procurement demo SUT into the database from .env (idempotent)."""
+"""Seed the supply-chain demo SUT into the database from .env (idempotent)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from testagent.core.config import Settings  # noqa: E402
 from testagent.core.db import Database  # noqa: E402
 from testagent.core.migrations import migrate  # noqa: E402
-from testagent.seed import seed_procurement  # noqa: E402
+from testagent.seed import seed_supply_chain  # noqa: E402
 
 
 def main() -> int:
@@ -18,7 +18,7 @@ def main() -> int:
     try:
         migrate(db)
         settings = Settings()
-        print(seed_procurement(db, demo_url=settings.demo_url))
+        print(seed_supply_chain(db, demo_url=settings.demo_url))
     finally:
         db.close()
     return 0

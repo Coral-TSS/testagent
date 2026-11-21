@@ -1,10 +1,7 @@
-"""T-12.5 end-to-end main chain over the bundled procurement demo SUT (fake model, real browser).
+"""T-12.5 end-to-end main chain over the supply-chain demo (fake model, real browser).
 
-modelling (seed) → AI model completion → requirement + people → AI structuring → confirm →
-freeze → AI strategy → AI cases → AI automation (pytest code committed to the local test repo) →
-task run: agent browser execution against the demo app with an injected bug + the automated case
-→ defect (requirement ownership, attributed to the developer) → report + people ranking →
-correction → digest into memory → regenerated cases get the memory injected.
+The browser step is scripted to disagree with the page so the run records a failure. The example
+app itself has no seeded defects.
 """
 
 from __future__ import annotations
@@ -16,8 +13,8 @@ import time
 import pytest
 from tests.fixtures.mini_shop import browser_available
 
+from examples.supply_chain.service import SupplyChainService
 from testagent.agent.fake import FakeChatModel, call
-from testagent.seed import seed_procurement
 
 pytestmark = pytest.mark.skipif(not browser_available(), reason="playwright chromium not installed")
 
@@ -38,17 +35,19 @@ def ok(resp, code=200):
 
 @pytest.fixture
 def demo_app(tmp_path, monkeypatch):
-    """examples/procurement with an injected bug: the approval threshold is off by one cent,
-    so exactly CNY 50,000.00 no longer requires approval."""
+    """The browser script expects 草稿; this test-only override returns 已提交."""
     import uvicorn
 
-    import examples.procurement.api as demo
+    import examples.supply_chain.api as demo
 
-    class Buggy(demo.ProcurementService):
-        def __init__(self, database, threshold_minor=5_000_001, **kwargs):
-            super().__init__(database, threshold_minor, **kwargs)
+    original = SupplyChainService.create_requisition
 
-    monkeypatch.setattr(demo, "ProcurementService", Buggy)
+    def submitted(self, *args, **kwargs):
+        row = original(self, *args, **kwargs)
+        row["status"] = "submitted"
+        return row
+
+    monkeypatch.setattr(SupplyChainService, "create_requisition", submitted)
     app = demo.create_app(tmp_path / "sample.db")
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -69,13 +68,13 @@ def case_drafts(nodes):
     base = {
         "priority": "P0",
         "steps": [
-            {"action": "Open the procurement approval lab"},
+            {"action": "打开供应链执行演示"},
             {
-                "action": "Enter purchase amount 50000.00, currency CNY, click “Create order”",
-                "expected": "The order is pending approval",
+                "action": "填写数量并点击创建申请",
+                "expected": "申请处于草稿",
             },
         ],
-        "expected": "Orders of 50,000.00 or more go to pending approval",
+        "expected": "新建的采购申请处于草稿",
         "requirement_codes": ["REQ-001"],
         "node_ids": [nodes["Create purchase order"], nodes["PurchaseOrder"]],
     }
@@ -108,33 +107,54 @@ AUTOMATED = """import json
 import urllib.request
 
 
-def test_below_threshold_needs_no_approval(base_url, test_data):
-    body = json.dumps({"amount_minor": test_data["amount_minor"], "currency": "CNY"}).encode()
+def test_requisition_can_be_created(base_url, test_data):
+    def get(path):
+        with urllib.request.urlopen(base_url.rstrip("/") + path, timeout=10) as response:
+            return json.load(response)
+    materials = {row["code"]: row["id"] for row in get("/sample/spaces/auto/materials")}
+    buyers = {row["code"]: row["id"] for row in get("/sample/spaces/auto/buyers")}
+    body = json.dumps({
+        "materialId": materials["MAT-STD"],
+        "qty": 1,
+        "buyerId": buyers["BUY-01"],
+    }).encode()
     request = urllib.request.Request(
-        base_url.rstrip("/") + "/sample/spaces/auto/orders",
+        base_url.rstrip("/") + "/sample/spaces/auto/requisitions",
         data=body,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
     with urllib.request.urlopen(request, timeout=10) as response:
-        order = json.load(response)
-    assert order["approval_required"] is False
+        created = json.load(response)
+    assert created["status"] == "draft"
 """
 
-BADGE = {"selector": "#orders .badge"}
+BADGE = {"selector": "[data-testid='req-status']"}
 BROWSER_SCRIPT = [
     call("browser_goto", {"url": "/"}, "b1"),
-    call("browser_fill", {"target": {"label": "Amount (CNY)"}, "value": "50000.00"}, "b2"),
-    call("browser_click", {"target": {"role": "button", "name": "Create order"}}, "b3"),
-    call("browser_assert", {"kind": "text", "target": BADGE, "expected": "Pending approval"}, "b4"),
-    call("submit_result", {"claimed_status": "failed", "summary": "The order did not go to pending approval"}, "b5"),
+    call("browser_fill", {"target": {"label": "数量"}, "value": "2"}, "b2"),
+    call("browser_click", {"target": {"role": "button", "name": "创建申请"}}, "b3"),
+    call("browser_assert", {"kind": "text", "target": BADGE, "expected": "草稿"}, "b4"),
+    call("submit_result", {"claimed_status": "failed", "summary": "申请没有停在草稿"}, "b5"),
 ]
 
 
 def test_main_chain(client, db, demo_app):
     # ---------------------------------------------------------------- modelling (AC-01..03)
-    sut = seed_procurement(db)["sut_id"]
+    sut = ok(client.post(f"{V1}/suts", json={"code": "supply-chain", "name": "供应链执行（演示）"}), 201)["id"]
+    for name, title in (("Pat Product", "产品"), ("Devin Dev", "开发"), ("Tess Tester", "测试")):
+        ok(client.post(f"{V1}/persons", json={"name": name, "title": title}), 201)
+    ok(client.post(f"{V1}/suts/{sut}/nodes", json={"kind": "entity", "name": "PurchaseOrder"}), 201)
+    ok(client.post(f"{V1}/suts/{sut}/nodes", json={"kind": "action", "name": "Create purchase order"}), 201)
     nodes = {n["name"]: n["id"] for n in ok(client.get(f"{V1}/suts/{sut}/nodes"))}
+    api = ok(
+        client.post(
+            f"{V1}/suts/{sut}/apis",
+            json={"method": "POST", "path": "/sample/requisitions", "name": "新建采购申请"},
+        ),
+        201,
+    )
+    ok(client.put(f"{V1}/nodes/{nodes['Create purchase order']}/apis", json={"api_ids": [api["id"]]}))
     people = {p["name"]: p["id"] for p in ok(client.get(f"{V1}/persons"))}
     env = ok(
         client.post(f"{V1}/suts/{sut}/environments", json={"name": "e2e", "base_url": demo_app}),
@@ -289,7 +309,7 @@ def test_main_chain(client, db, demo_app):
     assert auto_detail["code_commit"] == automated["code_commit"]
     detail = ok(client.get(f"{V1}/executions/{execution['id']}"))
     assert detail["status"] == "failed" and detail["executor"] == "agent_browser"
-    assert "Pending approval" in detail["failed_assertion"] and "Approved" in detail["failed_assertion"]
+    assert "草稿" in detail["failed_assertion"] and "已提交" in detail["failed_assertion"]
     assert run["report_id"]  # task report generated on finish (AC-16)
 
     # ---------------------------------------------------------------- defect (AC-14/15)
@@ -322,7 +342,7 @@ def test_main_chain(client, db, demo_app):
     assert req_row["density"] == 0.5  # 1 defect / 2 executed cases
     top = content["by_person"][0]
     assert (top["name"], top["attributed_count"], top["attributed_score"]) == ("Devin Dev", 1, 3.0)
-    assert any(a["path"] == "/sample/orders" for a in content["code_links"][0]["apis"])
+    assert any(a["path"] == "/sample/requisitions" for a in content["code_links"][0]["apis"])
     assert report["ai_summary"] == "Failures concentrate on the REQ-001 approval threshold."
     ranking = ok(client.get(f"{V1}/stats/people", params={"version_id": version}))
     assert ranking[0]["name"] == "Devin Dev"

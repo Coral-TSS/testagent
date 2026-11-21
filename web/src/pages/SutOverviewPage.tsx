@@ -119,7 +119,7 @@ export function SutOverviewPage() {
                   label="启动命令（可选，用于在本机启动被测系统；平台启动时若不可达会自动运行）"
                   extra={isMember ? "只有管理员可以更改启动命令（命令在平台服务器上运行）。" : undefined}
                 >
-                  <Input disabled={isMember} placeholder="uv run uvicorn examples.procurement.api:create_app --factory --host 127.0.0.1 --port 8766" />
+                  <Input disabled={isMember} placeholder="uv run uvicorn examples.supply_chain.api:create_app --factory --host 127.0.0.1 --port 8766" />
                 </Form.Item>
               </>
             }

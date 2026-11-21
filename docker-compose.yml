@@ -1,4 +1,4 @@
-# TestAgent: platform + PostgreSQL 17 + the procurement demo SUT (+ Caddy HTTPS proxy, profile "public").
+# TestAgent: platform + PostgreSQL 17 + the supply-chain demo SUT (+ Caddy HTTPS proxy, profile "public").
 #   cp .env.example .env      # set POSTGRES_PASSWORD, TESTAGENT_ADMIN_USER, TESTAGENT_ADMIN_PASSWORD
 #   docker compose up -d --build
 # Local: open http://localhost:8765 and sign in with the admin account.
@@ -29,7 +29,7 @@ services:
     pull_policy: never
     command: ["demo"]
     environment:
-      PROCUREMENT_DEMO_BUGS: ${PROCUREMENT_DEMO_BUGS:-1}
+      SUPPLY_CHAIN_DB: /data/supply_chain.db
     volumes:
       - demo-data:/data
     ports:

@@ -77,6 +77,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The bundled demo is the supply-chain system (`supply-chain`, 供应链执行（演示）), with v1.0 and
+  v2.0 models and the fixed requirements REQ-001–REQ-016. `ops/restore_supply_chain.py` rebuilds
+  it. The procurement demo is removed.
 - Models belong to a version. Graph, review and the fields, links and action rules they
   use are read and written for that version. Creating a later version copies the source
   version's model (nodes, fields, links, edges, action rules and API bindings); the first

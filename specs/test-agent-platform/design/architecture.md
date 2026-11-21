@@ -19,7 +19,7 @@ FastAPI 单实例
 
 主仓 `D:\CodeWork\TestAgent\release\testagent`。`src/testagent/api` 处理请求，`services` 负责事务和领域规则，`core` 提供队列/Worker/数据库/认证/事件，`agent` 管理工具和图运行时，`integrations` 封装浏览器/HTTP/Git/pytest。SQL 主要在 services，`repos` 当前不是完整的独立仓储层；不存在旧设计所写的 `execution/` 模块。
 
-`web/` 是前端源代码，产物到 `src/testagent/web/`；`tests/{unit,db,api,agent,integrations,e2e,samples}` 分层验证。`examples/procurement/` 是可替换的被测样例。`runtime/` 放运行产物、不跟踪；`specs/test-agent-platform/` 随源码版本维护。
+`web/` 是前端源代码，产物到 `src/testagent/web/`；`tests/{unit,db,api,agent,integrations,e2e,samples}` 分层验证。`examples/supply_chain/` 是可替换的被测样例。`runtime/` 放运行产物、不跟踪；`specs/test-agent-platform/` 随源码版本维护。
 
 ### 1.1 依赖与部署边界
 

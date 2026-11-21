@@ -14,7 +14,7 @@ export function SutExplainer({ repoPath, closable }: { repoPath?: string | null;
       description={
         <div data-testid="sut-explainer">
           <Typography.Paragraph style={{ marginBottom: 4 }}>
-            被测系统（SUT）是你要测试的软件（例如“采购审批”）。平台的全部测试工作都围绕它组织：
+            被测系统（SUT）是你要测试的软件（例如“供应链执行”）。平台的全部测试工作都围绕它组织：
           </Typography.Paragraph>
           <ul style={{ margin: 0, paddingInlineStart: 20 }}>
             <li>

@@ -242,9 +242,11 @@ def test_strategy_generation_builds_rule_tasks_and_lists_gaps(client, world):
 
 def _attach_ref(db, sut_id, requirement_id):
     with db.tx() as cur:
+        cur.execute("SELECT version_id FROM requirement WHERE id=%s", (requirement_id,))
+        version_id = cur.fetchone()["version_id"]
         cur.execute(
-            "INSERT INTO model_node(sut_id, kind, name) VALUES (%s,'action',%s) RETURNING id",
-            (sut_id, f"Action {requirement_id}"),
+            "INSERT INTO model_node(sut_id, version_id, kind, name) VALUES (%s,%s,'action',%s) RETURNING id",
+            (sut_id, version_id, f"Action {requirement_id}"),
         )
         node_id = cur.fetchone()["id"]
         cur.execute(

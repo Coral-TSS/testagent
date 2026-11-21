@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>供应链执行（演示）</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>供应链执行（演示）</h1>
+    <button type="button" id="reset" data-testid="reset">重置数据</button>
+  </header>
+  <main>
+    <section>
+      <h2>新建采购申请</h2>
+      <form id="req-form">
+        <label>物料 <select id="material" data-testid="material"></select></label>
+        <label>数量 <input id="qty" data-testid="qty" type="number" min="0.01" step="0.01" value="2" /></label>
+        <label>采购员 <select id="buyer" data-testid="buyer"></select></label>
+        <label>建议供应商 <select id="supplier" data-testid="supplier"></select></label>
+        <button type="submit" data-testid="create-requisition">创建申请</button>
+      </form>
+      <p id="badge" data-testid="req-status"></p>
+    </section>
+    <section>
+      <h2>采购申请</h2>
+      <ul id="reqs" data-testid="requisitions"></ul>
+    </section>
+    <section>
+      <h2>采购订单</h2>
+      <ul id="orders" data-testid="orders"></ul>
+    </section>
+    <section>
+      <h2>库存</h2>
+      <ul id="stock" data-testid="inventory"></ul>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

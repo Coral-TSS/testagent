@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     session_max_days: float = 7
     trusted_proxies: str = "127.0.0.1"  # whose X-Forwarded-* headers count (Docker behind Caddy: "*")
     allowed_hosts: str = ""  # extra Host names besides loopback, comma separated (LAN / Docker)
-    demo_url: str | None = None  # where the procurement demo runs when it is not local (Docker)
+    demo_url: str | None = None  # where the supply-chain demo runs when it is not local (Docker)
     artifact_max_bytes: int = 50 * 1024 * 1024
     browser_headless: bool = True
     pytest_timeout_s: float = 300

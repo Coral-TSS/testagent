@@ -2,7 +2,6 @@
 
 import pytest
 
-from testagent.seed import seed_procurement
 from testagent.services.model import ModelService
 
 ZERO = "00000000-0000-0000-0000-000000000000"
@@ -231,29 +230,11 @@ def test_snapshot_is_deterministic_and_immutable(client, sut, db):
     assert [n["name"] for n in content["nodes"]] == ["Order"]
 
 
-def test_seed_procurement(db):
-    result = seed_procurement(db)
-    assert result["created"] is True and result["nodes"] >= 8 and result["links"] == 2
-    assert seed_procurement(db)["created"] is False  # idempotent
-    with db.tx() as cur:
-        cur.execute("SELECT kind, count(*) AS n FROM model_node GROUP BY kind")
-        counts = {r["kind"]: r["n"] for r in cur.fetchall()}
-        cur.execute("SELECT count(*) AS n FROM api_endpoint")
-        apis = cur.fetchone()["n"]
-        cur.execute("SELECT count(*) AS n FROM person")
-        people = cur.fetchone()["n"]
-        cur.execute("SELECT count(*) AS n FROM node_api_link")
-        links = cur.fetchone()["n"]
-        cur.execute("SELECT forward_name, reverse_name FROM model_link ORDER BY forward_name")
-        link_names = [(r["forward_name"], r["reverse_name"]) for r in cur.fetchall()]
-    assert sum(counts.values()) >= 8 and "relation" not in counts
-    assert sorted(link_names) == sorted([("belongs to", "supplies"), ("pays", "receives")])
-    assert apis == 4 and people == 4 and links == 4
+def test_seed_supply_chain_external_demo_url(db):
+    """Docker: the demo runs in its own container, so the environment has no start command."""
+    from testagent.seed import seed_supply_chain
 
-
-def test_seed_procurement_with_external_demo_url(db):
-    """Docker: the demo SUT runs in its own container, so the environment has no start command."""
-    seed_procurement(db, demo_url="http://demo:8766")
+    seed_supply_chain(db, demo_url="http://demo:8766")
     with db.tx() as cur:
         cur.execute("SELECT base_url, start_command FROM environment")
         env = cur.fetchone()

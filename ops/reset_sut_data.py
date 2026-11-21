@@ -16,8 +16,8 @@ transaction (the immutability guards on reports/snapshots are lifted only inside
 transaction). Take a full backup (pg_dump) first. The connection string comes from .env and
 is never printed.
 
-    uv run python ops/reset_sut_data.py --sut procurement
-    uv run python ops/reset_sut_data.py --sut procurement --apply --repo-archive <dir>
+    uv run python ops/reset_sut_data.py --sut supply-chain
+    uv run python ops/reset_sut_data.py --sut supply-chain --apply --repo-archive <dir>
 """
 
 from __future__ import annotations
@@ -90,13 +90,13 @@ DELETE_ORDER = [
     "model_suggestion",
     "requirement",
     "model_snapshot",
-    "version",
     "correction",
     "model_link",
     "api_endpoint",
     "entity_attribute",
     "model_edge",
     "model_node",
+    "version",
     "module",
     "agent_run",
 ]
@@ -206,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     from testagent.core.db import Database
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--sut", required=True, help="SUT code, e.g. procurement")
+    parser.add_argument("--sut", required=True, help="SUT code, e.g. supply-chain")
     parser.add_argument("--apply", action="store_true", help="Really do it (default is a dry run)")
     parser.add_argument("--repo-archive", type=Path, help="Move the old test repo here (required with --apply)")
     parser.add_argument("--keep-repo", action="store_true", help="Leave the local test repo alone")

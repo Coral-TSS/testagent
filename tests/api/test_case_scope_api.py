@@ -125,17 +125,40 @@ def test_prompt_has_the_manifest_and_tools_reject_out_of_scope_ids(client):
     assert "get_requirement" in fake.bound_tools
 
 
-def test_procurement_chain_is_separate_from_requirement_depth(client, db):
-    from testagent.seed import seed_procurement
-
-    sut = seed_procurement(db)["sut_id"]
+def test_chain_is_separate_from_requirement_depth(client, db):
+    sut = client.post(f"{V1}/suts", json={"code": "CHAIN", "name": "Chain"}).json()["id"]
     version = client.post(f"{V1}/suts/{sut}/versions", json={"name": "v1"}).json()["id"]
-    nodes = {n["name"]: n["id"] for n in client.get(f"{V1}/suts/{sut}/nodes").json()}
-    status = next(
-        f["id"]
-        for f in client.get(f"{V1}/suts/{sut}/fields").json()
-        if f["name"] == "status" and f["node_name"] == "PurchaseOrder"
+    created = {}
+    for kind, name in (
+        ("entity", "PurchaseOrder"),
+        ("action", "Create purchase order"),
+        ("action", "Approve purchase order"),
+        ("action", "Record payment"),
+    ):
+        created[name] = client.post(f"{V1}/suts/{sut}/nodes", json={"kind": kind, "name": name}).json()["id"]
+    status = client.post(
+        f"{V1}/nodes/{created['PurchaseOrder']}/fields",
+        json={"name": "status", "data_type": "enum", "enum_values": ["pending_approval", "approved", "paid"]},
+    ).json()["id"]
+    client.patch(
+        f"{V1}/nodes/{created['Create purchase order']}",
+        json={"effects": [{"kind": "set_field", "field": "PurchaseOrder.status", "values": ["pending_approval"]}]},
     )
+    client.patch(
+        f"{V1}/nodes/{created['Approve purchase order']}",
+        json={
+            "preconditions": [{"field": "PurchaseOrder.status", "op": "eq", "value": "pending_approval"}],
+            "effects": [{"kind": "set_field", "field": "PurchaseOrder.status", "values": ["approved"]}],
+        },
+    )
+    client.patch(
+        f"{V1}/nodes/{created['Record payment']}",
+        json={
+            "preconditions": [{"field": "PurchaseOrder.status", "op": "eq", "value": "approved"}],
+            "effects": [{"kind": "set_field", "field": "PurchaseOrder.status", "values": ["paid"]}],
+        },
+    )
+    nodes = created
     reqs = {}
     for name in ("Create purchase order", "Approve purchase order", "Record payment"):
         req = client.post(f"{V1}/versions/{version}/requirements", json={"title": name}).json()
@@ -149,7 +172,7 @@ def test_procurement_chain_is_separate_from_requirement_depth(client, db):
         f"{V1}/requirements/{reqs['Approve purchase order']['id']}/structure",
         json={
             "action": [{"text": "Approve", "node_id": nodes["Approve purchase order"]}],
-            "actor": [{"text": "Approver", "node_id": nodes["Approver"]}],
+            "actor": [{"text": "Approver", "node_id": nodes["PurchaseOrder"]}],
             "condition": [{"text": "status", "attribute_id": status}],
         },
     )

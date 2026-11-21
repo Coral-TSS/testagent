@@ -162,16 +162,19 @@ def test_failed_digest_retryable(client, w):
 # ------------------------------------------------------------------ T-12.3
 def _attach_ref(db, sut_id, requirement_id):
     with db.tx() as cur:
+        cur.execute("SELECT version_id FROM requirement WHERE id=%s", (requirement_id,))
+        version_id = cur.fetchone()["version_id"]
         cur.execute(
             "SELECT id FROM model_node WHERE sut_id=%s AND kind='action' AND name='Scoped action'"
-            " AND deleted_at IS NULL",
-            (sut_id,),
+            " AND deleted_at IS NULL AND version_id IS NOT DISTINCT FROM %s",
+            (sut_id, version_id),
         )
         row = cur.fetchone()
         if row is None:
             cur.execute(
-                "INSERT INTO model_node(sut_id, kind, name) VALUES (%s,'action','Scoped action') RETURNING id",
-                (sut_id,),
+                "INSERT INTO model_node(sut_id, version_id, kind, name)"
+                " VALUES (%s,%s,'action','Scoped action') RETURNING id",
+                (sut_id, version_id),
             )
             row = cur.fetchone()
         cur.execute(

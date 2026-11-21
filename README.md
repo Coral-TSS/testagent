@@ -72,7 +72,7 @@ other.
   and prompt versions; every agent run is traceable (prompts, memories, tool calls).
 - **Bring your own model**: any OpenAI-compatible endpoint (OpenAI, DeepSeek, a local server, …). Without
   a model the platform still works for modelling, manual cases, pytest runs, defects and reports.
-- **Demo SUT included**: a small procurement-approval app with **3 seeded bugs** to see what the agent finds.
+- **Demo SUT included**: a supply-chain app (`supply-chain`) with two versions, so each version keeps its own model.
 
 ## How it works
 
@@ -154,22 +154,19 @@ and the demo SUT stay bound to `127.0.0.1`. See [Public access](docs/deployment.
 
 ## Demo walkthrough
 
-The bundled [procurement approval demo](examples/procurement/README.md) has suppliers, purchase orders,
-approval by amount and payments, plus 3 deliberately seeded bugs. A typical first hour (after signing in):
+The bundled [supply-chain demo](examples/supply_chain/README.md) is a finished purchasing and warehouse
+app. TestAgent is seeded with v1.0 (no inspection) and v2.0 (inspection, over-receive tolerance, qualified
+suppliers), each with its own model and the fixed requirements. A typical first hour (after signing in):
 
-1. **API registry → Import from OpenAPI** (environment `local`): 10 APIs with schemas.
-2. **Model**: look at the seeded entities, actions and links; accept the field and link suggestions
-   from the import; open **Model review**.
-3. **Version → Requirements**: add requirements such as *"Purchase orders of 50,000 or more must be
-   approved"*, assign people, click **AI structure**, confirm, then **freeze**.
+1. Open **供应链执行（演示）**. Switch between v1.0 and v2.0 and compare the models.
+2. **API registry → Import from OpenAPI** (environment `local`).
+3. **Version → Requirements**: the fixed REQ-001 … are already there with structured references. Confirm
+   and **freeze** when you want to generate cases.
 4. **Test strategy & tasks → AI generate strategy**, then confirm.
-5. **Test cases & coverage → AI generate cases**; scripts are generated and self-checked in the background.
-   Review the drafts and **set them ready**.
-6. Open a task, choose environment `local`, **Run now**; follow the run live.
+5. **Test cases & coverage → AI generate cases**. Review the drafts and **set them ready**.
+6. Open a task, choose environment `local`, **Run now**.
 7. On a failed execution: **AI analyse cause** or **Create defect**; then read the task report and
    **People stats**.
-8. Compare with the spoiler section at the end of the demo README: how many of the 3 seeded bugs did the
-   agent find?
 
 ## Local development
 
@@ -181,7 +178,7 @@ cp .env.example .env                      # set TESTAGENT_DATABASE_URL (and TEST
 uv run python ops/init_db.py              # creates the databases if missing
 PLAYWRIGHT_BROWSERS_PATH=0 uv run playwright install chromium
 cd web && npm ci && npm run build && cd ..
-uv run python ops/seed_procurement.py     # optional: the demo SUT
+uv run python ops/seed_supply_chain.py   # optional: the demo SUT
 uv run testagent                          # opens the browser signed in; starts the demo SUT too
 ```
 

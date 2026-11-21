@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from examples.procurement.api import create_app as create_demo
+from examples.supply_chain.api import create_app as create_demo
 from testagent.agent.fake import FakeChatModel, call
 from testagent.agent.tools import action_summaries, api_summaries
 from testagent.services.io_spec import (
@@ -23,7 +23,7 @@ from testagent.services.openapi_import import (
 
 V1 = "/api/v1"
 NOTE = {"note": "Confirmed with the product owner"}  # accepting an AI inference (#6)
-ORDER_INPUTS = ["amount_minor", "currency", "title", "supplier_id"]  # + supplier, title
+ORDER_INPUTS = ["requisitionId", "buyerId", "currency", "overReceiveTolerancePct"]
 
 
 def use_model(client, *script):
@@ -50,7 +50,7 @@ def world(client, db, demo_spec):
     approve = node("action", "Approve purchase order")["id"]
     amount = client.post(
         f"{V1}/nodes/{order}/fields",
-        json={"name": "amount_minor", "display_name": "Amount", "data_type": "money", "unit": "cents"},
+        json={"name": "requisitionId", "display_name": "申请", "data_type": "string"},
     ).json()
     OpenApiImportService(db, client.app.state.bus).import_spec(sut, demo_spec)
     apis = {f"{a['method']} {a['path']}": a for a in client.get(f"{V1}/suts/{sut}/apis").json()}
@@ -91,18 +91,17 @@ def test_schema_params_flatten_types_formats_and_enums():
 def test_edited_fields_write_back_into_schema_and_keep_limits(demo_spec):
     op = next(o for o in parse_operations(demo_spec) if o["path"] == "/sample/orders" and o["method"] == "POST")
     params = request_params(op["request_schema"])
-    amount = next(p for p in params if p["name"] == "amount_minor")
-    amount["format"] = "integer in cents"
+    tolerance = next(p for p in params if p["name"] == "overReceiveTolerancePct")
+    tolerance["format"] = "ratio"
     currency = next(p for p in params if p["name"] == "currency")
     currency.update(data_type="enum", enum_values=["CNY", "USD"])
     schema = apply_request_fields(op["request_schema"], params)
     body = schema["body"]
-    assert body["additionalProperties"] is False and body["required"] == ["currency"]
+    assert body["additionalProperties"] is False and body["required"] == ["requisitionId", "buyerId", "currency"]
     assert body["properties"]["currency"]["enum"] == ["CNY", "USD"]
-    inner = body["properties"]["amount_minor"]["anyOf"][0]
-    assert inner["minimum"] == 0 and inner["x-format"] == "integer in cents"
+    assert body["properties"]["overReceiveTolerancePct"]["x-format"] == "ratio"
     again = {p["name"]: p for p in request_params(schema)}
-    assert again["amount_minor"]["format"] == "integer in cents"
+    assert again["overReceiveTolerancePct"]["format"] == "ratio"
     assert again["currency"]["data_type"] == "enum"
     # unchanged rows do not copy derived texts into the schema
     untouched = apply_request_fields(op["request_schema"], request_params(op["request_schema"]))
@@ -111,12 +110,12 @@ def test_edited_fields_write_back_into_schema_and_keep_limits(demo_spec):
 
 def test_api_io_from_demo_openapi(demo_spec):
     op = next(o for o in parse_operations(demo_spec) if o["path"] == "/sample/orders" and o["method"] == "POST")
-    assert op["name"] == "Create purchase order" and "approval" in op["description"]
+    assert op["name"] == "按申请创建采购订单" and "供应商" in op["description"]
     assert op["request_content_type"] == "application/json"
     io = api_io(op)
     assert [p["name"] for p in io["inputs"]] == ORDER_INPUTS
     outputs = {p["name"]: p for p in io["outputs"]}
-    assert outputs["state"]["data_type"] == "enum" and "paid" in outputs["state"]["enum_values"]
+    assert outputs["status"]["data_type"] == "enum" and "issued" in outputs["status"]["enum_values"]
     assert io["input_format"] == "Request body JSON object (application/json)"
     assert io["output_format"] == "HTTP 201, JSON object (application/json)"
 
@@ -130,24 +129,24 @@ def test_default_summary_detection():
 # ------------------------------------------------------------------ API registry
 def test_api_list_has_purpose_content_types_and_io(client, world):
     api = world["apis"]["POST /sample/orders"]
-    assert api["description"].startswith("Create a purchase order")
+    assert api["description"].startswith("已批准的采购申请")
     assert api["request_content_type"] == "application/json"
     assert api["response_content_type"] == "application/json"
     assert [p["name"] for p in api["io"]["inputs"]] == ORDER_INPUTS
-    assert "state" in [p["name"] for p in api["io"]["outputs"]]
+    assert "status" in [p["name"] for p in api["io"]["outputs"]]
 
 
 def test_import_keeps_manual_name_and_purpose_but_replaces_default_summary(client, db, world, demo_spec):
     api = world["apis"]["POST /sample/orders/{order_id}/decision"]
     client.patch(f"{V1}/apis/{api['id']}", json={"name": "Decide", "description": "Manual note"})
-    pay = world["apis"]["POST /sample/orders/{order_id}/payments"]
+    pay = world["apis"]["POST /sample/orders/{order_id}/receive"]
     client.patch(f"{V1}/apis/{pay['id']}", json={"name": "Pay", "description": ""})
     OpenApiImportService(db, client.app.state.bus).import_spec(world["sut"], demo_spec)
     rows = {f"{a['method']} {a['path']}": a for a in client.get(f"{V1}/suts/{world['sut']}/apis").json()}
     decide = rows["POST /sample/orders/{order_id}/decision"]
-    assert decide["name"] == "Approve purchase order"  # "Decide" was FastAPI's fallback summary
+    assert decide["name"] == "审批采购订单"  # "Decide" was only a manual name, replaced by the spec summary
     assert decide["description"] == "Manual note"  # a typed purpose wins
-    assert rows["POST /sample/orders/{order_id}/payments"]["description"].startswith("Record a payment for an approved")
+    assert rows["POST /sample/orders/{order_id}/receive"]["description"].startswith("按订单收货")
 
 
 def test_patch_api_fields_tables(client, world):
@@ -180,12 +179,11 @@ def test_action_io_crud_binds_entity_fields_and_validates(client, world):
         "description": "Submit a purchase order; the system decides whether approval is required",
         "inputs": [
             {
-                "name": "amount_minor",
-                "display_name": "Amount",
-                "data_type": "money",
+                "name": "requisitionId",
+                "display_name": "申请",
+                "data_type": "string",
                 "required": True,
-                "format": "integer in cents",
-                "field": "PurchaseOrder.amount_minor",
+                "field": "PurchaseOrder.requisitionId",
             },
             {"name": "currency", "data_type": "enum", "enum_values": ["CNY", "USD"]},
         ],
@@ -197,7 +195,7 @@ def test_action_io_crud_binds_entity_fields_and_validates(client, world):
     assert resp.status_code == 200, resp.text
     node = resp.json()
     assert node["inputs"][0]["attribute_id"] == world["amount"]["id"]
-    assert node["inputs"][0]["field"] == "PurchaseOrder.amount_minor"
+    assert node["inputs"][0]["field"] == "PurchaseOrder.requisitionId"
     assert node["input_format"] == "JSON request body" and node["outputs"][0]["name"] == "state"
     for bad in (
         {"inputs": [{"name": "x", "data_type": "enum"}]},  # enum without values
@@ -210,7 +208,7 @@ def test_action_io_crud_binds_entity_fields_and_validates(client, world):
     assert entity.status_code == 422
     graph = client.get(f"{V1}/suts/{world['sut']}/graph").json()
     listed = next(n for n in graph["nodes"] if n["id"] == world["create"])
-    assert [p["name"] for p in listed["inputs"]] == ["amount_minor", "currency"]
+    assert [p["name"] for p in listed["inputs"]] == ["requisitionId", "currency"]
 
 
 def test_linking_api_inherits_io_and_purpose(client, world):
@@ -218,11 +216,11 @@ def test_linking_api_inherits_io_and_purpose(client, world):
     resp = client.put(f"{V1}/nodes/{world['create']}/apis", json={"api_ids": [api["id"]]})
     assert resp.status_code == 200
     node = client.get(f"{V1}/nodes/{world['create']}").json()
-    assert node["description"].startswith("Create a purchase order")
+    assert node["description"].startswith("已批准的采购申请")
     names = [p["name"] for p in node["inputs"]]
     assert names == ORDER_INPUTS
     assert node["inputs"][0]["attribute_id"] == world["amount"]["id"]  # bound by name
-    assert "state" in [p["name"] for p in node["outputs"]]
+    assert "status" in [p["name"] for p in node["outputs"]]
     assert node["input_format"].startswith("Request body JSON")
     # explicit re-derive merges without duplicating; replace rebuilds
     again = client.post(f"{V1}/nodes/{world['create']}/io/from-apis", json={}).json()
@@ -263,10 +261,10 @@ def test_snapshot_and_agent_context_include_io(client, db, world):
     actions = action_summaries(db, world["sut"])
     created = next(a for a in actions if a["action"] == "Create purchase order")
     assert created["apis"] == ["POST /sample/orders"] and created["purpose"]
-    assert created["inputs"][0]["field"] == "PurchaseOrder.amount_minor"
+    assert created["inputs"][0]["field"] == "PurchaseOrder.requisitionId"
     apis = {f"{a['method']} {a['path']}": a for a in api_summaries(db, world["sut"])}
-    assert apis["POST /sample/orders"]["response_fields"]["state"] == "enum"
-    assert apis["POST /sample/orders"]["purpose"].startswith("Create a purchase order")
+    assert apis["POST /sample/orders"]["response_fields"]["status"] == "enum"
+    assert apis["POST /sample/orders"]["purpose"].startswith("已批准的采购申请")
 
 
 # ------------------------------------------------------------------ entity field types
@@ -390,9 +388,9 @@ def test_structure_io_suggestions(client, world):
                         "description": "Submit purchase order",
                         "inputs": [
                             {
-                                "name": "amount_minor",
-                                "data_type": "money",
-                                "field": "PurchaseOrder.amount_minor",
+                                "name": "requisitionId",
+                                "data_type": "string",
+                                "field": "PurchaseOrder.requisitionId",
                             }
                         ],
                     }
@@ -417,10 +415,10 @@ def test_inherited_io_binds_only_fields_of_the_object_entity(client, world):
         f"{V1}/suts/{world['sut']}/edges",
         json={"source_node_id": pay_node, "target_node_id": payment, "role": "object"},
     )
-    api = world["apis"]["POST /sample/orders/{order_id}/payments"]
+    api = world["apis"]["POST /sample/orders"]
     client.put(f"{V1}/nodes/{pay_node}/apis", json={"api_ids": [api["id"]]})
     node = client.get(f"{V1}/nodes/{pay_node}").json()
     out = {p["name"]: p for p in node["outputs"]}
     assert out["id"]["field"] == "Payment.id"  # not PurchaseOrder.id
     assert out["amount"]["field"] == "Payment.amount"
-    assert "field" not in out["order_id"]
+    assert "field" not in out["code"]

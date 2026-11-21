@@ -92,7 +92,7 @@ export function SutsPage() {
             label="编号"
             rules={[{ required: true, pattern: /^[A-Za-z][A-Za-z0-9_-]{0,63}$/, message: "以字母开头；允许数字、- 和 _" }]}
           >
-            <Input placeholder="例如 procurement" />
+            <Input placeholder="例如 supply-chain" />
           </Form.Item>
           <Form.Item name="name" label="名称" rules={[{ required: true }]}>
             <Input />

@@ -12,10 +12,6 @@ from testagent.core.config import Settings
 from testagent.core.db import Database, assert_test_database
 from testagent.core.migrations import migrate
 
-# The procurement demo ships seeded bugs (on by default for people trying TestAgent);
-# platform tests run it with the bugs off unless a test turns them on explicitly.
-os.environ["PROCUREMENT_DEMO_BUGS"] = "0"
-
 TEST_USER = "tester"  # the signed-in admin of the `client` fixture (actor of what it changes)
 TEST_PASSWORD = "tester-password-1"  # test-only credential
 KEEP_TABLES = {"schema_migrations", "severity_weight"}

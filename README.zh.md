@@ -65,7 +65,7 @@
   （提示词、记忆、工具调用）。
 - **自带模型**：任何 OpenAI 兼容接口（OpenAI、DeepSeek、本地服务……）。不配置模型时，建模、手写用例、
   pytest 执行、缺陷和报告照常可用。
-- **自带演示系统**：一个小型采购审批应用，**预埋了 3 个缺陷**，看看 Agent 能找到几个。
+- **自带演示系统**：供应链执行应用（`supply-chain`），两个版本各自有一份模型。
 
 ## 工作原理
 
@@ -130,7 +130,7 @@ docker compose up -d --build
 1. **Agent settings**（Agent 配置）→ 填写 OpenAI 兼容的 **Base URL**、**模型名**和 **API key**，点
    *Test connection*。以 DeepSeek 为例：Base URL `https://api.deepseek.com`，模型 `deepseek-chat`。
    Key 保存在 `testagent-data` 数据卷里（`runtime/secrets.json`），不会进数据库，也不会写进日志。
-2. 打开 **SUT → Procurement approval (demo)**（采购审批演示系统），按页面顶部的步骤条往下走。
+2. 打开 **被测系统 → 供应链执行（演示）**，按页面顶部的步骤条往下走。
 
 整个栈有三个服务：`db`（PostgreSQL 17）、`demo`（演示被测系统，http://localhost:8766）和
 `testagent`（平台，http://localhost:8765）。启动时自动执行数据库迁移。配置、升级、备份和排错见
@@ -143,18 +143,16 @@ docker compose up -d --build
 
 ## 演示流程
 
-自带的[采购审批演示系统](examples/procurement/README.md)（英文）包含供应商、采购单、按金额审批和付款，
-还故意埋了 3 个缺陷。登录后，第一个小时通常这样走：
+自带的[供应链执行演示](examples/supply_chain/README.md)是一套已经开发完成的采购与仓储应用。平台种子里有
+v1.0（无质检）和 v2.0（质检、超收容差、供应商必须合格），每个版本有自己的模型和固定需求。登录后可以这样走：
 
-1. **API registry → Import from OpenAPI**（选择环境 `local`）：导入 10 个带 schema 的接口。
-2. **Model**：看看预置的实体、动作和关系；采纳导入产生的字段和关系建议；打开 **Model review**。
-3. **Version → Requirements**：添加需求，比如 *"Purchase orders of 50,000 or more must be approved"*
-   （5 万及以上的采购单必须审批），指定相关人员，点 **AI structure**，确认后**冻结**（freeze）。
-4. **Test strategy & tasks → AI generate strategy**，然后确认。
-5. **Test cases & coverage → AI generate cases**；脚本会在后台生成并自检。审阅草稿后把它们**设为就绪**（set ready）。
-6. 打开一个任务，选择环境 `local`，点 **Run now**，实时查看执行进度。
-7. 在失败的执行上：点 **AI analyse cause** 或 **Create defect**；然后看任务报告和 **People stats**（人员统计）。
-8. 对照演示系统 README 末尾的剧透部分：3 个预埋缺陷，Agent 找到了几个？
+1. 打开 **供应链执行（演示）**，在 v1.0 和 v2.0 之间切换，对比两边的模型。
+2. **API 注册表 → 从 OpenAPI 导入**（环境 `local`）。
+3. **版本与需求**：REQ-001 起的固定需求已经写好并挂了结构化引用。确认后可以冻结，再生成用例。
+4. **策略**里让 AI 生成策略并确认。
+5. **用例**里让 AI 生成用例，审阅后设为就绪。
+6. 打开任务，选择环境 `local`，立即执行。
+7. 失败的执行上可以分析原因或创建缺陷，然后看报告和人员统计。
 
 ## 本地开发
 
@@ -166,7 +164,7 @@ cp .env.example .env                      # set TESTAGENT_DATABASE_URL (and TEST
 uv run python ops/init_db.py              # creates the databases if missing
 PLAYWRIGHT_BROWSERS_PATH=0 uv run playwright install chromium
 cd web && npm ci && npm run build && cd ..
-uv run python ops/seed_procurement.py     # optional: the demo SUT
+uv run python ops/seed_supply_chain.py   # 可选：演示被测系统
 uv run testagent                          # opens the browser signed in; starts the demo SUT too
 ```
 

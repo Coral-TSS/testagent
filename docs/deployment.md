@@ -33,7 +33,7 @@ docker compose ps             # all three services should become "healthy"
 | Service | What | URL on your machine |
 |---|---|---|
 | `testagent` | the platform (UI + API + worker + scheduler) | http://localhost:8765 |
-| `demo` | the procurement demo SUT (with 3 seeded bugs) | http://localhost:8766 |
+| `demo` | the supply-chain demo SUT | http://localhost:8766 |
 | `db` | PostgreSQL 17 | not published (internal only) |
 
 Ports are bound to `127.0.0.1` only.
@@ -99,8 +99,7 @@ Set them in `.env` (Compose substitutes them) or in `docker-compose.yml`.
 | `TESTAGENT_ALLOWED_HOSTS` | empty | Extra host names accepted besides `localhost` / `127.0.0.1` / `TESTAGENT_PUBLIC_HOST`, comma separated (e.g. `testagent.lan`) |
 | `TESTAGENT_TIMEZONE` | `UTC` | IANA time zone for schedules and displayed times (e.g. `Europe/Berlin`) |
 | `TESTAGENT_AGENT_LANGUAGE` | `Simplified Chinese` | Language of the text the agent writes (requirements, cases, reports) |
-| `TESTAGENT_SEED_DEMO` | `1` | Create the demo SUT (model, APIs, people, environment) on first start |
-| `PROCUREMENT_DEMO_BUGS` | `1` | Seeded bugs in the demo SUT on (`1`) or off (`0`) |
+| `TESTAGENT_SEED_DEMO` | `1` | Create the supply-chain demo SUT (model, APIs, people, environment) on first start |
 | `DEBIAN_MIRROR` | empty (`deb.debian.org`) | Debian mirror host used while building the image (see [Package mirrors](#package-mirrors-for-the-build)) |
 | `PIP_INDEX_URL` / `NPM_REGISTRY` / `PLAYWRIGHT_DOWNLOAD_HOST` | empty | Python index, npm registry and Chromium download host used while building the image |
 | `UV_IMAGE` | `ghcr.nju.edu.cn/astral-sh/uv:0.13` | Image the `uv` binary is copied from. Official fallback: `ghcr.io/astral-sh/uv:0.13` |
@@ -297,7 +296,7 @@ Build the UI and optionally seed the demo SUT:
 
 ```bash
 cd web && npm ci && npm run build && cd ..
-uv run python ops/seed_procurement.py
+uv run python ops/seed_supply_chain.py
 ```
 
 ### Run
@@ -328,8 +327,8 @@ name does not end in `_test`.
 ### Resetting a SUT
 
 ```bash
-uv run python ops/reset_sut_data.py --sut procurement                    # dry run
-uv run python ops/reset_sut_data.py --sut procurement --apply --repo-archive ../archive/test-repo-procurement
+uv run python ops/restore_supply_chain.py                              # dry run
+uv run python ops/restore_supply_chain.py --apply --keep-repo
 ```
 
 This keeps the SUT and its environments, removes everything else for that SUT (after a `pg_dump`
