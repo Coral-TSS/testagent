@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 
 import { mockFetch, renderPage } from "../test/utils";
 import { AgentRunDrawer } from "./AgentRunDrawer";
-import { NodeDrawer } from "./NodeDrawer";
+import { NodePanel } from "./NodePanel";
 import { RequirementDrawer } from "./RequirementDrawer";
 import { ReadingDrawer } from "./ReadingDrawer";
 import { ExpandableDescription } from "./ExpandableDescription";
@@ -37,7 +37,6 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); window.localStora
 
 it.each([
   ["requirement", () => <RequirementDrawer reqId="req1" sutId="s1" locked={false} onClose={() => {}} onOpenRun={() => {}} />],
-  ["node", () => <NodeDrawer sutId="s1" nodeId="n1" modules={[]} allNodes={[]} onClose={() => {}} onOpenNode={() => {}} />],
   ["agent", () => <AgentRunDrawer runId="a1" onClose={() => {}} />],
 ] as const)("lets the %s drawer adapt and expose a keyboard resize handle", async (_, component) => {
   fixtures(); renderPage(component(), { motion: false });
@@ -115,8 +114,9 @@ it("closes with Escape when the resize handle has focus", async () => {
 it("keeps different drawer types' width preferences separate", async () => {
   window.localStorage.setItem(storageKey, "1100");
   window.localStorage.setItem("testagent:drawer-width:node", "900");
-  fixtures(); renderPage(<NodeDrawer sutId="s1" nodeId="n1" modules={[]} allNodes={[]} onClose={() => {}} onOpenNode={() => {}} />, { motion: false });
-  await screen.findByRole("dialog"); expect(panelWidth()).toBe("900px");
+  fixtures(); renderPage(<NodePanel sutId="s1" nodeId="n1" modules={[]} allNodes={[]} onClose={() => {}} onOpenNode={() => {}} />, { motion: false });
+  expect((await screen.findByTestId("side-detail-panel")).style.width).toBe("900px");
+  expect(screen.queryByRole("dialog")).toBeNull();
 });
 
 it("opens and adjusts even when browser storage cannot be read", async () => {

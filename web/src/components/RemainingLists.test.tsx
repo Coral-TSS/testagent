@@ -109,8 +109,8 @@ describe("remaining list consistency", () => {
     fireEvent.click(screen.getByTitle("2"));
     fireEvent.click(await screen.findByLabelText("删除 param_51"));
     expect(await screen.findByText("共 50 条")).toBeTruthy();
-    expect(screen.getByText("param_1")).toBeTruthy();
-    expect(screen.queryByText("param_51")).toBeNull();
+    expect(screen.getByDisplayValue("param_1")).toBeTruthy();
+    expect(screen.queryByDisplayValue("param_51")).toBeNull();
   });
 
   it("updates model node counts under client-side search", async () => {

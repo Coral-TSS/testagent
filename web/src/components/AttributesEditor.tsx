@@ -29,7 +29,7 @@ export function AttributesEditor() {
                   </Space>
                 ))}
                 <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => add({ text: "" })}>
-                  Add{label}
+                  添加{label}
                 </Button>
               </>
             )}

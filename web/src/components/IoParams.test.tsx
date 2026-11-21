@@ -40,7 +40,7 @@ describe("IoParamsTable", () => {
     render(<IoParamsTable value={params} onChange={onChange} />);
     fireEvent.click(screen.getByLabelText("删除 state"));
     expect(onChange).toHaveBeenCalledWith([params[0]]);
-    expect(screen.getByText("添加参数")).toBeTruthy();
+    expect(screen.getByText("添加一行")).toBeTruthy();
   });
 });
 

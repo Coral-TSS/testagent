@@ -2,8 +2,8 @@ import { ExpandableDescription } from "../components/ExpandableDescription";
 import { ListTable, listTitle } from "../components/ListView";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Form, Input, Modal, Select, Space, Tabs, Tag, Typography } from "antd";
-import { useMemo, useState } from "react";
+import { Button, Form, Input, Select, Space, Tabs, Tag, Typography } from "antd";
+import { useMemo, useRef, useState } from "react";
 import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client";
@@ -12,7 +12,8 @@ import type { EntityField, Graph, Link, Module, ModelNode, NodeDetail, Suggestio
 import { typeText } from "../components/dataTypes";
 import { GraphCanvas } from "../components/graph/GraphCanvas";
 import { LinkEditor, LinksTable } from "../components/LinkEditor";
-import { NodeDrawer } from "../components/NodeDrawer";
+import { NodePanel, type PanelGuard, type PanelSeed } from "../components/NodePanel";
+import { AppModal } from "../components/panel/AppModal";
 import { SuggestionList } from "../components/SuggestionList";
 import { KIND_COLOR, KIND_LABEL } from "../components/StatusTags";
 
@@ -28,6 +29,8 @@ export function ModelPage() {
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
   const [linkEdit, setLinkEdit] = useState<{ link?: Link | null } | null>(null);
+  const [seed, setSeed] = useState<PanelSeed | null>(null);
+  const guard = useRef<PanelGuard>({ dirty: false, discard: async () => true });
 
   const setParam = (key: string, value?: string | null) => {
     const next = new URLSearchParams(params);
@@ -84,9 +87,29 @@ export function ModelPage() {
     },
   });
   const kind = Form.useWatch("kind", form);
+  const openNode = async (id: string | null) => {
+    if (selected && id !== selected && guard.current.dirty && !(await guard.current.discard())) return false;
+    setParam("node", id);
+    return true;
+  };
+  const connectNodes = async (source: string, target: string) => {
+    const sourceNode = (fullGraph.data?.nodes || []).find((item) => item.id === source);
+    const targetNode = (fullGraph.data?.nodes || []).find((item) => item.id === target);
+    if (!sourceNode || !targetNode) return;
+    if (!(await openNode(source))) return;
+    const bothEntities = sourceNode.kind === "entity" && targetNode.kind === "entity";
+    setSeed({
+      nonce: Date.now(),
+      source,
+      target,
+      kind: bothEntities ? "link" : "edge",
+      role: targetNode.kind === "action" ? "actor" : "object",
+    });
+  };
 
   return (
-    <>
+    <div className={tab === "graph" ? "model-stage" : "model-stage model-stage-auto"}>
+      <div className="model-stage-main">
       <Space style={{ marginBottom: 16, width: "100%", justifyContent: "space-between" }}>
         <Typography.Title level={3} style={{ margin: 0 }}>
           模型
@@ -101,7 +124,11 @@ export function ModelPage() {
             onChange={(v) => setParam("module", v)}
             options={(modules.data || []).map((m) => ({ value: m.id, label: m.name }))}
           />
-          <Button icon={<PlusOutlined />} onClick={() => setLinkEdit({ link: null })}>
+          <Button icon={<PlusOutlined />} onClick={() => {
+            const current = (fullGraph.data?.nodes || []).find((item) => item.id === selected);
+            if (current?.kind === "entity") setSeed({ nonce: Date.now(), source: current.id, target: "", kind: "link" });
+            else setLinkEdit({ link: null });
+          }}>
             新建关系
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
@@ -118,12 +145,16 @@ export function ModelPage() {
             label: "图谱",
             children: graph.data && (
               graph.data.nodes.length ? (
+                <div className="graph-fill">
                 <GraphCanvas
                   graph={graph.data}
                   selectedId={selected}
-                  onSelect={(id) => setParam("node", id)}
+                  onSelect={(id) => void openNode(id)}
                   onLinkClick={openLink}
+                  onConnect={(source, target) => void connectNodes(source, target)}
+                  height="fill"
                 />
+                </div>
               ) : (
                 <Typography.Text type="secondary">还没有节点；请点击“新建节点”开始建模。</Typography.Text>
               )
@@ -156,7 +187,7 @@ export function ModelPage() {
                   rowKey="id"
                   loading={graph.isLoading}
                   dataSource={rows}
-                  onRow={(row) => ({ onClick: () => setParam("node", row.id), style: { cursor: "pointer" } })}
+                  onRow={(row) => ({ onClick: () => void openNode(row.id), style: { cursor: "pointer" } })}
                   columns={[
                     { title: "名称", dataIndex: "name" },
                     { title: "类型", dataIndex: "kind", width: 90, render: (k) => <Tag color={KIND_COLOR[k]}>{KIND_LABEL[k]}</Tag> },
@@ -241,16 +272,9 @@ export function ModelPage() {
         fields={fields.data || []}
         onClose={() => setLinkEdit(null)}
       />
-      <NodeDrawer
-        sutId={sutId}
-        nodeId={selected}
-        onClose={() => setParam("node", null)}
-        onOpenNode={(id) => setParam("node", id)}
-        modules={modules.data || []}
-        allNodes={fullGraph.data?.nodes || []}
-      />
-      <Modal
+      <AppModal
         title="新建节点"
+        help="先写下名称。字段、关系或输入输出可以在右侧面板里继续补。"
         open={creating}
         onCancel={() => setCreating(false)}
         onOk={() => form.submit()}
@@ -279,7 +303,21 @@ export function ModelPage() {
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>
-      </Modal>
-    </>
+      </AppModal>
+      </div>
+      {selected && (
+        <NodePanel
+          sutId={sutId}
+          nodeId={selected}
+          onClose={() => setParam("node", null)}
+          onOpenNode={(id) => void openNode(id)}
+          modules={modules.data || []}
+          allNodes={fullGraph.data?.nodes || []}
+          seed={seed}
+          onSeedConsumed={() => setSeed(null)}
+          onGuard={(next) => { guard.current = next; }}
+        />
+      )}
+    </div>
   );
 }

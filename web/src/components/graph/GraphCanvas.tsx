@@ -34,8 +34,8 @@ const handles = (
   <>
     {SIDES.map(([id, p]) => (
       <span key={id}>
-        <Handle id={`${id}-t`} type="target" position={p} style={{ opacity: 0 }} />
-        <Handle id={`${id}-s`} type="source" position={p} style={{ opacity: 0 }} />
+        <Handle id={`${id}-t`} type="target" position={p} className="graph-handle" />
+        <Handle id={`${id}-s`} type="source" position={p} className="graph-handle" />
       </span>
     ))}
   </>
@@ -171,17 +171,20 @@ export function GraphCanvas({
   selectedId,
   onSelect,
   onLinkClick,
+  onConnect,
   height = 600,
 }: {
   graph: Graph;
   selectedId?: string | null;
   onSelect: (id: string) => void;
   onLinkClick?: (linkId: string) => void;
-  height?: number;
+  /** Drag from one node to another. Entity to entity becomes a relation; anything else becomes an edge. */
+  onConnect?: (source: string, target: string) => void;
+  height?: number | "fill";
 }) {
   const { nodes, edges } = useMemo(() => toFlow(graph, selectedId), [graph, selectedId]);
   return (
-    <div style={{ height, border: "1px solid #f0f0f0", borderRadius: 8 }} data-testid="graph-canvas">
+    <div className={onConnect ? "graph-canvas connectable" : "graph-canvas"} style={{ height: height === "fill" ? "100%" : height, border: "1px solid #f0f0f0", borderRadius: 8 }} data-testid="graph-canvas">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -191,7 +194,10 @@ export function GraphCanvas({
         onEdgeClick={(_, e) => {
           if (e.id.startsWith("link:")) onLinkClick?.(e.id.slice(5));
         }}
-        nodesConnectable={false}
+        nodesConnectable={Boolean(onConnect)}
+        onConnect={(connection) => {
+          if (connection.source && connection.target && connection.source !== connection.target) onConnect?.(connection.source, connection.target);
+        }}
         fitView
         minZoom={0.2}
       >

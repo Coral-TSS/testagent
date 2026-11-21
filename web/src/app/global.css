@@ -69,6 +69,28 @@
 .reading-drawer .ant-drawer-extra { max-width: 100%; margin-inline-start: 0; }
 .reading-drawer .ant-drawer-header .ant-space { flex-wrap: wrap; }
 .model-nodes-table td { vertical-align: top; }
+.model-stage { display: flex; align-items: stretch; gap: 0; height: calc(100vh - 260px); min-height: 420px; }
+.model-stage-auto { height: auto; min-height: 0; align-items: flex-start; }
+.model-stage-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.model-stage .ant-tabs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.model-stage .ant-tabs-content-holder { flex: 1; min-height: 0; }
+.model-stage .ant-tabs-content, .model-stage .ant-tabs-tabpane-active { height: 100%; }
+.graph-fill { height: 100%; min-height: 420px; }
+.model-stage-auto .side-detail-panel { height: calc(100vh - 220px); }
+.side-detail-panel { position: relative; display: flex; flex-direction: column; background: #fff; border-left: 1px solid #f0f0f0; min-width: 0; min-height: 0; flex: none; }
+.side-detail-head, .side-detail-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; background: #fff; }
+.side-detail-head { border-bottom: 1px solid #f0f0f0; }
+.side-detail-title { min-width: 0; font-weight: 600; }
+.side-detail-body { flex: 1; overflow: auto; padding: 12px 16px 16px; }
+.side-detail-footer { justify-content: flex-end; border-top: 1px solid #f0f0f0; }
+.side-detail-resizing { user-select: none; }
+.graph-handle { opacity: 0; width: 8px; height: 8px; }
+.graph-canvas.connectable .react-flow__node:hover .graph-handle { opacity: 1; background: #1677ff; }
+@media (max-width: 767px) {
+  .model-stage, .model-stage-auto { flex-direction: column; height: auto; }
+  .graph-fill { height: 70vh; }
+  .side-detail-panel, .model-stage-auto .side-detail-panel { width: 100% !important; height: auto; max-height: none; border-left: 0; border-top: 1px solid #f0f0f0; }
+}
 .expandable-description { width: 280px; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 767px) {
   .reading-drawer .ant-drawer-header { align-items: stretch; flex-direction: column; }
