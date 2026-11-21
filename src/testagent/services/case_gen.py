@@ -312,6 +312,123 @@ class CaseGenerationService:
             "automation": automation,
         }
 
+    def generate_e2e(self, version_id) -> dict:
+        from testagent.services.case_chains import ChainService
+
+        chains = ChainService(self.db).sync(version_id)
+        if not chains:
+            raise AppError("VALIDATION", "没有可以从动作效果和前置条件串起来的链路。")
+        with self.db.tx() as cur:
+            cur.execute("SELECT sut_id FROM version WHERE id=%s", (version_id,))
+            version = cur.fetchone()
+        scopes = ChainService(self.db).tool_scopes(version_id, chains)
+        run = self.runtime.run(
+            "generate_e2e_cases",
+            {
+                "version_id": str(version_id),
+                "sut_id": str(version["sut_id"]),
+                "chains": chains,
+                "scopes": scopes,
+                "requirement_codes": sorted({r["code"] for c in chains for r in c["requirements"]}),
+            },
+            sut_id=version["sut_id"],
+        )
+        summary = {
+            "agent_run_id": str(run["id"]),
+            "status": run["status"],
+            "error_code": run["error_code"],
+            "chains": chains,
+        }
+        if run["status"] != "succeeded":
+            return summary
+        out = CasesOut.model_validate(run["result"])
+        codes = {r["code"]: r["id"] for c in chains for r in c["requirements"]}
+        cases = CaseService(self.db, self.bus, actor=f"agent:{run['id']}")
+        created = []
+        with self.db.tx() as cur:
+            for draft in out.cases:
+                data = draft.model_dump(mode="json", exclude={"requirement_codes"})
+                data["requirement_ids"] = [codes[c] for c in draft.requirement_codes if c in codes]
+                data["origin_version_id"] = version_id
+                row = cases.create(version["sut_id"], data, cur=cur, agent_run_id=run["id"])
+                chain_id = _chain_for(draft, chains)
+                if chain_id:
+                    cur.execute("UPDATE test_case SET chain_id=%s WHERE id=%s", (chain_id, row["id"]))
+                    row["chain_id"] = chain_id
+                created.append({"id": str(row["id"]), "code": row["code"], "title": row["title"], "chain_id": chain_id})
+            report = cases.save_coverage(version_id, cur=cur, agent_run_id=run["id"])
+        return {**summary, "cases": created, "coverage": report["content"]}
+
+
+def e2e_entry(db) -> Entry:
+    def validate(out: CasesOut, ctx: dict) -> list[str]:
+        chains = (ctx.get("inputs") or {}).get("chains") or []
+        errors = []
+        known_codes = {r["code"] for chain in chains for r in chain.get("requirements") or []}
+        unknown = {c for d in out.cases for c in d.requirement_codes} - known_codes
+        errors += [f"requirement code {c} is not on a chain" for c in sorted(unknown)]
+        for chain in chains:
+            action_ids = {a["id"] for a in chain["actions"]}
+            codes = {r["code"] for r in chain["requirements"]}
+            label = " → ".join(a["name"] for a in chain["actions"])
+            mine = [c for c in out.cases if action_ids <= {str(n) for n in c.node_ids}]
+            if not mine:
+                errors.append(f"chain {label} needs a case whose node_ids include every action")
+                continue
+            if codes and not any(codes <= set(c.requirement_codes) for c in mine):
+                errors.append(f"chain {label} needs a case linked to every requirement on the path")
+            needed = {f"chain:{chain['id']}"} | {t["id"] for t in chain["transitions"]}
+            covered = set()
+            for case in mine:
+                covered |= set(case.covers or [])
+            missing = sorted(needed - covered)
+            errors += [f"chain {label} coverage target {t} is not covered" for t in missing]
+        errors += model_id_errors(
+            db,
+            ctx["sut_id"],
+            [n for d in out.cases for n in d.node_ids],
+            [a for d in out.cases for a in d.attribute_ids],
+        )
+        errors += check_request_bodies(
+            db,
+            ctx["sut_id"],
+            [
+                (f"case {i + 1} step {j + 1}", step.action, step.data)
+                for i, d in enumerate(out.cases)
+                for j, step in enumerate(d.steps)
+            ],
+        )
+        return errors
+
+    return Entry(
+        name="generate_e2e_cases",
+        output_schema=CasesOut,
+        tools=(
+            "list_requirements",
+            "get_requirement",
+            "list_nodes",
+            "get_node",
+            "search_nodes",
+            "list_apis",
+            "get_api_schema",
+            "list_fields",
+            "list_links",
+            "list_cases",
+            "search_memory",
+        ),
+        instructions=(
+            "Write cross-requirement end-to-end cases for each chain in the context. A chain is a "
+            "path of actions where one action's effect satisfies the next action's precondition. "
+            "This is not a single requirement's scope and must not be produced by raising that "
+            "depth. For each chain write at least one case that walks every action in order, "
+            "links every requirement code on the path, puts every action id in node_ids, and "
+            "lists covers for the chain id and each transition id. Assert the state named on "
+            "each transition. Use the tools for field and API details; ids outside the chain "
+            "scope are refused."
+        ),
+        validate=validate,
+    )
+
 
 def enqueue_automation(jobs, case_ids: list, version_id, environment_id=None) -> dict:
     """One background `automate_case` job per case (C09); progress via the jobs table."""
@@ -329,3 +446,12 @@ def enqueue_automation(jobs, case_ids: list, version_id, environment_id=None) ->
         for cid in case_ids
     ]
     return {"queued": len(job_ids), "job_ids": job_ids}
+
+
+def _chain_for(case: CaseDraft, chains: list[dict]) -> str | None:
+    nodes = {str(n) for n in case.node_ids}
+    match = [c for c in chains if {a["id"] for a in c["actions"]} <= nodes]
+    if not match:
+        return None
+    match.sort(key=lambda c: len(c["actions"]), reverse=True)
+    return match[0]["id"]

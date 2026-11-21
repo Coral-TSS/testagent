@@ -973,6 +973,61 @@ def case_covers_target(target: dict, case) -> bool:
     return False
 
 
+def derive_chains(graph: Graph) -> list[dict]:
+    """Maximal paths where one action's effect satisfies the next action's precondition.
+
+    Read-only actions are not steps. This is not a deeper single-requirement scope.
+    """
+    prepare(graph)
+    edges: dict[str, list[tuple[str, str]]] = {}
+    indegree: dict[str, int] = {}
+    for source in graph.actions.values():
+        if source.read_only:
+            continue
+        for other in graph.actions.values():
+            if other.id == source.id or other.read_only:
+                continue
+            reason = ""
+            for effect in source.effects:
+                if any(effect_enables(effect, pre) for pre in other.preconditions):
+                    reason = effect_text(effect)
+                    break
+            if not reason:
+                continue
+            edges.setdefault(source.id, []).append((other.id, reason))
+            indegree[other.id] = indegree.get(other.id, 0) + 1
+            indegree.setdefault(source.id, indegree.get(source.id, 0))
+    linked = set(edges) | {to for pairs in edges.values() for to, _ in pairs}
+    sources = sorted((i for i in linked if indegree.get(i, 0) == 0), key=lambda i: graph.actions[i].name)
+    found: list[dict] = []
+
+    def walk(path: list[str], transitions: list[dict]) -> None:
+        nxt = [(to, why) for to, why in edges.get(path[-1], []) if to not in path]
+        if not nxt:
+            if len(path) >= 2:
+                found.append(
+                    {
+                        "actions": [{"id": i, "name": graph.actions[i].name} for i in path],
+                        "transitions": transitions,
+                    }
+                )
+            return
+        for to, why in sorted(nxt, key=lambda item: graph.actions[item[0]].name):
+            step = {
+                "id": f"transition:{path[-1]}:{to}",
+                "from_id": path[-1],
+                "to_id": to,
+                "from": graph.actions[path[-1]].name,
+                "to": graph.actions[to].name,
+                "when": why,
+            }
+            walk([*path, to], [*transitions, step])
+
+    for source in sources:
+        walk([source], [])
+    return found
+
+
 def names_of(manifest: dict, kind: str) -> set[str]:
     if kind == "node":
         return {n["name"] for n in manifest.get("nodes") or []}

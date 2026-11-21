@@ -75,6 +75,23 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
     queryFn: () => api<Requirement[]>(`/versions/${versionId}/requirements`),
     enabled: Boolean(versionId),
   });
+  const chains = useQuery({
+    queryKey: ["case-chains", versionId],
+    queryFn: () => api<{ chains: { id: string; actions: { name: string }[]; transitions: { from: string; to: string }[] }[] }>(`/versions/${versionId}/case-gen/chains`),
+    enabled: Boolean(versionId),
+  });
+  const generateE2E = useApiMutation(
+    () => api<AiOutcome & { cases?: { id: string }[] }>(`/versions/${versionId}/cases/generate-e2e`, { method: "POST" }),
+    {
+      onSuccess: (out) => {
+        refresh();
+        qc.invalidateQueries({ queryKey: ["case-chains", versionId] });
+        if (out.status === "succeeded") message.success(`已生成 ${out.cases?.length ?? 0} 条端到端草稿`);
+        else message.warning(`端到端生成未完成（${out.error_code || out.status}）`);
+        onOpenRun?.(out.agent_run_id);
+      },
+    },
+  );
   const coverage = useQuery({
     queryKey: ["coverage", versionId],
     queryFn: () => api<Coverage>(`/versions/${versionId}/coverage`),
@@ -206,6 +223,16 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
   return (
     <Space direction="vertical" style={{ width: "100%" }} size={16}>
       {versionId && coverage.data && <CoverageView coverage={coverage.data} />}
+      {versionId && chains.data?.chains?.length ? (
+        <div data-testid="e2e-chains">
+          {chains.data.chains.map((c) => (
+            <div key={c.id}>{c.actions.map((a) => a.name).join(" → ")}</div>
+          ))}
+          <Button loading={generateE2E.isPending} onClick={() => generateE2E.mutate(undefined)}>
+            生成端到端用例
+          </Button>
+        </div>
+      ) : null}
       {versionId && <EnvironmentStatus env={envs.data?.find((e) => e.id === environment)} />}
       {versionId && <AutomationProgress versionId={versionId} onChanged={refresh} />}
       <Space wrap>

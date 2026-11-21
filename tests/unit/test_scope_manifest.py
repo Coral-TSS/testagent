@@ -203,6 +203,20 @@ def test_missing_refs_block_without_a_manifest():
     assert manifest["targets"] == []
 
 
+def test_effect_to_precondition_chain_stays_out_of_depth_1():
+    from testagent.services.scope_manifest import derive_chains
+
+    graph = procurement()
+    chains = derive_chains(graph)
+    assert [[a["name"] for a in c["actions"]] for c in chains] == [
+        ["Create purchase order", "Approve purchase order", "Record payment"]
+    ]
+    assert "List payments" not in chains[0]["actions"][0]["name"]
+    for depth in (1, 2):
+        actions = names_of(compute_manifest(graph, approval_refs(), depth), "action")
+        assert actions == {"Approve purchase order"}
+
+
 def test_a_cover_claim_without_the_node_is_not_a_hit():
     from testagent.services.scope_manifest import case_covers_target
 

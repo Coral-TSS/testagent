@@ -8,6 +8,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- End-to-end cases (phase 3): code derives chains where one action's effect satisfies the
+  next action's precondition (create → approve → record payment on the procurement demo).
+  The model writes those cross-requirement cases. They hang on the version (and its
+  strategy, when there is one) and link every requirement on the path. Coverage gains
+  chain and state-transition dimensions. Raising a single requirement's depth still does
+  not pull the downstream action in.
 - Case generation scope (phase 2): generating cases now requires a confirmed scope preview.
   After generation, every coverage target must be hit or covered by a waiver a person has
   confirmed. An agent-proposed waiver is stored but does not pass the gate. The case list

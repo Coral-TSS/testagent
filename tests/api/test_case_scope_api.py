@@ -125,6 +125,74 @@ def test_prompt_has_the_manifest_and_tools_reject_out_of_scope_ids(client):
     assert "get_requirement" in fake.bound_tools
 
 
+def test_procurement_chain_is_separate_from_requirement_depth(client, db):
+    from testagent.seed import seed_procurement
+
+    sut = seed_procurement(db)["sut_id"]
+    version = client.post(f"{V1}/suts/{sut}/versions", json={"name": "v1"}).json()["id"]
+    nodes = {n["name"]: n["id"] for n in client.get(f"{V1}/suts/{sut}/nodes").json()}
+    status = next(
+        f["id"]
+        for f in client.get(f"{V1}/suts/{sut}/fields").json()
+        if f["name"] == "status" and f["node_name"] == "PurchaseOrder"
+    )
+    reqs = {}
+    for name in ("Create purchase order", "Approve purchase order", "Record payment"):
+        req = client.post(f"{V1}/versions/{version}/requirements", json={"title": name}).json()
+        linked = client.put(
+            f"{V1}/requirements/{req['id']}/structure",
+            json={"action": [{"text": name, "node_id": nodes[name]}]},
+        )
+        assert linked.status_code == 200, linked.text
+        reqs[name] = req
+    approve = client.put(
+        f"{V1}/requirements/{reqs['Approve purchase order']['id']}/structure",
+        json={
+            "action": [{"text": "Approve", "node_id": nodes["Approve purchase order"]}],
+            "actor": [{"text": "Approver", "node_id": nodes["Approver"]}],
+            "condition": [{"text": "status", "attribute_id": status}],
+        },
+    )
+    assert approve.status_code == 200, approve.text
+    scope = client.post(
+        f"{V1}/versions/{version}/case-gen/scope",
+        json={
+            "requirement_ids": [reqs["Approve purchase order"]["id"]],
+            "depths": {reqs["Approve purchase order"]["id"]: 1},
+        },
+    ).json()["scopes"][0]["manifest"]
+    actions = {n["name"] for n in scope["nodes"] if n["kind"] == "action"}
+    assert actions == {"Approve purchase order"}
+    chains = client.get(f"{V1}/versions/{version}/case-gen/chains").json()["chains"]
+    assert [a["name"] for a in chains[0]["actions"]] == [
+        "Create purchase order",
+        "Approve purchase order",
+        "Record payment",
+    ]
+    assert {r["code"] for r in chains[0]["requirements"]} == {"REQ-001", "REQ-002", "REQ-003"}
+    chain = chains[0]
+    case = {
+        "title": "Create, approve, then record payment",
+        "test_point": "采购单从创建到付款",
+        "scenario": "normal",
+        "steps": [{"action": "创建采购单，审批通过，再登记付款"}],
+        "expected": "订单变为 paid",
+        "requirement_codes": [r["code"] for r in chain["requirements"]],
+        "node_ids": [a["id"] for a in chain["actions"]],
+        "covers": [t["id"] for t in chain["targets"]],
+    }
+    use_model(client, call("submit_result", {"cases": [case, case, case]}))
+    out = client.post(f"{V1}/versions/{version}/cases/generate-e2e")
+    assert out.status_code == 200, out.text
+    body = out.json()
+    assert body["status"] == "succeeded", body
+    saved = client.get(f"{V1}/cases/{body['cases'][0]['id']}").json()
+    assert [r["code"] for r in saved["requirements"]] == ["REQ-001", "REQ-002", "REQ-003"]
+    assert saved["chain_id"] == chain["id"]
+    assert body["coverage"]["chains"]["covered"] == 1
+    assert body["coverage"]["state_transitions"]["covered"] == body["coverage"]["state_transitions"]["total"]
+
+
 def test_generate_requires_a_confirmed_scope(client):
     world = _world(client)
     client.post(f"{V1}/versions/{world['version']}/case-gen/scope", json={"requirement_ids": [world["req"]["id"]]})

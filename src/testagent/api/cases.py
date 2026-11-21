@@ -312,6 +312,19 @@ def confirm_waivers(request: Request, version_id: UUID, body: WaiverConfirmIn):
     return {"confirmed": count}
 
 
+@router.get("/versions/{version_id}/case-gen/chains")
+def case_chains(request: Request, version_id: UUID):
+    from testagent.services.case_chains import ChainService
+
+    return {"chains": ChainService(request.app.state.db).sync(version_id)}
+
+
+@router.post("/versions/{version_id}/cases/generate-e2e")
+def generate_e2e_cases(request: Request, version_id: UUID):
+    service = CaseGenerationService(request.app.state.db, request.app.state.bus, request.app.state.agent.runtime)
+    return service.generate_e2e(version_id)
+
+
 @router.post("/versions/{version_id}/cases/generate")
 def generate_cases(request: Request, version_id: UUID, body: GenerateIn):
     service = CaseGenerationService(request.app.state.db, request.app.state.bus, request.app.state.agent.runtime)

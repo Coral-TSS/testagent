@@ -578,6 +578,9 @@ class CaseService:
 
         content = self._coverage_body(cur, version_id)
         content["targets"] = target_coverage(cur, version_id)
+        from testagent.services.case_chains import chain_coverage
+
+        content.update(chain_coverage(cur, version_id))
         return content
 
     def coverage(self, version_id) -> dict:

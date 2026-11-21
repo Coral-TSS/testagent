@@ -152,6 +152,7 @@ def seed_procurement(db, bus: EventBus | None = None, demo_url: str | None = Non
         apis.set_node_apis(node["id"], [api["id"]])
     for source, target, role in ACTION_EDGES:
         model.create_edge(sut_id, ids[source], ids[target], role)
+    _seed_action_rules(model, ids)
     links = LinkService(db, bus)
     for source, forward, target, reverse, forward_api, reverse_api in LINKS:
         links.create(
@@ -167,3 +168,37 @@ def seed_procurement(db, bus: EventBus | None = None, demo_url: str | None = Non
             },
         )
     return {"sut_id": str(sut_id), "created": True, "nodes": len(ids), "links": len(LINKS)}
+
+
+def _seed_action_rules(model, ids: dict[str, str]) -> None:
+    """Structured preconditions and effects that match the demo's state names.
+
+    Create leads to pending approval, approval leads to approved or rejected,
+    and recording a payment requires an approved order. Chains are derived from
+    these rules; they are not part of a single requirement's depth.
+    """
+    model.update_node(
+        ids["Create purchase order"],
+        {
+            "preconditions": [{"field": "PurchaseOrder.amount", "op": "gt", "value": 0}],
+            "effects": [{"kind": "set_field", "field": "PurchaseOrder.status", "values": ["pending_approval"]}],
+        },
+    )
+    model.update_node(
+        ids["Approve purchase order"],
+        {
+            "preconditions": [
+                {"field": "PurchaseOrder.status", "op": "eq", "value": "pending_approval"},
+            ],
+            "effects": [
+                {"kind": "set_field", "field": "PurchaseOrder.status", "values": ["approved", "rejected"]},
+            ],
+        },
+    )
+    model.update_node(
+        ids["Record payment"],
+        {
+            "preconditions": [{"field": "PurchaseOrder.status", "op": "eq", "value": "approved"}],
+            "effects": [{"kind": "set_field", "field": "PurchaseOrder.status", "values": ["paid"]}],
+        },
+    )

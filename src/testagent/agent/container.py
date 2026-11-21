@@ -39,14 +39,14 @@ def build_agent(
     runtime = AgentRuntime(db, registry, models, checkpointer=checkpointer)
     from testagent.services.ai_tasks import build_entries  # services depend on the runtime
     from testagent.services.case_complete import complete_entry
-    from testagent.services.case_gen import cases_entry
+    from testagent.services.case_gen import cases_entry, e2e_entry
     from testagent.services.executions import api_entry, browser_entry
     from testagent.services.failure_analysis import analysis_entry
     from testagent.services.learning import digest_entry
     from testagent.services.reports import summary_entry
     from testagent.services.strategy import strategy_entry
 
-    for entry in [*build_entries(db), strategy_entry(db), cases_entry(db), complete_entry(db)]:
+    for entry in [*build_entries(db), strategy_entry(db), cases_entry(db), e2e_entry(db), complete_entry(db)]:
         runtime.register_entry(entry)
     for entry in (
         browser_entry(),
