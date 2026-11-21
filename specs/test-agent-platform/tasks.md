@@ -59,7 +59,7 @@ DEMO-FIX-001…008已验证并推送，分别为9c04707、25d21f8、68234e0、79
   测试：`test_migrate_idempotent`、`test_changed_applied_migration_refused`、`test_concurrent_migrate_serialized`。
 - **T-00.5 测试隔离 fixture**：在会话级为每个 worker 建一个 schema 并执行迁移；每个测试前 TRUNCATE 并重写种子数据；会话结束时删除 schema。库名不以 `_test` 结尾就拒绝运行；变量缺失时 skip。
   测试：`test_isolation_between_tests`、`test_refuses_non_test_database`、`test_schema_dropped_after_session`（用子进程运行 pytest 来验证）。
-- **T-00.6 防泄漏检查**：扫描仓库已跟踪的文件，不能出现 `postgres://…:…@` 这类带密码的连接串，也不能出现 `.env` 中的值。
+- **T-00.6 防泄漏检查**：扫描仓库已跟踪的文件，不能出现带密码的数据库连接串（占位形式 `postgres://<user>:<password>@host` 除外），也不能出现 `.env` 中的值。
   测试：`test_no_credentials_in_repo`。
 - **T-00.7 `ops/init_db.py`**：库不存在就创建 `testagent` / `testagent_test`；检查服务器版本 ≥ 17。
 - **T-00.8 前端工程初始化**：Vite + React + TS + AntD + Router + React Query + @xyflow/react，配好 eslint；构建输出到 `src/testagent/web/`。

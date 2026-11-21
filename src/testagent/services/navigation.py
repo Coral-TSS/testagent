@@ -323,9 +323,7 @@ def progress(db, sut_id, version_id=None, repos_root=None) -> dict:
                 "done" if cases["ready"] else ("doing" if cases["n"] else "todo"),
                 f"用例 {cases['n']}（就绪 {cases['ready']}，已自动化 {cases['automated']}）",
                 cpath,
-                None
-                if cases["ready"]
-                else {"label": "评审并设为就绪" if cases["n"] else "生成用例", "path": cpath},
+                None if cases["ready"] else {"label": "评审并设为就绪" if cases["n"] else "生成用例", "path": cpath},
             )
 
             cur.execute(

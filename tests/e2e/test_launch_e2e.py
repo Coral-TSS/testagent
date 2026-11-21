@@ -58,21 +58,20 @@ def test_launcher_url_login_create_sut_persists(server):
             page.goto(ticket_url("127.0.0.1", port, ticket))
             # the ticket is consumed from the fragment and removed from the address bar
             # the empty state repeats the primary action, so two buttons are fine
-            create = page.get_by_role("button", name="New SUT").first
+            create = page.get_by_role("button", name="新建被测系统").first
             expect(create).to_be_visible(timeout=15000)
             assert "#ticket=" not in page.url
 
             create.click()
-            page.get_by_label("Code").fill("e2e_shop")
-            page.get_by_label("Name").fill("E2E shop")
-            page.get_by_role("dialog").get_by_role("button", name="OK").or_(
-                page.get_by_role("dialog").get_by_role("button", name="OK")
-            ).click()
+            dialog = page.get_by_role("dialog")
+            dialog.get_by_role("textbox", name="编号").fill("e2e_shop")
+            dialog.get_by_role("textbox", name="名称").fill("E2E shop")
+            page.get_by_role("dialog").get_by_role("button", name="保存").click()
             expect(page.get_by_text("E2E shop").first).to_be_visible()
 
             page.reload()
             expect(page.get_by_text("E2E shop").first).to_be_visible(timeout=15000)
-            expect(page.get_by_text("e2e_shop")).to_be_visible()
+            expect(page.get_by_text("e2e_shop").first).to_be_visible()
         finally:
             browser.close()
 
@@ -87,22 +86,22 @@ def test_password_sign_in_and_sign_out(server, db):
         try:
             page = browser.new_page()
             page.goto(f"http://127.0.0.1:{port}/suts")
-            page.get_by_label("User name").fill("alice")
-            page.get_by_label("Password").fill("wrong-password-1")
-            page.get_by_role("button", name="Sign in").click()
+            page.get_by_label("用户名").fill("alice")
+            page.get_by_label("密码").fill("wrong-password-1")
+            page.get_by_role("button", name="登录").click()
             expect(page.get_by_text("Wrong user name or password")).to_be_visible(timeout=15000)
-            page.get_by_label("Password").fill(TEST_PASSWORD)
-            page.get_by_role("button", name="Sign in").click()
-            expect(page.get_by_role("button", name="New SUT").first).to_be_visible(timeout=15000)
+            page.get_by_label("密码").fill(TEST_PASSWORD)
+            page.get_by_role("button", name="登录").click()
+            expect(page.get_by_role("button", name="新建被测系统").first).to_be_visible(timeout=15000)
             cookie = next(c for c in page.context.cookies() if c["name"] == "ta_session")
             assert cookie["httpOnly"] and cookie["sameSite"] == "Lax"
             assert page.evaluate("document.cookie").find("ta_session") == -1  # not readable by scripts
             page.reload()  # the session survives a reload
-            expect(page.get_by_role("button", name="New SUT").first).to_be_visible(timeout=15000)
-            page.get_by_role("button", name="Account").click()
-            page.get_by_text("Sign out").click()
-            expect(page.get_by_role("button", name="Sign in")).to_be_visible()
+            expect(page.get_by_role("button", name="新建被测系统").first).to_be_visible(timeout=15000)
+            page.get_by_role("button", name="账户").click()
+            page.get_by_text("退出登录").click()
+            expect(page.get_by_role("button", name="登录")).to_be_visible()
             page.reload()
-            expect(page.get_by_role("button", name="Sign in")).to_be_visible(timeout=15000)
+            expect(page.get_by_role("button", name="登录")).to_be_visible(timeout=15000)
         finally:
             browser.close()
