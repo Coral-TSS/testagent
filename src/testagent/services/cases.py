@@ -32,8 +32,9 @@ CONTENT_FIELDS = (
     "code_path",
     "category",
     "quality_tags",
+    "covers",
 )
-JSON_FIELDS = {"steps", "test_data", "quality_tags"}
+JSON_FIELDS = {"steps", "test_data", "quality_tags", "covers"}
 SCENARIO_LABEL = {"normal": "Normal", "boundary": "Boundary", "exception": "Exception"}
 STATUS_LABEL = {"draft": "Draft", "ready": "Ready", "deprecated": "Deprecated"}
 MODE_LABEL = {"manual": "Manual", "automated": "Automated"}
@@ -443,7 +444,7 @@ class CaseService:
             raise AppError("NOT_FOUND", "Version not found")
         return row
 
-    def _coverage(self, cur, version_id) -> dict:
+    def _coverage_body(self, cur, version_id) -> dict:
         version = self._version(cur, version_id)
         cur.execute(
             "SELECT r.id, r.code, r.title, (SELECT count(*) FROM case_requirement_link l"
@@ -571,6 +572,13 @@ class CaseService:
             "by_type": dist("type_tag"),
             "by_scenario": dist("scenario"),
         }
+
+    def _coverage(self, cur, version_id) -> dict:
+        from testagent.services.case_scope import target_coverage
+
+        content = self._coverage_body(cur, version_id)
+        content["targets"] = target_coverage(cur, version_id)
+        return content
 
     def coverage(self, version_id) -> dict:
         with self.db.tx() as cur:

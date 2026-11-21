@@ -56,6 +56,15 @@ export function StepItem({ step, labels }: { step: AgentStep & { resolved_args?:
       <>
         <Tag color={step.status === "ok" ? "green" : "red"}>{toolLabel(step.tool)}</Tag>
         {step.ms !== undefined && <Typography.Text type="secondary">{step.ms} ms</Typography.Text>}
+        {step.lookups?.length ? (
+          <div>
+            {step.lookups.map((l, i) => (
+              <Tag key={i} color={l.hit ? "green" : "red"}>
+                {l.hit ? "命中" : "越界"} {l.kind} {l.id || ""}
+              </Tag>
+            ))}
+          </div>
+        ) : null}
         <Collapse
           size="small"
           ghost

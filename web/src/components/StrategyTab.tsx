@@ -81,21 +81,6 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
     invalidate: keys,
     success: "已按类别补全任务",
   });
-  const [gapBusy, setGapBusy] = useState<string | null>(null);
-  const draftCases = useApiMutation(
-    (requirementId: string) => {
-      setGapBusy(requirementId);
-      return api<AiOutcome>(`/versions/${vid}/cases/generate`, { method: "POST", body: { requirement_ids: [requirementId], automate: false } });
-    },
-    {
-      invalidate: [...keys, ["cases"]],
-      success: "已生成草稿用例：评审并设为就绪后会自动加入匹配的任务",
-      onSuccess: (out) => {
-        setGapBusy(null);
-        onOpenRun(out.agent_run_id);
-      },
-    },
-  );
   const [taskForm] = Form.useForm();
   const runTask = useApiMutation(
     (id: string) => api<TaskRun>(`/tasks/${id}/run`, { method: "POST" }),
@@ -179,7 +164,7 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
       {section !== "tasks" && (gaps.data?.length ?? 0) > 0 && (
         <Card size="small" title="需求缺口：还没有就绪用例" data-testid="gaps">
           <Typography.Paragraph type="secondary">
-            任务只引用已有用例。以下需求还没有就绪用例：点击“生成草稿用例”，让 AI 起草若干（仅为草稿）；评审并设为就绪后，它们会自动加入匹配的任务。
+            任务只引用已有用例。以下需求还没有就绪用例：先到用例页确认范围，再让 AI 起草（仅为草稿）；评审并设为就绪后，它们会自动加入匹配的任务。
           </Typography.Paragraph>
           <ListTable<RequirementGap>
             label="需求缺口"
@@ -193,9 +178,9 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
               {
                 title: "动作",
                 render: (_, g) => (
-                  <Button size="small" icon={<RobotOutlined />} loading={draftCases.isPending && gapBusy === g.requirement_id} disabled={draftCases.isPending} onClick={() => draftCases.mutate(g.requirement_id)}>
-                    生成草稿用例
-                  </Button>
+                  <Link to={`/suts/${version.sut_id}/cases?version_id=${vid}&generate=${g.requirement_id}`}>
+                    <Button size="small" icon={<RobotOutlined />}>生成草稿用例</Button>
+                  </Link>
                 ),
               },
             ]}

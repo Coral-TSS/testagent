@@ -8,6 +8,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Case generation scope (phase 2): generating cases now requires a confirmed scope preview.
+  After generation, every coverage target must be hit or covered by a waiver a person has
+  confirmed. An agent-proposed waiver is stored but does not pass the gate. The case list
+  shows the scope (depth, add, remove, confirm) before generation, and the coverage report
+  adds a per-requirement target matrix. The agent setting `default_scope_depth` is the
+  global default (1).
 - Case generation scope (phase 1): each requirement gets a deterministic scope manifest
   (default depth 1) from its structured node, field and link refs. The prompt receives only
   that short manifest. Model tools refuse ids outside it, and each lookup is stored on the

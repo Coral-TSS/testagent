@@ -4,6 +4,7 @@ import csv
 import io
 
 import pytest
+from tests.api.scope_support import ready_scope, stamp_cases
 from tests.conftest import TEST_USER
 
 from testagent.agent.fake import FakeChatModel, call
@@ -150,11 +151,13 @@ def drafts(world, code, n=3, node=None, scenarios=("normal", "boundary", "except
 
 def test_generate_cases_min_per_requirement(client, world):
     n = world["nodes"]
+    scopes = ready_scope(client, world["version"])
     short = drafts(world, "REQ-001", 2)
-    full = (
+    full = stamp_cases(
         drafts(world, "REQ-001", 3, n["Create purchase order"])
         + drafts(world, "REQ-002", 3, n["Approve purchase order"])
-        + drafts(world, "REQ-003", 4)
+        + drafts(world, "REQ-003", 4),
+        scopes,
     )
     fake = use_model(client, call("submit_result", {"cases": short}), call("submit_result", {"cases": full}))
     out = client.post(f"{V1}/versions/{world['version']}/cases/generate", json={})
@@ -168,14 +171,17 @@ def test_generate_cases_min_per_requirement(client, world):
     # coverage report produced at creation
     cov = body["coverage"]
     assert cov["requirements"]["covered"] == 3 and cov["requirements"]["uncovered"] == []
-    assert {a["name"] for a in cov["actions"]["uncovered"]} == {"Export purchase orders"}
+    assert cov["actions"]["uncovered"] == []
+    assert cov["targets"]["requirements"]
 
 
 def test_cases_link_requirements_and_nodes(client, world):
     n = world["nodes"]
+    scopes = ready_scope(client, world["version"], [world["reqs"]["REQ-001"], world["reqs"]["REQ-002"]])
     cases = drafts(world, "REQ-001", 3, n["Create purchase order"])
     cases[0]["requirement_codes"] = ["REQ-001", "REQ-002"]
     cases += drafts(world, "REQ-002", 3, n["Approve purchase order"])
+    stamp_cases(cases, scopes)
     use_model(client, call("submit_result", {"cases": cases}))
     body = client.post(
         f"{V1}/versions/{world['version']}/cases/generate",
@@ -193,6 +199,7 @@ def test_cases_link_requirements_and_nodes(client, world):
 
 
 def test_unknown_node_ref_rejected(client, world):
+    ready_scope(client, world["version"], [world["reqs"]["REQ-001"]])
     bad = drafts(world, "REQ-001", 3, "00000000-0000-0000-0000-000000000001")
     good = drafts(world, "REQ-001", 3, world["nodes"]["Create purchase order"])
     use_model(
@@ -305,7 +312,8 @@ def test_correction_saved_with_target(client, world):
 
 def test_generated_scenario_type_tag_is_normalised(client, world):
     """the model wrote 'boundary' into type_tag; it is a scenario, the type is functional."""
-    cases = drafts(world, "REQ-001", 3)
+    scopes = ready_scope(client, world["version"], [world["reqs"]["REQ-001"]])
+    cases = stamp_cases(drafts(world, "REQ-001", 3), scopes)
     cases[1]["type_tag"] = "boundary"
     cases[2]["type_tag"] = "exception"
     use_model(client, call("submit_result", {"cases": cases}))

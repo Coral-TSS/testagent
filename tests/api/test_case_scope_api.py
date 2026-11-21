@@ -92,8 +92,11 @@ def test_preview_can_drop_a_field_and_recompute_keeps_it_dropped(client):
 
 
 def test_prompt_has_the_manifest_and_tools_reject_out_of_scope_ids(client):
+    from tests.api.scope_support import ready_scope, stamp_cases
+
     world = _world(client)
-    cases = drafts(world, "REQ-001", 3, world["approve"])
+    scopes = ready_scope(client, world["version"], [world["req"]["id"]])
+    cases = stamp_cases(drafts(world, "REQ-001", 3, world["approve"]), scopes)
     fake = use_model(
         client,
         call("get_node", {"node_id": world["other"]}, "out"),
@@ -120,3 +123,63 @@ def test_prompt_has_the_manifest_and_tools_reject_out_of_scope_ids(client):
     assert "Export purchase orders" not in tools[2]["result"]
     assert "Export purchase orders" not in tools[3]["result"]
     assert "get_requirement" in fake.bound_tools
+
+
+def test_generate_requires_a_confirmed_scope(client):
+    world = _world(client)
+    client.post(f"{V1}/versions/{world['version']}/case-gen/scope", json={"requirement_ids": [world["req"]["id"]]})
+    resp = client.post(
+        f"{V1}/versions/{world['version']}/cases/generate",
+        json={"requirement_ids": [world["req"]["id"]], "automate": False},
+    )
+    assert resp.status_code == 409 and "确认" in resp.json()["message"]
+
+
+def test_uncovered_target_fails_until_a_person_confirms_the_waiver(client):
+    from tests.api.scope_support import ready_scope
+
+    world = _world(client)
+    ready_scope(client, world["version"], [world["req"]["id"]])
+    amount = f"field:{world['amount']}"
+    cases = drafts(world, "REQ-001", 3, world["approve"])
+    for case in cases:
+        case["attribute_ids"] = [world["status"]]
+    waived = {
+        "cases": cases,
+        "waivers": [{"target_id": amount, "reason": "金额与审批无关", "requirement_code": "REQ-001"}],
+    }
+    use_model(
+        client,
+        call("submit_result", waived, "w"),
+        call("submit_result", waived, "w2"),
+        call("submit_result", waived, "w3"),
+    )
+    failed = client.post(
+        f"{V1}/versions/{world['version']}/cases/generate",
+        json={"requirement_ids": [world["req"]["id"]], "automate": False},
+    ).json()
+    assert failed["status"] == "failed" and failed["error_code"] == "VALIDATION"
+    run = client.get(f"{V1}/agent/runs/{failed['agent_run_id']}").json()
+    text = " ".join(e["msg"] for s in run["steps"] if s["type"] == "submit_invalid" for e in s["errors"])
+    assert "does not count until a person confirms" in text
+    saved = client.put(
+        f"{V1}/versions/{world['version']}/case-gen/scope",
+        json={
+            "requirement_id": world["req"]["id"],
+            "waivers": [{"target_id": amount, "reason": "金额与这条审批需求无关"}],
+        },
+    )
+    assert saved.status_code == 200, saved.text
+    client.post(
+        f"{V1}/versions/{world['version']}/case-gen/scope/confirm",
+        json={"requirement_ids": [world["req"]["id"]]},
+    )
+    use_model(client, call("submit_result", waived, "pass"))
+    ok = client.post(
+        f"{V1}/versions/{world['version']}/cases/generate",
+        json={"requirement_ids": [world["req"]["id"]], "automate": False},
+    ).json()
+    assert ok["status"] == "succeeded", ok
+    report = ok["coverage"]["targets"]["requirements"]
+    row = next(t for block in report for t in block["targets"] if t["id"] == amount)
+    assert row["covered"] is True and row["waiver"]["confirmed"] is True and row["cases"] == []

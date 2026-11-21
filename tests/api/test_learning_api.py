@@ -182,7 +182,10 @@ def _attach_ref(db, sut_id, requirement_id):
 
 
 def test_new_memory_injected_next_generation(client, w, db):
+    from tests.api.scope_support import ready_scope, stamp_cases
+
     _attach_ref(db, w["sut"], w["reqs"]["REQ-001"])
+    scopes = ready_scope(client, w["version"])
     use_model(
         client,
         digest_script(
@@ -201,7 +204,7 @@ def test_new_memory_injected_next_generation(client, w, db):
     correct(client, "case", w["case"], "Boundary values should include 0.01")
     work(client)
     mem = next(m for m in client.get(f"{V1}/agent/memories").json() if m["scope"] == "sut")
-    fake = use_model(client, call("submit_result", {"cases": drafts()}))
+    fake = use_model(client, call("submit_result", {"cases": stamp_cases(drafts(), scopes)}))
     body = client.post(f"{V1}/versions/{w['version']}/cases/generate", json={}).json()
     assert body["status"] == "succeeded", body
     run = client.get(f"{V1}/agent/runs/{body['agent_run_id']}").json()
@@ -212,7 +215,7 @@ def test_new_memory_injected_next_generation(client, w, db):
     assert "Another unrelated system" not in system
     # disabled memories are not injected
     assert client.patch(f"{V1}/agent/memories/{mem['id']}", json={"enabled": False}).json()["enabled"] is False
-    fake = use_model(client, call("submit_result", {"cases": drafts()}))
+    fake = use_model(client, call("submit_result", {"cases": stamp_cases(drafts(), scopes)}))
     body = client.post(f"{V1}/versions/{w['version']}/cases/generate", json={}).json()
     run = client.get(f"{V1}/agent/runs/{body['agent_run_id']}").json()
     assert run["injected"]["memory_ids"] == []
@@ -221,7 +224,10 @@ def test_new_memory_injected_next_generation(client, w, db):
 
 # ------------------------------------------------------------------ T-12.4
 def test_prompt_rollback(client, w, db):
+    from tests.api.scope_support import ready_scope, stamp_cases
+
     _attach_ref(db, w["sut"], w["reqs"]["REQ-001"])
+    scopes = ready_scope(client, w["version"])
     use_model(client, digest_script(patches=[PATCH]))
     correct(client, "case", w["case"], "missing negatives")
     work(client)
@@ -229,7 +235,7 @@ def test_prompt_rollback(client, w, db):
     assert resp.status_code == 200
     versions = client.get(f"{V1}/agent/prompts/generate_cases").json()
     assert [(v["version"], v["active"]) for v in versions] == [(2, False), (1, True)]
-    fake = use_model(client, call("submit_result", {"cases": drafts()}))
+    fake = use_model(client, call("submit_result", {"cases": stamp_cases(drafts(), scopes)}))
     client.post(f"{V1}/versions/{w['version']}/cases/generate", json={})
     assert PATCH["append_text"] not in fake.seen[0][0].content
     # human edit → new active version; history kept

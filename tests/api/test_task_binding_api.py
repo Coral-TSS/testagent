@@ -254,7 +254,10 @@ def _attach_ref(db, sut_id, requirement_id):
 
 
 def test_gap_drafts_stay_drafts_until_a_human_makes_them_ready(client, world):
+    from tests.api.scope_support import ready_scope, stamp_cases
+
     _attach_ref(world["db"], world["sut"], world["reqs"]["REQ-002"])
+    scopes = ready_scope(client, world["version"], [world["reqs"]["REQ-002"]])
     rule_task(client, world, req_rule(world, "REQ-002"), name="Requirement2")
     draft = {
         "title": "Requirement2 draft",
@@ -265,7 +268,7 @@ def test_gap_drafts_stay_drafts_until_a_human_makes_them_ready(client, world):
         "requirement_codes": ["REQ-002"],
         "category": "requirement",
     }
-    use_model(client, call("submit_result", {"cases": [draft, draft, draft]}))
+    use_model(client, call("submit_result", {"cases": stamp_cases([draft, draft, draft], scopes)}))
     out = client.post(
         f"{V1}/versions/{world['version']}/cases/generate",
         json={"requirement_ids": [world["reqs"]["REQ-002"]], "automate": False},
@@ -281,7 +284,10 @@ def test_gap_drafts_stay_drafts_until_a_human_makes_them_ready(client, world):
 
 # ------------------------------------------------------------------ AI category
 def test_generated_cases_carry_category(client, world):
+    from tests.api.scope_support import ready_scope, stamp_cases
+
     _attach_ref(world["db"], world["sut"], world["reqs"]["REQ-001"])
+    scopes = ready_scope(client, world["version"], [world["reqs"]["REQ-001"]])
     base = {
         "test_point": "Click",
         "steps": [{"action": "Do"}],
@@ -299,7 +305,7 @@ def test_generated_cases_carry_category(client, world):
             "quality_tags": ["idempotency"],
         },
     ]
-    use_model(client, call("submit_result", {"cases": cases}))
+    use_model(client, call("submit_result", {"cases": stamp_cases(cases, scopes)}))
     out = client.post(
         f"{V1}/versions/{world['version']}/cases/generate",
         json={"requirement_ids": [world["reqs"]["REQ-001"]], "automate": False},

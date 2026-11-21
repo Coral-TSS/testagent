@@ -377,6 +377,7 @@ export interface AgentStep {
   tool_calls?: { name: string; args: unknown }[];
   errors?: { loc: string; msg: string }[];
   ms?: number;
+  lookups?: { kind: string; id: string | null; hit: boolean }[];
 }
 /** A resolved reference: kind + "name (code)" + the page that shows it */
 export interface RefLabel {
@@ -420,6 +421,7 @@ export interface AgentConfig {
   max_steps: number;
   max_self_checks?: number;
   auto_automate?: boolean;
+  default_scope_depth?: number;
   api_key_masked?: string | null;
   configured: boolean;
 }
@@ -656,6 +658,48 @@ export interface Coverage {
   by_priority: Record<string, number>;
   by_type: Record<string, number>;
   by_scenario: Record<string, number>;
+  targets?: {
+    requirements: {
+      id: string;
+      code: string;
+      title: string;
+      blocked?: boolean;
+      message?: string;
+      targets: { id: string; type: string; label: string; covered: boolean; cases: { id: string; code: string; title: string }[]; waiver?: { reason: string; proposed_by: string; confirmed: boolean } | null }[];
+    }[];
+  };
+}
+
+export interface ScopeTarget {
+  id: string;
+  type: string;
+  name?: string;
+  action?: string;
+  entity?: string;
+  when?: string;
+  then?: string;
+  text?: string;
+  label?: string;
+}
+export interface ScopeManifest {
+  requirement: { id: string; code: string; title: string };
+  depth: number;
+  blocked?: boolean;
+  message?: string;
+  nodes: { id: string; kind: string; name: string; origin: string; far_side?: boolean }[];
+  fields: { id: string; entity: string; name: string; origin: string; far_side?: boolean }[];
+  links: { id: string; name: string; origin: string; required?: boolean }[];
+  apis: { id: string; method: string; path: string; origin?: string }[];
+  targets: ScopeTarget[];
+}
+export interface ScopeSnapshot {
+  id: string | null;
+  requirement_id: string;
+  depth: number;
+  edited: boolean;
+  confirmed: boolean;
+  manifest: ScopeManifest;
+  message?: string | null;
 }
 export interface Correction {
   id: string;

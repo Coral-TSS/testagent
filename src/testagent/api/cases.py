@@ -44,6 +44,7 @@ class CaseFields(_In):
     requirement_ids: list[UUID] | None = None
     node_ids: list[UUID] | None = None
     attribute_ids: list[UUID] | None = None
+    covers: list[str] | None = None
 
 
 class CaseIn(CaseFields):
@@ -70,12 +71,23 @@ class ScopeRef(_In):
     reference_only: bool = False
 
 
+class WaiverIn(_In):
+    target_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+
+
 class ScopeUpdateIn(_In):
     requirement_id: UUID
     depth: Literal[0, 1, 2] | None = None
     recompute: bool = False
     remove: list[ScopeRef] = Field(default_factory=list)
     add: list[ScopeRef] = Field(default_factory=list)
+    waivers: list[WaiverIn] | None = None
+
+
+class WaiverConfirmIn(_In):
+    requirement_id: UUID
+    target_ids: list[Annotated[str, StringConstraints(min_length=1, max_length=200)]] = Field(min_length=1)
 
 
 class ScopeConfirmIn(_In):
@@ -271,6 +283,7 @@ def update_case_scope(request: Request, version_id: UUID, body: ScopeUpdateIn):
         recompute=body.recompute,
         remove=[item.model_dump(mode="json") for item in body.remove],
         add=[item.model_dump(mode="json") for item in body.add],
+        waivers=[item.model_dump(mode="json") for item in body.waivers] if body.waivers is not None else None,
     )
 
 
@@ -279,6 +292,24 @@ def confirm_case_scope(request: Request, version_id: UUID, body: ScopeConfirmIn)
     from testagent.services.case_scope import CaseScopeService
 
     return CaseScopeService(request.app.state.db).confirm(version_id, body.requirement_ids)
+
+
+@router.post("/versions/{version_id}/case-gen/waivers/confirm")
+def confirm_waivers(request: Request, version_id: UUID, body: WaiverConfirmIn):
+    from testagent.core.actor import current_actor
+    from testagent.core.errors import AppError
+    from testagent.services.case_scope import confirm_waiver_rows
+
+    db = request.app.state.db
+    with db.tx() as cur:
+        cur.execute(
+            "SELECT 1 FROM requirement WHERE id=%s AND version_id=%s",
+            (body.requirement_id, version_id),
+        )
+        if cur.fetchone() is None:
+            raise AppError("NOT_FOUND", "Requirement not found")
+        count = confirm_waiver_rows(cur, body.requirement_id, body.target_ids, current_actor())
+    return {"confirmed": count}
 
 
 @router.post("/versions/{version_id}/cases/generate")

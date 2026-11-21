@@ -785,6 +785,7 @@ def prompt_scope(manifest: dict) -> dict:
         "apis": pick(manifest.get("apis") or [], keep_api),
         "states": [{"id": s["id"], "name": s["name"]} for s in manifest.get("states") or []],
         "targets": manifest.get("targets") or [],
+        "fingerprint": manifest.get("fingerprint"),
     }
 
 
@@ -935,6 +936,41 @@ def add_manual(graph: Graph, included: dict[tuple[str, str], Item], kind: str, i
         included[("api", id_)] = Item("api", id_, origin, 0, False, False, cover, f"{api.method} {api.path}")
         return
     raise KeyError(id_)
+
+
+def target_label(target: dict) -> str:
+    if target.get("type") == "field":
+        return f"{target.get('entity')}.{target.get('name')}"
+    if target.get("type") == "action":
+        return str(target.get("action") or target.get("id"))
+    if target.get("text"):
+        return str(target["text"])
+    return str(target.get("when") or target.get("then") or target.get("name") or target["id"])
+
+
+def _ids(case, key: str) -> set[str]:
+    raw = case[key] if isinstance(case, dict) else getattr(case, key, None)
+    return {str(item) for item in raw or []}
+
+
+def case_covers_target(target: dict, case) -> bool:
+    """A hit is structural: field ids, node ids, and an explicit covers entry. Titles do not count."""
+    nodes = _ids(case, "node_ids")
+    attrs = _ids(case, "attribute_ids")
+    covers = _ids(case, "covers")
+    kind = target.get("type")
+    if kind == "field":
+        return str(target.get("attribute_id")) in attrs
+    if kind == "action":
+        return str(target.get("action_id")) in nodes
+    if kind in ("precondition_met", "precondition_violated", "effect"):
+        return target["id"] in covers and str(target.get("action_id")) in nodes
+    if kind == "constraint":
+        return target["id"] in covers and str(target.get("entity_id")) in nodes
+    if kind in ("link_missing", "link_dangling", "link_cardinality"):
+        ends = {str(item) for item in target.get("endpoint_ids") or []}
+        return target["id"] in covers and bool(nodes & ends)
+    return False
 
 
 def names_of(manifest: dict, kind: str) -> set[str]:

@@ -398,6 +398,9 @@ def test_case_generation_sees_links_and_action_rules(client, world):
         },
     )
     assert linked.status_code == 200, linked.text
+    from tests.api.scope_support import ready_scope
+
+    ready_scope(client, world["version"], [req["id"]])
     fake = use_model(client, call("submit_result", {"cases": []}))
     client.post(f"{V1}/versions/{world['version']}/cases/generate", json={"automate": False})
     human = next(m.content for m in fake.seen[0] if getattr(m, "type", "") == "human")

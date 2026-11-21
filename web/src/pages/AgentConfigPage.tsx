@@ -85,6 +85,13 @@ export function AgentConfigPage() {
             <InputNumber min={1} max={20} />
           </Form.Item>
           <Form.Item
+            name="default_scope_depth"
+            label="用例范围默认深度"
+            extra="0 只含需求已引用的对象，1 再向外一层，2 再向外一层。单条需求可以改。"
+          >
+            <InputNumber min={0} max={2} />
+          </Form.Item>
+          <Form.Item
             name="auto_automate"
             label="AI 生成用例后接着生成自动化脚本"
             valuePropName="checked"

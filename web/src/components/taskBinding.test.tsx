@@ -78,7 +78,6 @@ describe("task–case binding", () => {
       "GET /suts/s1/environments": () => ({ body: [] }),
       "GET /versions/v1/requirements": () => ({ body: reqs }),
       "GET /versions/v1/gaps": () => ({ body: [{ requirement_id: "r2", code: "REQ-002", title: "Payments", ready_count: 0, draft_count: 2 }] }),
-      "POST /versions/v1/cases/generate": () => ({ body: { agent_run_id: "ar1", status: "succeeded", error_code: null } }),
       "POST /versions/v1/tasks/ensure": () => ({ body: { created: [] } }),
     });
     renderPage(<StrategyTab version={version} onOpenRun={onOpenRun} />);
@@ -86,9 +85,7 @@ describe("task–case binding", () => {
     expect(screen.getByText("2 待评审")).toBeTruthy();
     expect(screen.getByText("类别 通用质量")).toBeTruthy();
     expect(screen.getAllByText("通用质量").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /生成草稿用例/ }));
-    await waitFor(() => expect(onOpenRun).toHaveBeenCalledWith("ar1"));
-    expect(calls.find((c) => c.path === "/versions/v1/cases/generate")!.body).toEqual({ requirement_ids: ["r2"], automate: false });
+    expect(screen.getByRole("link", { name: /生成草稿用例/ }).getAttribute("href")).toBe("/suts/s1/cases?version_id=v1&generate=r2");
     fireEvent.click(screen.getByRole("button", { name: "按类别补全任务" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/versions/v1/tasks/ensure")).toBe(true));
   });

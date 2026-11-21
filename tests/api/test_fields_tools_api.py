@@ -475,9 +475,14 @@ def _link_amount(client, world):
 
 
 def test_generate_enqueues_automation_and_batch(client, world, db):
+    from tests.api.scope_support import ready_scope, stamp_cases
+
     _link_amount(client, world)
     rid = world["req"]["id"]
-    use_model(client, call("submit_result", three_cases(attribute_ids=[world["amount"]["id"]])))
+    scopes = ready_scope(client, world["version"], [rid])
+    body = three_cases(attribute_ids=[world["amount"]["id"]])
+    stamp_cases(body["cases"], scopes)
+    use_model(client, call("submit_result", body))
     out = client.post(f"{V1}/versions/{world['version']}/cases/generate", json={"requirement_ids": [rid]})
     assert out.status_code == 200, out.text
     body = out.json()
@@ -506,8 +511,13 @@ def test_generate_enqueues_automation_and_batch(client, world, db):
 
 
 def test_generate_without_automation(client, world):
+    from tests.api.scope_support import ready_scope, stamp_cases
+
     _link_amount(client, world)
-    use_model(client, call("submit_result", three_cases()))
+    scopes = ready_scope(client, world["version"], [world["req"]["id"]])
+    body = three_cases()
+    stamp_cases(body["cases"], scopes)
+    use_model(client, call("submit_result", body))
     out = client.post(
         f"{V1}/versions/{world['version']}/cases/generate",
         json={"requirement_ids": [world["req"]["id"]], "automate": False},
@@ -516,11 +526,16 @@ def test_generate_without_automation(client, world):
 
 
 def test_generate_rejects_body_not_matching_schema(client, world, demo):
+    from tests.api.scope_support import ready_scope, stamp_cases
+
     _link_amount(client, world)
+    scopes = ready_scope(client, world["version"], [world["req"]["id"]])
     client.post(f"{V1}/suts/{world['sut']}/apis/import-openapi", json={"url": demo.url + "/openapi.json"})
     bad = three_cases()
     bad["cases"][0]["steps"] = [{"action": "Call POST /sample/orders", "data": '{"amount": 1}', "expected": "201"}]
-    fake = use_model(client, call("submit_result", bad), call("submit_result", three_cases()))
+    good = three_cases()
+    stamp_cases(good["cases"], scopes)
+    fake = use_model(client, call("submit_result", bad), call("submit_result", good))
     out = client.post(
         f"{V1}/versions/{world['version']}/cases/generate",
         json={"requirement_ids": [world["req"]["id"]], "automate": False},

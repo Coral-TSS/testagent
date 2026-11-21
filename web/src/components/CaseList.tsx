@@ -1,8 +1,8 @@
 import { CodeOutlined, DownloadOutlined, PlusOutlined, RobotOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { App, Button, Checkbox, Dropdown, Form, Input, Modal, Popconfirm, Select, Space, Tag, Tooltip } from "antd";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { api, describeError, download } from "../api/client";
 import { useApiMutation } from "../api/hooks";
@@ -19,6 +19,7 @@ import { CaseCoverageTags, coverageSummary } from "./CoverageDetail";
 import { CATEGORY_COLOR, CATEGORY_LABEL } from "../utils/categories";
 import { ReadyTaskFeedback } from "./ReadyTaskFeedback";
 import { ListTable } from "./ListView";
+import { ScopePreview } from "./ScopePreview";
 
 /** P09 case list: filters, manual create, AI generation (in a version), export, coverage report */
 export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versionId?: string; onOpenRun?: (id: string) => void }) {
@@ -31,6 +32,9 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
   const [categories, setCategories] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [scopeReady, setScopeReady] = useState(false);
+  const [searchParams] = useSearchParams();
+  const onScopeReady = useCallback((ready: boolean) => setScopeReady(ready), []);
   const [genReqs, setGenReqs] = useState<string[]>([]);
   const [genAutomate, setGenAutomate] = useState<boolean | null>(null);
   const [envId, setEnvId] = useState<string>();
@@ -76,6 +80,13 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
     queryFn: () => api<Coverage>(`/versions/${versionId}/coverage`),
     enabled: Boolean(versionId),
   });
+  useEffect(() => {
+    const id = searchParams.get("generate");
+    if (versionId && id) {
+      setGenReqs([id]);
+      setGenerating(true);
+    }
+  }, [searchParams, versionId]);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["cases", sutId] });
     qc.invalidateQueries({ queryKey: ["coverage", versionId] });
@@ -405,8 +416,11 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
         onOk={() => generate.mutate()}
         confirmLoading={generate.isPending}
         okText="生成"
+        okButtonProps={{ disabled: !scopeReady }}
+        maskClosable={false}
+        width={860}
       >
-        <p>每个需求至少生成 3 条用例（正常 / 边界 / 异常），并关联到需求、模型节点和字段；API 步骤会根据已登记的模式构造请求体。结果为草稿，设为就绪前需要人工评审。</p>
+        <p>先确认每条需求的范围和覆盖目标，再生成。每条需求至少 3 条用例（正常 / 边界 / 异常），并关联到需求和模型。没有挂上节点、字段或链接的需求不能生成。结果为草稿，设为就绪前需要人工评审。</p>
         <Select
           mode="multiple"
           style={{ width: "100%" }}
@@ -416,6 +430,11 @@ export function CaseList({ sutId, versionId, onOpenRun }: { sutId: string; versi
           optionFilterProp="label"
           options={(reqs.data || []).map((r) => ({ value: r.id, label: `${r.code} ${r.title}` }))}
         />
+        {generating && (
+          <div style={{ marginTop: 12 }}>
+            <ScopePreview versionId={versionId!} sutId={sutId} requirementIds={genReqs} onReady={onScopeReady} />
+          </div>
+        )}
         <div style={{ marginTop: 12 }}>
           <Checkbox checked={automateOn} onChange={(e) => setGenAutomate(e.target.checked)}>
             同时为每条用例在后台生成自动化脚本（含自检）

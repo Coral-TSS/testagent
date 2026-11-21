@@ -203,6 +203,17 @@ def test_missing_refs_block_without_a_manifest():
     assert manifest["targets"] == []
 
 
+def test_a_cover_claim_without_the_node_is_not_a_hit():
+    from testagent.services.scope_manifest import case_covers_target
+
+    target = {"id": "pre_met:a", "type": "precondition_met", "action_id": "a"}
+    assert case_covers_target(target, {"covers": ["pre_met:a"], "node_ids": [], "attribute_ids": []}) is False
+    assert case_covers_target(target, {"covers": ["pre_met:a"], "node_ids": ["a"], "attribute_ids": []}) is True
+    field = {"id": "field:f", "type": "field", "attribute_id": "f"}
+    assert case_covers_target(field, {"covers": ["field:f"], "node_ids": [], "attribute_ids": []}) is False
+    assert case_covers_target(field, {"covers": [], "node_ids": [], "attribute_ids": ["f"]}) is True
+
+
 def test_same_inputs_are_deterministic():
     graph = procurement()
     refs = approval_refs()

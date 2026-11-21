@@ -239,7 +239,11 @@ def test_main_chain(client, db, demo_app):
     assert task["case_count"] == 0  # no executable cases yet
 
     # ---------------------------------------------------------------- AI cases (AC-09)
-    use_model(client, call("submit_result", {"cases": case_drafts(nodes)}))
+    from tests.api.scope_support import ready_scope, stamp_cases
+
+    scopes = ready_scope(client, version)
+    drafted = stamp_cases(case_drafts(nodes), scopes)
+    use_model(client, call("submit_result", {"cases": drafted}))
     generated = ok(client.post(f"{V1}/versions/{version}/cases/generate", json={"automate": False}))
     assert generated["status"] == "succeeded" and len(generated["cases"]) == 3
     assert generated["coverage"]["requirements"]["uncovered"] == []
@@ -349,7 +353,8 @@ def test_main_chain(client, db, demo_app):
     (memory,) = ok(client.get(f"{V1}/agent/memories", params={"sut_id": sut}))
     assert memory["source_correction_ids"] == [corr["id"]]
 
-    fake = use_model(client, call("submit_result", {"cases": case_drafts(nodes)}))
+    again_scopes = ready_scope(client, version)
+    fake = use_model(client, call("submit_result", {"cases": stamp_cases(case_drafts(nodes), again_scopes)}))
     again = ok(client.post(f"{V1}/versions/{version}/cases/generate", json={}))
     trace = ok(client.get(f"{V1}/agent/runs/{again['agent_run_id']}"))
     assert trace["injected"]["memory_ids"] == [memory["id"]]

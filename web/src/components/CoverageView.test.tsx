@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 
+import { renderPage } from "../test/utils";
 import { CoverageView } from "./CoverageView";
 
 describe("CoverageView", () => {
   it("shows ratios, uncovered lists and distributions", () => {
-    render(
+    renderPage(
       <CoverageView
         coverage={{
           version_id: "v",

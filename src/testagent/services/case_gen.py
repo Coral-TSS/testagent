@@ -53,6 +53,10 @@ class CaseDraft(BaseModel):
     attribute_ids: list[UUID] = Field(
         default_factory=list, description="entity fields the case exercises (from list_fields)"
     )
+    covers: list[str] = Field(
+        default_factory=list,
+        description="coverage target ids from the scope manifest that this case hits",
+    )
 
     @model_validator(mode="after")
     def _scenario_is_not_a_type(self):
@@ -62,8 +66,16 @@ class CaseDraft(BaseModel):
         return self
 
 
+class WaiverDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    target_id: Annotated[str, Field(min_length=1, max_length=200)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    requirement_code: str | None = None
+
+
 class CasesOut(BaseModel):
     cases: list[CaseDraft] = Field(min_length=1)
+    waivers: list[WaiverDraft] = Field(default_factory=list)
 
 
 def model_id_errors(db, sut_id, node_ids, attribute_ids) -> list[str]:
@@ -87,6 +99,44 @@ def model_id_errors(db, sut_id, node_ids, attribute_ids) -> list[str]:
             )
             valid = {r["id"] for r in cur.fetchall()}
             errors += [f"attribute_id {a} does not exist" for a in sorted(attrs - valid)]
+    return errors
+
+
+def coverage_errors(db, ctx: dict, out: CasesOut) -> list[str]:
+    """Every manifest target is hit, or a person has confirmed a waiver. Agent waivers do not pass."""
+    from testagent.services.case_scope import confirmed_waivers, record_agent_waivers
+    from testagent.services.scope_manifest import case_covers_target, target_label
+
+    scopes = (ctx.get("inputs") or {}).get("scopes") or []
+    if not scopes:
+        return []
+    version_id = (ctx.get("inputs") or {}).get("version_id")
+    with db.tx() as cur:
+        if out.waivers and version_id:
+            record_agent_waivers(cur, version_id, scopes, out.waivers)
+        waived = confirmed_waivers(cur, scopes)
+    proposed = {w.target_id for w in out.waivers}
+    errors = []
+    for scope in scopes:
+        if scope.get("blocked"):
+            continue
+        req = scope.get("requirement") or {}
+        code = req.get("code")
+        mine = [c for c in out.cases if code in c.requirement_codes]
+        allowed = waived.get((str(req.get("id")), scope.get("fingerprint")), set())
+        for target in scope.get("targets") or []:
+            if target["id"] in allowed or any(case_covers_target(target, c) for c in mine):
+                continue
+            label = target_label(target)
+            if target["id"] in proposed:
+                errors.append(
+                    f"requirement {code} coverage target {target['id']} ({target['type']}: {label}) "
+                    "has an agent waiver that does not count until a person confirms it"
+                )
+            else:
+                errors.append(
+                    f"requirement {code} coverage target {target['id']} ({target['type']}: {label}) is not covered"
+                )
     return errors
 
 
@@ -118,6 +168,7 @@ def cases_entry(db) -> Entry:
                 for j, step in enumerate(d.steps)
             ],
         )
+        errors += coverage_errors(db, ctx, out)
         return errors
 
     return Entry(
@@ -150,9 +201,11 @@ def cases_entry(db) -> Entry:
             "as 'METHOD /path' and put the exact JSON request body in the step data: field "
             "names, types and units MUST follow get_api_schema, never invent fields. Put the "
             "key values (e.g. the amount) into test_data using the API field names. For every "
-            "coverage target, at least one case must hit it: a field target needs that "
-            "attribute_id; an action, precondition, effect or constraint target needs the "
-            "action or entity in node_ids; a link target needs an endpoint entity in node_ids. "
+            "coverage target, at least one case must hit it and list that target id in covers. "
+            "A field target needs that attribute_id. An action, precondition, effect or "
+            "constraint target needs the action or entity in node_ids and the target id in "
+            "covers. A link target needs an endpoint entity in node_ids and the target id in "
+            "covers. "
             "Cover an in-scope action's precondition being met and each precondition being "
             "violated (expected refusal), and assert every effect. For an in-scope link, cover "
             "a missing foreign key (only a required link is a validation failure; an optional "
@@ -206,7 +259,7 @@ class CaseGenerationService:
             raise AppError("VALIDATION", "This version has no requirements yet")
         from testagent.services.case_scope import CaseScopeService
 
-        scopes = CaseScopeService(self.db).for_generate(version_id, reqs, require_confirmed=False)
+        scopes = CaseScopeService(self.db).for_generate(version_id, reqs, require_confirmed=True)
         run = self.runtime.run(
             "generate_cases",
             {

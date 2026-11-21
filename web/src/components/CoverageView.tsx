@@ -1,5 +1,7 @@
-import { Card, Col, Empty, Progress, Row, Statistic, Tag, Typography } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button, Card, Col, Empty, Progress, Row, Statistic, Tag, Typography } from "antd";
 
+import { api } from "../api/client";
 import type { Coverage } from "../api/types";
 import { SCENARIO } from "./CaseTags";
 import { CoverageDetail } from "./CoverageDetail";
@@ -21,6 +23,14 @@ function Dist({ title, data, labels }: { title: string; data: Record<string, num
 /** Coverage report: requirement coverage, action node coverage, priority/type/scenario distribution, uncovered lists, with per-item detail */
 export function CoverageView({ coverage }: { coverage: Coverage }) {
   const { requirements: r, actions: a } = coverage;
+  const qc = useQueryClient();
+  const confirmWaiver = async (requirementId: string, targetId: string) => {
+    await api(`/versions/${coverage.version_id}/case-gen/waivers/confirm`, {
+      method: "POST",
+      body: { requirement_id: requirementId, target_ids: [targetId] },
+    });
+    qc.invalidateQueries({ queryKey: ["coverage", coverage.version_id] });
+  };
   const scenarioLabels = Object.fromEntries(Object.entries(SCENARIO).map(([k, [l]]) => [k, l]));
   return (
     <Row gutter={16} data-testid="coverage">
@@ -77,6 +87,29 @@ export function CoverageView({ coverage }: { coverage: Coverage }) {
           </Card>
         </Col>
       )}
+      {coverage.targets?.requirements?.length ? (
+        <Col span={24} style={{ marginTop: 12 }}>
+          <Card size="small" title="按需求的覆盖目标" data-testid="target-matrix">
+            {coverage.targets.requirements.map((block) => (
+              <div key={block.id} style={{ marginBottom: 8 }}>
+                <Typography.Text strong>{block.code} {block.title}</Typography.Text>
+                {block.message && <div>{block.message}</div>}
+                {block.targets.map((t) => (
+                  <div key={t.id}>
+                    <Tag color={t.covered ? "green" : "red"}>{t.covered ? "已覆盖" : "未覆盖"}</Tag>
+                    {t.label}
+                    {t.cases.map((c) => <Tag key={c.id}>{c.code}</Tag>)}
+                    {t.waiver && !t.waiver.confirmed && (
+                      <Button size="small" onClick={() => confirmWaiver(block.id, t.id)}>确认放弃</Button>
+                    )}
+                    {t.waiver?.confirmed && <Typography.Text type="secondary"> 已放弃：{t.waiver.reason}</Typography.Text>}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </Card>
+        </Col>
+      ) : null}
       <Col span={24} style={{ marginTop: 12 }}>
         <CoverageDetail coverage={coverage} />
       </Col>

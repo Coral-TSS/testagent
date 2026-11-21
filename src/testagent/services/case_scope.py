@@ -24,12 +24,14 @@ from testagent.services.scope_manifest import (
     LinkRec,
     RequirementRefs,
     add_manual,
+    case_covers_target,
     compute_manifest,
     drop_item,
     manifest_from,
     prepare,
     prompt_scope,
     refresh_states,
+    target_label,
 )
 from testagent.services.scope_manifest import items_from_manifest as items_of
 
@@ -309,7 +311,9 @@ class CaseScopeService:
         with self.db.tx() as cur:
             return self.default_depth(cur)
 
-    def update(self, version_id, requirement_id, *, depth=None, recompute=False, remove=None, add=None) -> dict:
+    def update(
+        self, version_id, requirement_id, *, depth=None, recompute=False, remove=None, add=None, waivers=None
+    ) -> dict:
         with self.db.tx() as cur:
             version = self._version(cur, version_id)
             reqs = self._requirements(cur, version_id, [requirement_id])
@@ -332,8 +336,10 @@ class CaseScopeService:
             if base.get("blocked"):
                 return {"version_id": str(version_id), "scopes": [self._view(None, base)]}
             manifest = self._apply(graph, refs, chosen, base, remove, add)
-            edited = bool(manifest.get("suppress") or manifest.get("manual"))
+            edited = bool(manifest.get("suppress") or manifest.get("manual") or waivers)
             row = self._upsert(cur, version_id, req["id"], chosen, manifest, edited=edited)
+            if waivers is not None:
+                save_human_waivers(cur, version_id, req["id"], manifest["fingerprint"], waivers, self.actor)
         return {"version_id": str(version_id), "scopes": [self._view(row, manifest)]}
 
     def confirm(self, version_id, requirement_ids) -> dict:
@@ -390,6 +396,176 @@ class CaseScopeService:
         if blocked:
             raise AppError("VALIDATION", "；".join(blocked))
         return out
+
+
+def confirmed_waivers(cur, scopes: list[dict]) -> dict[tuple[str, str], set[str]]:
+    """(requirement id, fingerprint) -> target ids a person has confirmed."""
+    out: dict[tuple[str, str], set[str]] = {}
+    for scope in scopes:
+        req = (scope.get("requirement") or {}).get("id")
+        fp = scope.get("fingerprint")
+        if not req or not fp:
+            continue
+        cur.execute(
+            "SELECT target_id FROM coverage_waiver WHERE requirement_id=%s AND fingerprint=%s"
+            " AND confirmed_at IS NOT NULL",
+            (req, fp),
+        )
+        out[(str(req), fp)] = {r["target_id"] for r in cur.fetchall()}
+    return out
+
+
+def record_agent_waivers(cur, version_id, scopes: list[dict], waivers: list) -> None:
+    """Remember a model's waiver. It does not satisfy the gate until a person confirms it."""
+    by_req = {str((s.get("requirement") or {}).get("id")): s for s in scopes}
+    for waiver in waivers:
+        target = waiver.target_id if hasattr(waiver, "target_id") else waiver["target_id"]
+        reason = (waiver.reason if hasattr(waiver, "reason") else waiver["reason"]).strip()
+        code = getattr(waiver, "requirement_code", None) or (
+            waiver.get("requirement_code") if isinstance(waiver, dict) else None
+        )
+        scope = None
+        if code:
+            scope = next((s for s in scopes if (s.get("requirement") or {}).get("code") == code), None)
+        if scope is None and len(scopes) == 1:
+            scope = scopes[0]
+        if scope is None:
+            scope = next(
+                (s for s in scopes if any(t["id"] == target for t in s.get("targets") or [])),
+                None,
+            )
+        if scope is None or not reason:
+            continue
+        req_id = (scope.get("requirement") or {}).get("id")
+        fp = scope.get("fingerprint")
+        if not req_id or not fp or req_id not in by_req and str(req_id) not in by_req:
+            continue
+        cur.execute(
+            "INSERT INTO coverage_waiver(version_id, requirement_id, target_id, reason, proposed_by, fingerprint)"
+            " VALUES (%s,%s,%s,%s,'agent',%s)"
+            " ON CONFLICT (requirement_id, target_id, fingerprint) DO UPDATE SET reason=EXCLUDED.reason"
+            " WHERE coverage_waiver.confirmed_at IS NULL",
+            (version_id, req_id, target, reason, fp),
+        )
+
+
+def save_human_waivers(cur, version_id, requirement_id, fingerprint: str, waivers: list[dict], actor: str) -> None:
+    """A person confirming a waiver in the preview. Each entry is confirmed immediately."""
+    for waiver in waivers:
+        reason = str(waiver.get("reason") or "").strip()
+        target = str(waiver.get("target_id") or "")
+        if not reason or not target:
+            continue
+        cur.execute(
+            "INSERT INTO coverage_waiver(version_id, requirement_id, target_id, reason, proposed_by,"
+            " confirmed_by, confirmed_at, fingerprint) VALUES (%s,%s,%s,%s,'human',%s,now(),%s)"
+            " ON CONFLICT (requirement_id, target_id, fingerprint) DO UPDATE SET reason=EXCLUDED.reason,"
+            " proposed_by='human', confirmed_by=EXCLUDED.confirmed_by, confirmed_at=now()",
+            (version_id, requirement_id, target, reason, actor, fingerprint),
+        )
+
+
+def confirm_waiver_rows(cur, requirement_id, target_ids: list[str], actor: str) -> int:
+    cur.execute(
+        "UPDATE coverage_waiver SET confirmed_at=now(), confirmed_by=%s"
+        " WHERE requirement_id=%s AND target_id = ANY(%s) AND confirmed_at IS NULL RETURNING id",
+        (actor, requirement_id, target_ids),
+    )
+    return len(cur.fetchall())
+
+
+def target_coverage(cur, version_id) -> dict:
+    """Per-requirement coverage of the stored manifest. Empty when no scope has been computed."""
+    cur.execute(
+        "SELECT s.requirement_id::text AS requirement_id, s.manifest, r.code, r.title"
+        " FROM case_gen_scope s JOIN requirement r ON r.id=s.requirement_id"
+        " WHERE s.version_id=%s ORDER BY r.code",
+        (version_id,),
+    )
+    rows = cur.fetchall()
+    if not rows:
+        return {"requirements": []}
+    cur.execute(
+        "SELECT c.id::text AS id, c.code, c.title, c.covers,"
+        " coalesce((SELECT array_agg(l.requirement_id::text) FROM case_requirement_link l"
+        "   WHERE l.case_id=c.id), '{}') AS reqs,"
+        " coalesce((SELECT array_agg(l.node_id::text) FROM case_node_link l WHERE l.case_id=c.id), '{}') AS nodes,"
+        " coalesce((SELECT array_agg(l.attribute_id::text) FROM case_attribute_link l"
+        "   WHERE l.case_id=c.id), '{}') AS attrs"
+        " FROM test_case c WHERE c.status <> 'deprecated' AND (c.origin_version_id=%s OR EXISTS ("
+        "  SELECT 1 FROM case_requirement_link l JOIN requirement r ON r.id=l.requirement_id"
+        "  WHERE l.case_id=c.id AND r.version_id=%s))",
+        (version_id, version_id),
+    )
+    cases = []
+    for row in cur.fetchall():
+        cases.append(
+            {
+                "id": row["id"],
+                "code": row["code"],
+                "title": row["title"],
+                "covers": row["covers"] or [],
+                "requirement_ids": set(row["reqs"] or []),
+                "node_ids": row["nodes"] or [],
+                "attribute_ids": row["attrs"] or [],
+                "requirement_codes": [],
+            }
+        )
+    # requirement codes for the hit check
+    cur.execute("SELECT id::text AS id, code FROM requirement WHERE version_id=%s", (version_id,))
+    codes = {r["id"]: r["code"] for r in cur.fetchall()}
+    for case in cases:
+        case["requirement_codes"] = [codes[i] for i in case["requirement_ids"] if i in codes]
+    cur.execute(
+        "SELECT requirement_id::text AS requirement_id, target_id, reason, proposed_by,"
+        " confirmed_at IS NOT NULL AS confirmed, fingerprint FROM coverage_waiver WHERE version_id=%s",
+        (version_id,),
+    )
+    waivers: dict[tuple[str, str, str], dict] = {}
+    for row in cur.fetchall():
+        waivers[(row["requirement_id"], row["fingerprint"], row["target_id"])] = row
+    requirements = []
+    for row in rows:
+        manifest = row["manifest"] or {}
+        if manifest.get("blocked"):
+            requirements.append(
+                {
+                    "id": row["requirement_id"],
+                    "code": row["code"],
+                    "title": row["title"],
+                    "blocked": True,
+                    "message": manifest.get("message"),
+                    "targets": [],
+                }
+            )
+            continue
+        fp = manifest.get("fingerprint")
+        items = []
+        for target in manifest.get("targets") or []:
+            hits = [
+                {"id": c["id"], "code": c["code"], "title": c["title"]}
+                for c in cases
+                if row["code"] in c["requirement_codes"] and case_covers_target(target, c)
+            ]
+            waiver = waivers.get((row["requirement_id"], fp, target["id"]))
+            items.append(
+                {
+                    "id": target["id"],
+                    "type": target["type"],
+                    "label": target_label(target),
+                    "covered": bool(hits) or bool(waiver and waiver["confirmed"]),
+                    "cases": hits,
+                    "waiver": None
+                    if waiver is None
+                    else {
+                        "reason": waiver["reason"],
+                        "proposed_by": waiver["proposed_by"],
+                        "confirmed": waiver["confirmed"],
+                    },
+                }
+            )
+        requirements.append({"id": row["requirement_id"], "code": row["code"], "title": row["title"], "targets": items})
+    return {"requirements": requirements}
 
 
 def scope_allowed(scopes: list[dict] | None) -> dict[str, set[str]] | None:
