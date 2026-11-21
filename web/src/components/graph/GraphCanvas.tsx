@@ -1,8 +1,9 @@
+import { Button } from "antd";
 import {
   Background,
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
+  getBezierPath,
   type EdgeProps,
   type NodeChange,
   type ReactFlowInstance,
@@ -10,6 +11,7 @@ import {
   Handle,
   MarkerType,
   MiniMap,
+  Panel,
   Position,
   ReactFlow,
   type Edge as FlowEdge,
@@ -23,7 +25,22 @@ import type { Graph, ModelNode } from "../../api/types";
 import { CARD_SHORT } from "../links";
 import { KIND_COLOR } from "../StatusTags";
 import { computeLayout, type Positioned } from "./layout";
-import { clearGraphPosition, readGraphPositions, writeGraphPosition, type Point } from "./positions";
+import { clearGraphPosition, clearGraphPositions, readGraphPositions, writeGraphPosition, type Point } from "./positions";
+
+/** Solid curves. Relation orange vs action blue, dark enough to read on the white canvas. */
+export const EDGE_COLOR = { action: "#0958d9", relation: "#d46b08" } as const;
+
+/**
+ * Short labels for the line between an action and another node.
+ * object is the thing the action works on, not a bare role name.
+ */
+export const ROLE_LABEL: Record<string, string> = {
+  object: "作用于",
+  actor: "执行人",
+  ref: "引用了",
+  source: "起点",
+  target: "终点",
+};
 
 type Data = { node: ModelNode; selected: boolean };
 
@@ -73,19 +90,16 @@ function BoxNode({ data }: NodeProps<FlowNode<Data>>) {
 
 type LinkData = { forward: string; reverse: string; card: string; via?: string | null; fk?: string | null; required?: boolean };
 
+/** Both edge kinds use this cubic curve. Straight and stepped paths are not used. */
+export function curvedEdgePath(points: Parameters<typeof getBezierPath>[0]) {
+  return getBezierPath({ curvature: 0.25, ...points });
+}
+
 /** A relation drawn between two entities: "属于 →" / "← 供应" with the cardinality in the middle. */
 function LinkEdge(props: EdgeProps<FlowEdge<LinkData>>) {
   const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, selected } = props;
-  const [path, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 12,
-  });
-  const color = KIND_COLOR.relation;
+  const [path, labelX, labelY] = curvedEdgePath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  const color = (typeof props.style?.stroke === "string" && props.style.stroke) || EDGE_COLOR.relation;
   return (
     <>
       <BaseEdge id={id} path={path} markerEnd={markerEnd} style={{ stroke: color, strokeWidth: selected ? 3 : 2 }} />
@@ -135,7 +149,6 @@ function sides(a?: { x: number; y: number }, b?: { x: number; y: number }) {
   if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? { sourceHandle: "right-s", targetHandle: "left-t" } : { sourceHandle: "left-s", targetHandle: "right-t" };
   return dy > 0 ? { sourceHandle: "bottom-s", targetHandle: "top-t" } : { sourceHandle: "top-s", targetHandle: "bottom-t" };
 }
-const ROLE_LABEL: Record<string, string> = { source: "来源", target: "目标", actor: "执行者", object: "对象", ref: "引用" };
 
 const layoutCache = new WeakMap<Graph, Map<string, Positioned>>();
 
@@ -165,11 +178,11 @@ export function toFlow(graph: Graph, selectedId?: string | null, placed?: Readon
       id: e.id,
       source: e.source_node_id,
       target: e.target_node_id,
-      type: "smoothstep",
+      type: "default",
       ...sides(at(e.source_node_id), at(e.target_node_id)),
       label: ROLE_LABEL[e.role] || e.role,
-      markerEnd: { type: MarkerType.ArrowClosed },
-      style: { strokeDasharray: "4 4", stroke: "#bbb" },
+      markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLOR.action },
+      style: { stroke: EDGE_COLOR.action, strokeWidth: 2 },
     }));
   for (const l of graph.links || []) {
     if (!ids.has(l.from_node_id) || !ids.has(l.to_node_id)) continue;
@@ -179,7 +192,8 @@ export function toFlow(graph: Graph, selectedId?: string | null, placed?: Readon
       source: l.from_node_id,
       target: l.to_node_id,
       ...sides(at(l.from_node_id), at(l.to_node_id)),
-      markerEnd: { type: MarkerType.ArrowClosed, color: KIND_COLOR.relation },
+      markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLOR.relation },
+      style: { stroke: EDGE_COLOR.relation, strokeWidth: 2 },
       data: {
         forward: l.forward_name,
         reverse: l.reverse_name,
@@ -210,18 +224,24 @@ export function GraphCanvas({
   height?: number | "fill";
 }) {
   const [dragged, setDragged] = useState<Map<string, Point>>(() => new Map());
+  const [layoutPass, setLayoutPass] = useState(0);
   const placed = useMemo(() => {
-    const merged = readGraphPositions();
+    const merged = layoutPass < 0 ? new Map<string, Point>() : readGraphPositions();
     for (const [id, point] of dragged) merged.set(id, point);
     return merged;
-  }, [dragged]);
+  }, [dragged, layoutPass]);
   const { nodes, edges } = useMemo(() => toFlow(graph, selectedId, placed), [graph, selectedId, placed]);
   const flow = useRef<ReactFlowInstance<FlowNode<Data>, FlowEdge> | null>(null);
   const nodeKey = useMemo(() => graph.nodes.map((node) => node.id).sort().join("\0"), [graph]);
   useEffect(() => {
     const frame = requestAnimationFrame(() => flow.current?.fitView());
     return () => cancelAnimationFrame(frame);
-  }, [nodeKey]);
+  }, [nodeKey, layoutPass]);
+  const relayout = () => {
+    clearGraphPositions(graph.nodes.map((node) => node.id));
+    setDragged(new Map());
+    setLayoutPass((pass) => pass + 1);
+  };
   const onNodesChange = (changes: NodeChange<FlowNode<Data>>[]) => {
     setDragged((prev) => {
       let changed = false;
@@ -264,6 +284,11 @@ export function GraphCanvas({
         }}
         minZoom={0.2}
       >
+        <Panel position="top-left">
+          <Button size="small" autoInsertSpace={false} onClick={relayout} title="按当前关系重新排列，并丢掉已拖动的位置">
+            重排
+          </Button>
+        </Panel>
         <Background />
         <Controls showInteractive={false} />
         <MiniMap pannable zoomable nodeColor={(n) => KIND_COLOR[(n.type as string) || "entity"]} />

@@ -1,10 +1,11 @@
+import { Position } from "@xyflow/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { createElement } from "react";
-import { render, screen } from "@testing-library/react";
 
 import type { Edge, Graph, Link, ModelNode } from "../../api/types";
-import { GraphCanvas, toFlow } from "./GraphCanvas";
+import { EDGE_COLOR, GraphCanvas, ROLE_LABEL, curvedEdgePath, toFlow } from "./GraphCanvas";
 import { computeLayout, type Positioned } from "./layout";
-import { clearGraphPosition, GRAPH_POSITIONS_KEY, readGraphPositions, writeGraphPosition } from "./positions";
+import { clearGraphPosition, clearGraphPositions, GRAPH_POSITIONS_KEY, readGraphPositions, writeGraphPosition } from "./positions";
 
 const node = (id: string, kind: ModelNode["kind"], name = id): ModelNode => ({ id, sut_id: "s", kind, name, attributes: {} });
 const link = (id: string, from: string, to: string, extra: Partial<Link> = {}): Link =>
@@ -308,8 +309,33 @@ describe("toFlow", () => {
     expect(l1.data).toMatchObject({ forward: "belongs to", reverse: "supplies", card: "N:1" });
     const l2 = edges.find((e) => e.id === "link:l2")!;
     expect(l2.data).toMatchObject({ forward: "pays", reverse: "receives", card: "N:1" });
-    expect(edges.find((e) => e.id === "e1")?.label).toBe("对象");
-    expect(edges.find((e) => e.id === "e1")?.type).toBe("smoothstep");
+    const actionEdge = edges.find((e) => e.id === "e1")!;
+    expect(actionEdge.label).toBe("作用于");
+    expect(actionEdge.type).toBe("default");
+    expect(actionEdge.style).toMatchObject({ stroke: EDGE_COLOR.action, strokeWidth: 2 });
+    expect(actionEdge.style).not.toHaveProperty("strokeDasharray");
+    expect(l1.style).toMatchObject({ stroke: EDGE_COLOR.relation, strokeWidth: 2 });
+    expect(l1.style).not.toHaveProperty("strokeDasharray");
+    expect(ROLE_LABEL).toEqual({ object: "作用于", actor: "执行人", ref: "引用了", source: "起点", target: "终点" });
+    expect(EDGE_COLOR.action).not.toBe(EDGE_COLOR.relation);
+  });
+
+  it("labels actor and ref edges in plain Chinese and hides source and target", () => {
+    const g: Graph = {
+      nodes: [node("act", "action"), node("buyer", "entity"), node("po", "entity")],
+      edges: [
+        { id: "actor", source_node_id: "act", target_node_id: "buyer", role: "actor" },
+        { id: "ref", source_node_id: "act", target_node_id: "po", role: "ref" },
+        { id: "src", source_node_id: "act", target_node_id: "po", role: "source" },
+        { id: "dst", source_node_id: "act", target_node_id: "buyer", role: "target" },
+      ],
+      links: [],
+    };
+    const { edges } = toFlow(g);
+    expect(edges.find((e) => e.id === "actor")?.label).toBe("执行人");
+    expect(edges.find((e) => e.id === "ref")?.label).toBe("引用了");
+    expect(edges.find((e) => e.id === "src")).toBeUndefined();
+    expect(edges.find((e) => e.id === "dst")).toBeUndefined();
   });
 
   it("routes handles from a dragged position instead of the default layout", () => {
@@ -350,6 +376,10 @@ describe("graph positions", () => {
     clearGraphPosition("n1", storage);
     expect(readGraphPositions(storage).has("n1")).toBe(false);
     expect(readGraphPositions(storage).get("n2")).toEqual({ x: 1, y: 2 });
+    writeGraphPosition("n3", { x: 8, y: 9 }, storage);
+    clearGraphPositions(["n2"], storage);
+    expect(readGraphPositions(storage).has("n2")).toBe(false);
+    expect(readGraphPositions(storage).get("n3")).toEqual({ x: 8, y: 9 });
     storage.setItem(GRAPH_POSITIONS_KEY, "{");
     expect(readGraphPositions(storage).size).toBe(0);
     storage.setItem(GRAPH_POSITIONS_KEY, JSON.stringify({ bad: { x: "no" }, ok: { x: 3, y: 4 } }));
@@ -358,9 +388,58 @@ describe("graph positions", () => {
 });
 
 describe("GraphCanvas", () => {
+  beforeEach(() => localStorage.clear());
+
   it("shows the node and marks it draggable", () => {
     render(createElement(GraphCanvas, { graph: { nodes: [node("a", "entity", "物料")], edges: [], links: [] }, onSelect: () => {} }));
     expect(screen.getByText("物料")).toBeTruthy();
+    expect(document.querySelector(".react-flow__node")?.className).toContain("draggable");
+    expect(screen.getByRole("button", { name: "重排" })).toBeTruthy();
+  });
+
+  it("draws relation and action lines as solid curves in two colors", () => {
+    const [path] = curvedEdgePath({
+      sourceX: 0,
+      sourceY: 0,
+      targetX: 240,
+      targetY: 20,
+      sourcePosition: Position.Right,
+      targetPosition: Position.Left,
+    });
+    expect(path.startsWith("M")).toBe(true);
+    expect(path).toMatch(/C/);
+    expect(path).not.toMatch(/\bL\b/);
+    const graph: Graph = {
+      nodes: [node("po", "entity", "订单"), node("sup", "entity", "供应商"), node("act", "action", "提交")],
+      edges: [{ id: "e1", source_node_id: "act", target_node_id: "po", role: "object" }],
+      links: [link("l1", "po", "sup")],
+    };
+    const { edges } = toFlow(graph);
+    const action = edges.find((edge) => edge.id === "e1")!;
+    const relation = edges.find((edge) => edge.id === "link:l1")!;
+    expect(action.type).toBe("default");
+    expect(relation.type).toBe("link");
+    expect(action.style).toMatchObject({ stroke: EDGE_COLOR.action });
+    expect(relation.style).toMatchObject({ stroke: EDGE_COLOR.relation });
+    for (const edge of [action, relation]) {
+      expect(JSON.stringify(edge.style)).not.toMatch(/dash/i);
+    }
+  });
+
+  it("重排 forgets dragged positions and puts nodes back on the layout", () => {
+    const graph: Graph = {
+      nodes: [node("a", "entity", "物料"), node("b", "action", "提交")],
+      edges: [{ id: "e", source_node_id: "b", target_node_id: "a", role: "object" }],
+      links: [],
+    };
+    localStorage.setItem(GRAPH_POSITIONS_KEY, JSON.stringify({ a: { x: 900, y: 40 }, other: { x: 3, y: 4 } }));
+    render(createElement(GraphCanvas, { graph, onSelect: () => {} }));
+    expect(document.querySelector('[data-id="a"]')?.getAttribute("style") || "").toContain("900px");
+    fireEvent.click(screen.getByRole("button", { name: "重排" }));
+    expect(readGraphPositions().has("a")).toBe(false);
+    expect(readGraphPositions().get("other")).toEqual({ x: 3, y: 4 });
+    const laid = computeLayout(graph).get("a")!;
+    expect(document.querySelector('[data-id="a"]')?.getAttribute("style") || "").toContain(`${laid.x}px`);
     expect(document.querySelector(".react-flow__node")?.className).toContain("draggable");
   });
 });
