@@ -58,58 +58,75 @@ export function StructureEditor({
       onFinish={(v: Structure) => onSave(cleanStructure(v))}
     >
       {PARTS.map(([part, label]) => (
-        <div key={part} style={{ marginBottom: 8 }}>
-          <Typography.Text strong>{label}</Typography.Text>
-          <Form.List name={part}>
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map((f) => (
-                  <Space key={f.key} align="baseline" style={{ display: "flex" }}>
-                    <Form.Item name={[f.name, "text"]} rules={[{ required: true, message: "必填" }]} style={{ marginBottom: 6 }}>
-                      <Input style={{ width: 200 }} />
-                    </Form.Item>
-                    <Form.Item name={[f.name, "node_id"]} style={{ marginBottom: 6 }}>
-                      <Select allowClear showSearch optionFilterProp="label" placeholder="关联的模型节点" style={{ width: 200 }} options={options} />
-                    </Form.Item>
-                    {fieldOptions.length > 0 && (
-                      <Form.Item name={[f.name, "attribute_id"]} style={{ marginBottom: 6 }}>
-                        <Select
-                          allowClear
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder="关联字段"
-                          style={{ width: 200 }}
-                          options={fieldOptions}
-                        />
-                      </Form.Item>
-                    )}
-                    {linkOptions.length > 0 && (
-                      <Form.Item name={[f.name, "link_id"]} style={{ marginBottom: 6 }}>
-                        <Select
-                          allowClear
-                          showSearch
-                          optionFilterProp="label"
-                          placeholder="关联关系"
-                          style={{ width: 220 }}
-                          options={linkOptions}
-                        />
-                      </Form.Item>
-                    )}
-                    <Form.Item noStyle shouldUpdate>
-                      {() => (form.getFieldValue([part, f.name, "missing"]) ? <Tag color="orange">模型中缺失</Tag> : null)}
-                    </Form.Item>
-                    {!disabled && <MinusCircleOutlined onClick={() => remove(f.name)} />}
-                  </Space>
-                ))}
+        <Form.List key={part} name={part}>
+          {(rows, { add, remove }) => (
+            <div style={{ marginBottom: 8 }}>
+              <div
+                data-testid={`structure-section-${part}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  marginTop: 4,
+                  paddingTop: 8,
+                  borderTop: "1px solid #f0f0f0",
+                }}
+              >
+                <Typography.Text strong>{label}</Typography.Text>
                 {!disabled && (
-                  <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={() => add({ text: "" })}>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={() => add({ text: "" })}
+                    style={{ paddingInline: 4, height: "auto" }}
+                  >
                     添加
                   </Button>
                 )}
-              </>
-            )}
-          </Form.List>
-        </div>
+              </div>
+              {rows.map((f) => (
+                <Space key={f.key} align="baseline" style={{ display: "flex" }}>
+                  <Form.Item name={[f.name, "text"]} rules={[{ required: true, message: "必填" }]} style={{ marginBottom: 6 }}>
+                    <Input style={{ width: 200 }} />
+                  </Form.Item>
+                  <Form.Item name={[f.name, "node_id"]} style={{ marginBottom: 6 }}>
+                    <Select allowClear showSearch optionFilterProp="label" placeholder="关联的模型节点" style={{ width: 200 }} options={options} />
+                  </Form.Item>
+                  {fieldOptions.length > 0 && (
+                    <Form.Item name={[f.name, "attribute_id"]} style={{ marginBottom: 6 }}>
+                      <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        placeholder="关联字段"
+                        style={{ width: 200 }}
+                        options={fieldOptions}
+                      />
+                    </Form.Item>
+                  )}
+                  {linkOptions.length > 0 && (
+                    <Form.Item name={[f.name, "link_id"]} style={{ marginBottom: 6 }}>
+                      <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        placeholder="关联关系"
+                        style={{ width: 220 }}
+                        options={linkOptions}
+                      />
+                    </Form.Item>
+                  )}
+                  <Form.Item noStyle shouldUpdate>
+                    {() => (form.getFieldValue([part, f.name, "missing"]) ? <Tag color="orange">模型中缺失</Tag> : null)}
+                  </Form.Item>
+                  {!disabled && <MinusCircleOutlined onClick={() => remove(f.name)} />}
+                </Space>
+              ))}
+            </div>
+          )}
+        </Form.List>
       ))}
       {!disabled && showSave && (
         <Button size="small" htmlType="submit" loading={saving}>

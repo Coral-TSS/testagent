@@ -583,45 +583,30 @@ REQS = {
         "可将供应商冻结。冻结后不得用该供应商新建或下达采购订单。已经下达且未取消的订单仍可继续收货、过账（按该版本的收货规则）。",
     ),
 }
-REQ_007 = {
-    False: "已批准的采购订单可下达给供应商。供应商不得为冻结。下达后订单为已下达，此后才允许收货。",
-    True: "已批准的采购订单可下达给供应商。供应商必须为合格。下达后订单为已下达，此后才允许收货。",
-}
-REQ_008 = {
-    False: (
-        "已下达或部分收货的订单可分次收货，收货数量必须大于 0。累计收货数量不得超过订购数量。"
-        "已取消或已关闭的订单不得收货。收货后，若尚未收齐则为部分收货，收齐则为已收货。"
-    ),
-    True: (
-        "已下达或部分收货的订单可分次收货，收货数量必须大于 0。"
-        "累计收货数量不得超过订购数量 ×（1 + 该订单超收容差）。"
-        "已取消或已关闭的订单不得收货。收货后，若尚未收齐则为部分收货，收齐（在规则内）则为已收货。"
-    ),
-}
-REQ_009 = {
-    False: "草稿收货单可过账，过账后对应仓库中该物料的在库数量按收货数量增加，库存不得变为负数。",
-    True: (
-        "若物料需要质检，则须质检合格后方可过账入库；质检不合格不得入库。"
-        "不需要质检的物料，草稿收货单可过账，过账后对应仓库中该物料的在库数量按收货数量增加，库存不得变为负数。"
-    ),
-}
+REQ_007 = "已批准的采购订单可下达给供应商。供应商不得为冻结。下达后订单为已下达，此后才允许收货。"
+REQ_008 = (
+    "已下达或部分收货的订单可分次收货，收货数量必须大于 0。累计收货数量不得超过订购数量。"
+    "已取消或已关闭的订单不得收货。收货后，若尚未收齐则为部分收货，收齐则为已收货。"
+)
+REQ_009 = "草稿收货单可过账，过账后对应仓库中该物料的在库数量按收货数量增加，库存不得变为负数。"
+# v2 keeps the titles only. Bodies and structure stay empty.
 V2_ONLY = {
-    "REQ-013": (
-        "物料质检要求",
-        "物料可标记为需要质检。需要质检的物料，其收货必须先创建质检单并给出合格或不合格结论，"
-        "才能按 REQ-009 决定是否入库。",
-    ),
-    "REQ-014": ("创建质检单", "未过账的收货单，若物料需要质检，可创建质检单，初始结论为待判定。"),
-    "REQ-015": (
-        "判定质检",
-        "待判定的质检单可判定为合格或不合格。合格后方允许该收货单过账入库；不合格则该收货单不得过账入库。",
-    ),
-    "REQ-016": ("供应商准入", "仅状态为合格的供应商可被下达采购订单。潜在供应商不能下达；冻结规则同时适用。"),
+    "REQ-013": "物料质检要求",
+    "REQ-014": "创建质检单",
+    "REQ-015": "判定质检",
+    "REQ-016": "供应商准入",
 }
 
 
 def _requirements(db, bus, version_id, idx, *, v2: bool) -> None:
     reqs = RequirementService(db, bus)
+    if v2:
+        # Code, title, and priority only. No raw text, people, or structured refs.
+        rows = [(code, REQS[code][0]) for code in ("REQ-007", "REQ-008", "REQ-009")]
+        rows += list(V2_ONLY.items())
+        for code, title in rows:
+            reqs.create(version_id, {"code": code, "title": title, "priority": "P1"})
+        return
     nodes, fields, links = idx["nodes"], idx["fields"], idx["links"]
 
     def add(code, title, text, structure):
@@ -755,65 +740,9 @@ def _requirements(db, bus, version_id, idx, *, v2: bool) -> None:
     }
     bodies = {
         **{code: text for code, (_title, text) in REQS.items() if text},
-        "REQ-007": REQ_007[v2],
-        "REQ-008": REQ_008[v2],
-        "REQ-009": REQ_009[v2],
+        "REQ-007": REQ_007,
+        "REQ-008": REQ_008,
+        "REQ-009": REQ_009,
     }
-    # v1 keeps REQ-001–REQ-012. v2 only carries the sentences that changed plus REQ-013–REQ-016.
-    codes = ("REQ-007", "REQ-008", "REQ-009") if v2 else tuple(REQS)
-    for code in codes:
-        title, _text = REQS[code]
+    for code, (title, _text) in REQS.items():
         add(code, title, bodies[code], common[code])
-    if not v2:
-        return
-    add(
-        "REQ-013",
-        V2_ONLY["REQ-013"][0],
-        V2_ONLY["REQ-013"][1],
-        {
-            "condition": [{"text": "需要质检", "attribute_id": f("Material", "inspectionRequired")}],
-            "action": [{"text": "创建质检单", "node_id": n("创建质检单")}],
-            "result": [{"text": "合格或不合格", "attribute_id": f("QualityInspection", "result")}],
-        },
-    )
-    add(
-        "REQ-014",
-        V2_ONLY["REQ-014"][0],
-        V2_ONLY["REQ-014"][1],
-        {
-            "condition": [
-                {"text": "未过账", "attribute_id": f("GoodsReceipt", "status")},
-                {"text": "需要质检", "attribute_id": f("Material", "inspectionRequired")},
-            ],
-            "action": [{"text": "创建质检单", "node_id": n("创建质检单")}],
-            "result": [{"text": "待判定", "attribute_id": f("QualityInspection", "result")}],
-            "constraint": [{"text": "针对收货", "link_id": lk("QualityInspection", "针对收货")}],
-        },
-    )
-    add(
-        "REQ-015",
-        V2_ONLY["REQ-015"][0],
-        V2_ONLY["REQ-015"][1],
-        {
-            "action": [{"text": "判定质检", "node_id": n("判定质检")}],
-            "condition": [{"text": "待判定", "attribute_id": f("QualityInspection", "result")}],
-            "result": [{"text": "合格或不合格", "attribute_id": f("QualityInspection", "result")}],
-            "constraint": [{"text": "不合格不得过账", "node_id": n("收货过账入库")}],
-        },
-    )
-    add(
-        "REQ-016",
-        V2_ONLY["REQ-016"][0],
-        V2_ONLY["REQ-016"][1],
-        {
-            "action": [{"text": "下达采购订单", "node_id": n("下达采购订单")}],
-            "condition": [{"text": "供应商合格", "attribute_id": f("Supplier", "status")}],
-            "constraint": [
-                {
-                    "text": "潜在供应商不能下达",
-                    "attribute_id": f("Supplier", "status"),
-                    "link_id": lk("PurchaseOrder", "向其采购"),
-                }
-            ],
-        },
-    )
