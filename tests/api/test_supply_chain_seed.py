@@ -61,13 +61,35 @@ def test_seed_versions_and_requirements(db):
             "REQ-016",
         ]
         cur.execute(
-            "SELECT code, raw_text FROM requirement WHERE version_id=%s AND code IN ('REQ-007','REQ-008','REQ-009')",
+            "SELECT r.code, r.title, r.priority, r.raw_text, r.structured, r.status,"
+            " (SELECT count(*) FROM requirement_node_link l WHERE l.requirement_id=r.id) AS nodes,"
+            " (SELECT count(*) FROM requirement_attribute_link l WHERE l.requirement_id=r.id) AS attrs,"
+            " (SELECT count(*) FROM requirement_link_ref l WHERE l.requirement_id=r.id) AS links,"
+            " (SELECT count(*) FROM requirement_person p WHERE p.requirement_id=r.id) AS people"
+            " FROM requirement r WHERE r.version_id=%s ORDER BY r.code",
             (versions[1]["id"],),
         )
-        v2_text = {r["code"]: r["raw_text"] for r in cur.fetchall()}
-        assert "合格" in v2_text["REQ-007"]
-        assert "超收容差" in v2_text["REQ-008"]
-        assert "质检" in v2_text["REQ-009"]
+        v2_rows = cur.fetchall()
+        assert [(r["code"], r["title"]) for r in v2_rows] == [
+            ("REQ-007", "下达采购订单给供应商"),
+            ("REQ-008", "按订单收货"),
+            ("REQ-009", "收货过账入库"),
+            ("REQ-013", "物料质检要求"),
+            ("REQ-014", "创建质检单"),
+            ("REQ-015", "判定质检"),
+            ("REQ-016", "供应商准入"),
+        ]
+        for row in v2_rows:
+            assert row["priority"] == "P1"
+            assert row["raw_text"] in (None, "")
+            assert row["status"] == "draft"
+            assert not row["structured"]
+            assert row["nodes"] == row["attrs"] == row["links"] == row["people"] == 0
+        cur.execute(
+            "SELECT raw_text FROM requirement WHERE version_id=%s AND code='REQ-007'",
+            (versions[0]["id"],),
+        )
+        assert "冻结" in cur.fetchone()["raw_text"]
         cur.execute("SELECT sealed FROM version WHERE id=%s", (versions[0]["id"],))
         assert cur.fetchone()["sealed"] is True
         cur.execute("SELECT sealed FROM version WHERE id=%s", (versions[1]["id"],))

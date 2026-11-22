@@ -9,7 +9,7 @@
 - **v1.0**：申请 → 订单 → 收货过账即入库。模型里没有质检，也没有超收容差。
 - **v2.0**：从 v1.0 复制后再加上质检单、物料「需要质检」、超收容差，以及供应商必须合格才能下达。
 
-平台里 v1.0 已封板，需求是 REQ-001～REQ-012。v2.0 只登记 REQ-007～REQ-009 和 REQ-013～REQ-016。正文和还原命令见 [docs/demo-supply-chain.md](../../docs/demo-supply-chain.md)。
+平台里 v1.0 已封板，需求是 REQ-001～REQ-012（含正文）。v2.0 只登记 REQ-007～REQ-009 和 REQ-013～REQ-016，且只有编号、标题和优先级。还原命令见 [docs/demo-supply-chain.md](../../docs/demo-supply-chain.md)。
 
 ## 启动
 
