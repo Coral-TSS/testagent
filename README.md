@@ -97,7 +97,7 @@ docker compose up -d --build
 
 ## 供应链演示
 
-系统代码 `supply-chain`，名称「供应链执行（演示）」。v1.0 是申请到收货过账直接入库，没有质检、没有超收容差，需求是 REQ-001～REQ-012，种子写入后标记为已封板（模型和需求只读）。v2.0 复制 v1 的模型后再加上质检、`inspectionRequired`、超收容差（小数，`0.1` = 10%）和「合格供应商才能下达」。v2 只登记 REQ-007、REQ-008、REQ-009，以及 REQ-013～REQ-016，而且每条只有编号、标题和优先级。还原命令写在 [docs/demo-supply-chain.md](docs/demo-supply-chain.md)。示例应用说明：[examples/supply_chain/README.md](examples/supply_chain/README.md)。
+系统代码 `supply-chain`，名称「供应链执行（演示）」。v1.0 是申请到收货过账直接入库，没有质检、没有超收容差，需求是 REQ-001～REQ-012，种子写入后标记为已封板（模型和需求只读）。v2.0 复制 v1 的模型后再加上质检、`inspectionRequired`、超收容差（小数，`0.1` = 10%）和「合格供应商才能下达」。v2 只登记 REQ-007、REQ-008、REQ-009，以及 REQ-013～REQ-016，每条有编号、标题、优先级和正文，没有结构化引用。还原命令写在 [docs/demo-supply-chain.md](docs/demo-supply-chain.md)。示例应用说明：[examples/supply_chain/README.md](examples/supply_chain/README.md)。
 
 还原（默认只演练；`--apply` 清掉该系统的平台数据后重建，并保留系统行和环境）：
 

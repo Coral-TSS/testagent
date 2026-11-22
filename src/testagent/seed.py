@@ -589,23 +589,44 @@ REQ_008 = (
     "已取消或已关闭的订单不得收货。收货后，若尚未收齐则为部分收货，收齐则为已收货。"
 )
 REQ_009 = "草稿收货单可过账，过账后对应仓库中该物料的在库数量按收货数量增加，库存不得变为负数。"
-# v2 keeps the titles only. Bodies and structure stay empty.
+REQ_007_V2 = "已批准的采购订单可下达给供应商。供应商必须为合格。下达后订单为已下达，此后才允许收货。"
+REQ_008_V2 = (
+    "已下达或部分收货的订单可分次收货，收货数量必须大于 0。"
+    "累计收货数量不得超过订购数量 ×（1 + 该订单超收容差）。"
+    "已取消或已关闭的订单不得收货。收货后，若尚未收齐则为部分收货，收齐（在规则内）则为已收货。"
+)
+REQ_009_V2 = (
+    "若物料需要质检，则须质检合格后方可过账入库；质检不合格不得入库。"
+    "不需要质检的物料，草稿收货单可过账，过账后对应仓库中该物料的在库数量按收货数量增加，库存不得变为负数。"
+)
+# v2 keeps code, title, priority, and raw_text. Structure, refs, and people stay empty.
 V2_ONLY = {
-    "REQ-013": "物料质检要求",
-    "REQ-014": "创建质检单",
-    "REQ-015": "判定质检",
-    "REQ-016": "供应商准入",
+    "REQ-013": (
+        "物料质检要求",
+        "物料可标记为需要质检。需要质检的物料，其收货必须先创建质检单并给出合格或不合格结论，"
+        "才能按 REQ-009 决定是否入库。",
+    ),
+    "REQ-014": ("创建质检单", "未过账的收货单，若物料需要质检，可创建质检单，初始结论为待判定。"),
+    "REQ-015": (
+        "判定质检",
+        "待判定的质检单可判定为合格或不合格。合格后方允许该收货单过账入库；不合格则该收货单不得过账入库。",
+    ),
+    "REQ-016": ("供应商准入", "仅状态为合格的供应商可被下达采购订单。潜在供应商不能下达；冻结规则同时适用。"),
 }
 
 
 def _requirements(db, bus, version_id, idx, *, v2: bool) -> None:
     reqs = RequirementService(db, bus)
     if v2:
-        # Code, title, and priority only. No raw text, people, or structured refs.
-        rows = [(code, REQS[code][0]) for code in ("REQ-007", "REQ-008", "REQ-009")]
-        rows += list(V2_ONLY.items())
-        for code, title in rows:
-            reqs.create(version_id, {"code": code, "title": title, "priority": "P1"})
+        # Code, title, priority, and raw_text. No people or structured refs.
+        rows = [
+            ("REQ-007", REQS["REQ-007"][0], REQ_007_V2),
+            ("REQ-008", REQS["REQ-008"][0], REQ_008_V2),
+            ("REQ-009", REQS["REQ-009"][0], REQ_009_V2),
+        ]
+        rows += [(code, title, text) for code, (title, text) in V2_ONLY.items()]
+        for code, title, text in rows:
+            reqs.create(version_id, {"code": code, "title": title, "raw_text": text, "priority": "P1"})
         return
     nodes, fields, links = idx["nodes"], idx["fields"], idx["links"]
 
