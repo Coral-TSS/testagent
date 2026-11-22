@@ -79,9 +79,20 @@ def test_seed_versions_and_requirements(db):
             ("REQ-015", "判定质检"),
             ("REQ-016", "供应商准入"),
         ]
+        by_code = {r["code"]: r for r in v2_rows}
+        assert "合格" in by_code["REQ-007"]["raw_text"] and "冻结" not in by_code["REQ-007"]["raw_text"]
+        assert "超收容差" in by_code["REQ-008"]["raw_text"]
+        assert "质检合格" in by_code["REQ-009"]["raw_text"]
+        assert "才能按 REQ-009 决定是否入库" in by_code["REQ-013"]["raw_text"]
+        assert by_code["REQ-014"]["raw_text"] == "未过账的收货单，若物料需要质检，可创建质检单，初始结论为待判定。"
+        assert "不合格则该收货单不得过账入库" in by_code["REQ-015"]["raw_text"]
+        assert (
+            by_code["REQ-016"]["raw_text"]
+            == "仅状态为合格的供应商可被下达采购订单。潜在供应商不能下达；冻结规则同时适用。"
+        )
         for row in v2_rows:
             assert row["priority"] == "P1"
-            assert row["raw_text"] in (None, "")
+            assert row["raw_text"]
             assert row["status"] == "draft"
             assert not row["structured"]
             assert row["nodes"] == row["attrs"] == row["links"] == row["people"] == 0

@@ -86,10 +86,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
-- Supply-chain v2.0 seed and restore write only requirement code, title, and priority (P1)
-  for REQ-007, REQ-008, REQ-009, and REQ-013 through REQ-016. Raw text, structure, people,
-  and other detail fields stay empty. v1.0 is unchanged: sealed, with REQ-001 through REQ-012
-  and their existing bodies.
+- Supply-chain v2.0 seed and restore keep `raw_text` as well as code, title, and priority
+  (P1) for REQ-007, REQ-008, REQ-009 (v2 wording) and REQ-013 through REQ-016. Structured
+  parts, people, and model refs stay empty. v1.0 is unchanged: sealed, with REQ-001 through
+  REQ-012 and their existing bodies and structure.
 - Requirement structure sections (执行者, 前置条件, 动作, 预期结果, 约束) put the add
   button on the heading row, with a light divider above that row.
 - Model review is no longer a navigation or modeling-workflow entry. Bookmarked
