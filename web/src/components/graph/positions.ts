@@ -61,11 +61,16 @@ export function writeGraphPosition(id: string, point: Point, storage?: PositionS
 }
 
 export function clearGraphPosition(id: string, storage?: PositionStore) {
+  clearGraphPositions([id], storage);
+}
+
+/** Drop saved positions for these nodes so the next layout owns them again. */
+export function clearGraphPositions(ids: Iterable<string>, storage?: PositionStore) {
   const store = storeOf(storage);
   if (!store) return;
   try {
     const all = readObject(store);
-    delete all[id];
+    for (const id of ids) delete all[id];
     writeAll(store, all);
   } catch {
     /* Dragging still works when the browser refuses storage. */

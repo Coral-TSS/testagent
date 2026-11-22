@@ -14,14 +14,14 @@ import { blankEdge, blankField, blankLink, fieldBody, fillFromApis, linkBody, sa
 import { EditableTable } from "./panel/EditableTable";
 import { SideDetailPanel } from "./panel/SideDetailPanel";
 import { confirmDiscard, UnsavedNavigationGuard } from "./panel/UnsavedGuard";
+import { EDGE_ROLE_EN, EDGE_ROLE_ZH } from "./graph/edgeLabel";
 import { KIND_COLOR, KIND_LABEL } from "./StatusTags";
 
 const EDGE_ROLES = [
-  { value: "actor", label: "执行者" },
-  { value: "object", label: "对象" },
-  { value: "ref", label: "引用" },
+  { value: "object", label: EDGE_ROLE_ZH.object, title: EDGE_ROLE_EN.object },
+  { value: "ref", label: EDGE_ROLE_ZH.ref, title: EDGE_ROLE_EN.ref },
+  { value: "actor", label: EDGE_ROLE_ZH.actor, title: EDGE_ROLE_EN.actor },
 ];
-const ROLE_LABEL: Record<string, string> = { actor: "执行者", object: "对象", ref: "引用" };
 const REF_LABEL: Record<string, string> = { edge: "边", link: "关系", api: "API", requirement: "需求", case: "用例" };
 const ATTR_GROUPS = [
   ["conditions", "条件"],
@@ -597,11 +597,13 @@ function References({ draft, refs, others, onOpenNode, onChange }: {
         onRemove={(index) => onChange(draft.edges.filter((_, i) => i !== index))}
         removeLabel={() => "删除边"}
         columns={[
-          { title: "角色", width: 110, render: (row, index) => <Select style={{ width: "100%" }} value={row.role} options={EDGE_ROLES} onChange={(role) => update(index, { role })} /> },
+          { title: "角色", width: 200, render: (row, index) => <Select style={{ width: "100%" }} value={row.role} options={EDGE_ROLES} onChange={(role) => update(index, { role })} /> },
           { title: "节点", render: (row, index) => <Select showSearch optionFilterProp="label" style={{ width: "100%" }} value={row.target_id || undefined} options={others} onChange={(target_id) => update(index, { target_id })} /> },
         ]}
       />
-      <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>角色：{Object.values(ROLE_LABEL).join(" / ")}。保存后，边从当前节点指向所选节点。</Typography.Paragraph>
+      <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>
+        角色：{EDGE_ROLE_ZH.object} / {EDGE_ROLE_ZH.ref} / {EDGE_ROLE_ZH.actor}。图谱上这些边从动作指向实体，箭头在实体一端。效果里明确新建该实体时线上写「新建」，明确删除时写「删除」，否则写「修改」。
+      </Typography.Paragraph>
       <Typography.Text strong>被引用</Typography.Text>
       {refs.length ? (
         <Descriptions column={1} size="small" style={{ marginTop: 8 }}>
