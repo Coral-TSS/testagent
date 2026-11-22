@@ -22,10 +22,11 @@ export function RequirementDrawer(props: {
   reqId: string | null;
   sutId: string;
   locked: boolean;
+  sealed?: boolean;
   onClose: () => void;
   onOpenRun: (runId: string) => void;
 }) {
-  const { reqId, sutId, locked } = props;
+  const { reqId, sutId, locked, sealed } = props;
   const qc = useQueryClient();
   const { message, modal } = App.useApp();
   const [form] = Form.useForm();
@@ -133,7 +134,11 @@ export function RequirementDrawer(props: {
     >
       {r && (
         <>
-          {locked && <Alert type="info" showIcon style={{ marginBottom: 12 }} title="该版本的需求已冻结且只读。要修改请先解冻版本（必须填写原因）。" />}
+          {sealed ? (
+            <Alert type="info" showIcon style={{ marginBottom: 12 }} title="该版本已封板，需求只读。可以基于它新建版本。" />
+          ) : (
+            locked && <Alert type="info" showIcon style={{ marginBottom: 12 }} title="该版本的需求已冻结且只读。要修改请先解冻版本（必须填写原因）。" />
+          )}
           <Form name="requirement-detail" form={form} layout="vertical" disabled={!editable}>
             <Form.Item name="title" label="标题" rules={[{ required: true }]}>
               <Input />
@@ -173,7 +178,7 @@ export function RequirementDrawer(props: {
               <Typography.Text type="secondary">涉及关系： </Typography.Text>
               {r.links!.map((l) => (
                 <Tag key={`${l.part}:${l.link_id}`} color="volcano">
-                  <Link to={`/suts/${sutId}/review`}>{`${l.from_name} ${l.forward_name} ${l.to_name}`}</Link>
+                  <Link to={`/suts/${sutId}/model`}>{`${l.from_name} ${l.forward_name} ${l.to_name}`}</Link>
                 </Tag>
               ))}
             </Space>

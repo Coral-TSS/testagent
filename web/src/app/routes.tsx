@@ -17,7 +17,7 @@ import { ExecutionsPage } from "../pages/ExecutionsPage";
 import { RunPage } from "../pages/RunPage";
 import { TaskPage } from "../pages/TaskPage";
 import { ModelPage } from "../pages/ModelPage";
-import { ModelReviewPage } from "../pages/ModelReviewPage";
+import { RemovedReviewPage } from "../pages/RemovedReviewPage";
 import { PeopleStatsPage } from "../pages/PeopleStatsPage";
 import { PersonsPage } from "../pages/PersonsPage";
 import { ReportPage } from "../pages/ReportPage";
@@ -32,7 +32,7 @@ import { VersionsPage } from "../pages/VersionsPage";
 import { Layout } from "./Layout";
 
 /** Old system-scoped model URLs follow the current version. Without a version, go back to the overview. */
-function LegacyModelRedirect({ section }: { section: "model" | "review" | "apis" }) {
+function LegacyModelRedirect({ section }: { section: "model" | "apis" }) {
   const { sutId = "" } = useParams();
   const [params] = useSearchParams();
   const progress = useQuery({
@@ -72,10 +72,10 @@ export const routes: RouteObject[] = [
       { path: "suts", element: <SutsPage /> }, // P01
       { path: "suts/:sutId", element: <SutOverviewPage /> },
       { path: "suts/:sutId/model", element: <LegacyModelRedirect section="model" /> },
-      { path: "suts/:sutId/review", element: <LegacyModelRedirect section="review" /> },
+      { path: "suts/:sutId/review", element: <RemovedReviewPage /> },
       { path: "suts/:sutId/apis", element: <LegacyModelRedirect section="apis" /> },
       { path: "versions/:versionId/model", element: <ModelPage /> },
-      { path: "versions/:versionId/review", element: <ModelReviewPage /> },
+      { path: "versions/:versionId/review", element: <RemovedReviewPage /> },
       { path: "versions/:versionId/apis", element: <ApisPage /> },
       { path: "suts/:sutId/versions", element: <VersionsPage /> }, // P05
       { path: "versions/:versionId/strategy", element: <VersionSectionPage section="strategy" /> },

@@ -14,6 +14,7 @@ from testagent.services.changelog import log_change
 from testagent.services.guards import ensure_human
 from testagent.services.state import transition
 from testagent.services.suggestions import NODE_NAME_SQL, with_node_name
+from testagent.services.version_seal import SEALED_REQUIREMENTS, ensure_unsealed
 
 PARTS = ("actor", "condition", "action", "result", "constraint")
 ROLES = ("owner", "developer", "tester")
@@ -41,13 +42,15 @@ class RequirementService:
 
     def _req(self, cur, req_id, *, editable=False, lock=False) -> dict:
         cur.execute(
-            "SELECT r.*, v.status AS version_status, v.sut_id FROM requirement r"
+            "SELECT r.*, v.status AS version_status, v.sealed AS version_sealed, v.sut_id FROM requirement r"
             " JOIN version v ON v.id=r.version_id WHERE r.id=%s" + (" FOR UPDATE OF r" if lock else ""),
             (req_id,),
         )
         row = cur.fetchone()
         if row is None:
             raise AppError("NOT_FOUND", "Requirement not found")
+        if editable and row["version_sealed"]:
+            raise AppError("CONFLICT", SEALED_REQUIREMENTS)
         if editable and row["version_status"] != "planning":
             raise AppError(
                 "CONFLICT", "The version's requirements are frozen; unfreeze them first (with a reason) to change them"
@@ -187,6 +190,7 @@ class RequirementService:
     def create(self, version_id, data: dict[str, Any]) -> dict:
         with self.db.tx() as cur:
             version = self._version(cur, version_id, lock=True)  # serializes code allocation
+            ensure_unsealed(cur, version_id, SEALED_REQUIREMENTS)
             if version["status"] != "planning":
                 raise AppError("CONFLICT", "The version's requirements are frozen; no new requirements")
             code = data.get("code") or self._next_code(cur, version_id)

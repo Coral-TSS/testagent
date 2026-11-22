@@ -4,6 +4,7 @@ import { Alert, App, Button, Checkbox, Modal, Space, Switch, Tag, Tooltip, Typog
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import { EXECUTION_MODE_LABEL } from "../app/executionMode";
 import { api, describeError } from "../api/client";
 import type { RunVersionResult, RunnableTask } from "../api/types";
 
@@ -13,8 +14,8 @@ export const REASON_LABEL: Record<NonNullable<RunnableTask["reason"]>, string> =
   not_ready: "未设为就绪",
   no_environment: "无环境",
   no_ready_cases: "没有就绪用例",
+  browser_use: "Browser Use 尚未接入",
 };
-const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "已自动化", human: "手工" };
 
 /** Which rows can be ticked: runnable ones, plus drafts when "请先设为就绪" is on. */
 export function selectable(t: RunnableTask, setReady: boolean): boolean {
@@ -150,7 +151,7 @@ export function RunTasksModal({
         }}
         columns={[
           { title: "测试任务", dataIndex: "name", render: (n: string, t) => <Link to={`/tasks/${t.id}`}>{n}</Link> },
-          { title: "执行者", dataIndex: "executor", render: (e: string) => EXECUTOR[e] || e },
+          { title: "执行方式", dataIndex: "executor", render: (e: string) => EXECUTION_MODE_LABEL[e] || e },
           { title: "就绪用例", render: (_: unknown, t) => `${t.ready_cases}/${t.case_count}` },
           { title: "环境", dataIndex: "environment_name", render: (e: string | null) => e || "-" },
           {

@@ -18,6 +18,7 @@ from testagent.services.io_spec import (  # shared with action inputs/outputs
     DATA_TYPES,
     refresh_action_fields,
 )
+from testagent.services.version_seal import ensure_node_unsealed
 
 COLUMNS = (
     "a.id, a.sut_id, a.node_id, a.name, a.display_name, a.data_type, a.unit, a.constraints,"
@@ -216,6 +217,7 @@ class AttributeService:
             node = cur.fetchone()
             if node is None:
                 raise AppError("NOT_FOUND", "Node not found")
+            ensure_node_unsealed(cur, node_id)
             if node["kind"] != "entity":
                 raise AppError("VALIDATION", "Only entity nodes can have fields")
             self._check_type(cur, node["sut_id"], values)
@@ -257,6 +259,7 @@ class AttributeService:
         values = self._values(data)
         with self.db.tx() as cur:
             current = self._get(cur, attr_id, lock=True)
+            ensure_node_unsealed(cur, current["node_id"])
             if values.get("data_type", "") is None:
                 raise AppError("VALIDATION", "Field type is required", field_errors=[{"field": "data_type"}])
             self._check_type(cur, current["sut_id"], {**current, **values})
@@ -284,7 +287,8 @@ class AttributeService:
     def delete(self, attr_id, *, confirm: bool = False) -> dict:
         """Soft delete; a referenced field needs confirm=true (references are kept)."""
         with self.db.tx() as cur:
-            self._get(cur, attr_id, lock=True)
+            current = self._get(cur, attr_id, lock=True)
+            ensure_node_unsealed(cur, current["node_id"])
             refs = self._references(cur, attr_id)
             if refs and not confirm:
                 raise AppError(

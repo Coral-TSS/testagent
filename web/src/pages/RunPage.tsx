@@ -8,6 +8,7 @@ import { api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import { streamEvents } from "../api/sse";
 import type { RunExecution, TaskRun } from "../api/types";
+import { EXECUTION_MODE_LABEL } from "../app/executionMode";
 import { EXECUTOR_LABEL, ExecutionStatusTag, TaskRunStatusTag } from "../components/StatusTags";
 import { fmtTime } from "../utils/time";
 import { CorrectionButton } from "../components/CorrectionButton";
@@ -114,7 +115,7 @@ export function RunPage() {
           </Space>
         )}
         <Descriptions size="small" column={3}>
-          <Descriptions.Item label="执行者">{EXECUTOR_LABEL[r.executor] || r.executor}</Descriptions.Item>
+          <Descriptions.Item label="执行方式">{EXECUTION_MODE_LABEL[r.executor] || EXECUTOR_LABEL[r.executor] || r.executor}</Descriptions.Item>
           <Descriptions.Item label="开始">{r.started_at ? fmtTime(r.started_at, { seconds: true }) : "排队中"}</Descriptions.Item>
           <Descriptions.Item label="结束">{fmtTime(r.ended_at, { seconds: true })}</Descriptions.Item>
         </Descriptions>

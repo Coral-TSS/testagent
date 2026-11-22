@@ -259,6 +259,8 @@ export interface Version {
   sut_id: string;
   name: string;
   status: "planning" | "requirements_frozen" | "testing" | "closed";
+  /** Read-only baseline. Other versions of the same system stay editable. */
+  sealed?: boolean;
   frozen_at?: string | null;
   model_snapshot_id?: string | null;
   requirement_count?: number;
@@ -428,8 +430,9 @@ export interface AgentConfig {
 export interface Strategy {
   id: string;
   version_id: string;
-  scope?: string | null;
-  test_types: string[];
+  scope: string[];
+  /** Leftover column. The strategy form no longer edits it. */
+  test_types?: string[];
   intensity?: string | null;
   notes?: string | null;
   status: "draft" | "confirmed";
@@ -500,7 +503,7 @@ export interface RunnableTask {
   script_gaps: string[];
   script_gap_ids: string[];
   runnable: boolean;
-  reason: "running" | "no_cases" | "not_ready" | "no_environment" | "no_ready_cases" | null;
+  reason: "running" | "no_cases" | "not_ready" | "no_environment" | "no_ready_cases" | "browser_use" | null;
 }
 export interface RunVersionResult {
   started: { task_id: string; name: string; run_id: string }[];

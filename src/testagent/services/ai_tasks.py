@@ -541,10 +541,15 @@ class AiTaskService:
         return {**result, "requirement": reqs.detail(req_id), "suggestions": created}
 
     def complete_model(self, sut_id, version_id=None) -> dict:
+        from testagent.services.model_scope import AUTO, resolve_version
+        from testagent.services.version_seal import SEALED_MODEL, ensure_unsealed
+
         with self.db.tx() as cur:
             cur.execute("SELECT 1 FROM sut WHERE id=%s", (sut_id,))
             if cur.fetchone() is None:
                 raise AppError("NOT_FOUND", "SUT not found")
+            chosen = resolve_version(cur, sut_id, AUTO if version_id is None else version_id)
+            ensure_unsealed(cur, chosen, SEALED_MODEL)
         inputs = {
             "sut_id": str(sut_id),
             "version_id": str(version_id) if version_id else None,

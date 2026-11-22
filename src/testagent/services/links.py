@@ -18,6 +18,7 @@ from testagent.core.actor import current_actor
 from testagent.core.errors import AppError
 from testagent.core.events import EventBus
 from testagent.services.changelog import log_change
+from testagent.services.version_seal import ensure_unsealed
 
 CARDINALITIES = ("one_to_one", "many_to_one", "one_to_many", "many_to_many")
 CARD_TEXT = {"one_to_one": "1:1", "many_to_one": "N:1", "one_to_many": "1:N", "many_to_many": "M:N"}
@@ -362,6 +363,7 @@ class LinkService:
 
         if not same_version(version_id, other):
             raise AppError("VALIDATION", "Both ends of a link must belong to the same version")
+        ensure_unsealed(cur, version_id)
         values = {k: (str(v) if k.endswith("_id") and v else v) for k, v in link.items()}
         cols = ", ".join(values)
         cur.execute(
@@ -376,6 +378,7 @@ class LinkService:
     def update(self, link_id, data: dict) -> dict:
         with self.db.tx() as cur:
             current = self._get(cur, link_id, lock=True)
+            ensure_unsealed(cur, current["version_id"])
             merged = {k: current[k] for k in FIELDS}
             merged.update({k: data[k] for k in FIELDS if k in data})
             if merged["cardinality"] == "many_to_many":
@@ -399,7 +402,8 @@ class LinkService:
 
     def delete(self, link_id, *, confirm: bool = False) -> dict:
         with self.db.tx() as cur:
-            self._get(cur, link_id, lock=True)
+            current = self._get(cur, link_id, lock=True)
+            ensure_unsealed(cur, current["version_id"])
             refs = self._references(cur, link_id)
             if refs and not confirm:
                 raise AppError(

@@ -68,7 +68,6 @@ export function SutsPage() {
             render: (_, row) => (
               <Space>
                 <Link to={`/suts/${row.id}/model`}>模型</Link>
-                <Link to={`/suts/${row.id}/review`}>评审</Link>
                 <Popconfirm title="要删除该被测系统吗？" onConfirm={() => remove.mutate(row.id)}>
                   <a>删除</a>
                 </Popconfirm>

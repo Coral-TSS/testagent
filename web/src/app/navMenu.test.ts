@@ -6,7 +6,7 @@ describe("menuSelection", () => {
     expect(menuSelection("/suts/s1", "")).toBe("sut-overview");
     expect(menuSelection("/suts/s1/model", "")).toBe("model-graph");
     expect(menuSelection("/versions/v1/model", "")).toBe("model-graph");
-    expect(menuSelection("/versions/v1/review", "")).toBe("model-review");
+    expect(menuSelection("/versions/v1/review", "")).toBe("");
     expect(menuSelection("/versions/v1/apis", "")).toBe("model-apis");
     expect(menuSelection("/suts/s1/versions", "")).toBe("sut-requirements");
     expect(menuSelection("/versions/v1", "")).toBe("sut-requirements");
@@ -20,13 +20,13 @@ describe("menuSelection", () => {
     expect(menuSelection("/versions/v1", "?tab=cases")).toBe("sut-cases");
   });
 
-  it("highlights the scoped execution entry only when a system is in context", () => {
+  it("keeps executions and defects on the cross-system entries", () => {
     expect(menuSelection("/executions", "")).toBe("global-executions");
-    expect(menuSelection("/executions", "?sut_id=s1")).toBe("sut-executions");
-    expect(menuSelection("/runs/r1", "", "s1")).toBe("sut-executions");
+    expect(menuSelection("/executions", "?sut_id=s1")).toBe("global-executions");
+    expect(menuSelection("/runs/r1", "", "s1")).toBe("global-executions");
     expect(menuSelection("/runs/r1", "")).toBe("global-executions");
     expect(menuSelection("/defects", "")).toBe("global-defects");
-    expect(menuSelection("/defects/d1", "", "s1")).toBe("sut-defects");
+    expect(menuSelection("/defects/d1", "", "s1")).toBe("global-defects");
     expect(menuSelection("/reports/p1", "?sut_id=s1")).toBe("global-reports");
     expect(menuSelection("/persons", "")).toBe("persons");
     expect(menuSelection("/agent/tools", "")).toBe("agent-tools");

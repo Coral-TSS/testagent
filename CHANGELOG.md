@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Supply-chain demo v1.0 is sealed after seed or restore (`version.sealed`). Its model and
+  requirements are read-only and marked 已封板. Creating a later version from it still copies
+  the model. v2.0 keeps that copied model and only the delta requirements REQ-007, REQ-008,
+  REQ-009, REQ-013, REQ-014, REQ-015 and REQ-016.
+- Supply-chain API registry rows now store request and response parameters for every seeded
+  endpoint, including the v2 inspection calls.
+- Task execution mode 执行方式 adds AI 执行（Browser Use）. It can be selected, but this
+  repository has no Browser Use runner, so starting such a task is refused.
+
 - End-to-end cases (phase 3): code derives chains where one action's effect satisfies the
   next action's precondition (create → approve → record payment on the procurement demo).
   The model writes those cross-requirement cases. They hang on the version (and its
@@ -77,34 +86,44 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
-- Docs: [docs/demo-supply-chain.md](docs/demo-supply-chain.md) records the supply-chain demo (v1.0 / v2.0
-  and the fixed REQ-001–REQ-016 text as seeded) and the `ops/restore_supply_chain.py` commands.
-  The README is Simplified Chinese and matches the current product.
+- Model review is no longer a navigation or modeling-workflow entry. Bookmarked
+  `/versions/:id/review` and `/suts/:id/review` URLs show a short dead-end. The review API
+  and stored marks remain.
+- Sidebar: 当前系统 is a first-level menu (same weight as 全部被测系统). Its children are
+  概览, 建模, 版本与需求, 策略, 任务 and 用例, with the system and version switchers inside
+  that submenu. 执行 and 缺陷 stay cross-system top-level entries only.
+- Strategy no longer asks for 测试类型. 范围 is a multi-select of 需求, 缺陷回归, 主要流程
+  and 性能. Existing free-text scopes are mapped when the text clearly matches one of those
+  (需求/requirement, 缺陷/回归/defect/regression, 主要流程/主流程/冒烟/smoke/main flow,
+  性能/performance); anything else is left empty and must be chosen again on the next save.
+  Stored `test_types` values are left in place and ignored.
+- The task field previously labeled 执行者 is 执行方式: AI 执行（Playwright）, AI 执行（Browser Use）,
+  自动化用例, 人工执行. Stored values `agent`, `automation` and `human` keep their runners.
+- Docs: [docs/demo-supply-chain.md](docs/demo-supply-chain.md) records the sealed v1.0 requirements
+  (REQ-001–REQ-012) and the v2.0 delta (REQ-007–REQ-009, REQ-013–REQ-016), plus the
+  `ops/restore_supply_chain.py` commands. The README is Simplified Chinese and matches the current product.
 - Model graph: actions sit with the entities they are connected to, instead of one row under
   every entity. Nodes can be dragged; a position a person has moved is remembered in the
   browser (`testagent:graph-node-positions`). **重排** runs that layout again and forgets
   those saved positions. Action lines run from the action to the entity. Their labels are
   修改, or 新建 / 删除 when the action's effects create or delete that entity, plus 读取 and
   执行人. Relation lines and action lines are both solid curves: relations `#d46b08`, actions `#0958d9`.
-- The bundled demo is the supply-chain system (`supply-chain`, 供应链执行（演示）), with v1.0 and
-  v2.0 models and the fixed requirements REQ-001–REQ-016. `ops/restore_supply_chain.py` rebuilds
+- The bundled demo is the supply-chain system (`supply-chain`, 供应链执行（演示）). `ops/restore_supply_chain.py` rebuilds
   it. The procurement demo is removed.
-- Models belong to a version. Graph, review and the fields, links and action rules they
+- Models belong to a version. The graph and the fields, links and action rules they
   use are read and written for that version. Creating a later version copies the source
   version's model (nodes, fields, links, edges, action rules and API bindings); the first
   version starts empty, unless nodes were saved before any version existed, in which case
   that first version adopts them. API definitions stay registered on the system.
-- Sidebar: 「全部被测系统」 is its own top-level entry. After a system is open, the current
-  system and version switchers and the workflow (including 建模) stay in a current-system
-  area. Modeling follows the current version (`/versions/:id/model`, `/review`, `/apis`);
+- Modeling follows the current version (`/versions/:id/model`, `/apis`);
   the old `/suts/:id/model` routes redirect there, or back to the overview when there is
-  no version yet.
+  no version yet. `/suts/:id/review` and `/versions/:id/review` are a dead-end.
 - `generate_cases` no longer injects whole-system `action_summaries`, `link_summaries` or
   `api_summaries` into the prompt. Details are read with tools inside the requirement's scope.
   This is a breaking change for clients that depended on those prompt sections.
 - API registry, requirement and relation editors share one save action. The API registry uses the same docked panel for the description and the field tables. Dialogs use 520 / 720 / 960. Leftover English chrome (create/edit titles, linked cases, version names, strategy depth, task form labels, duplicate hints) is Simplified Chinese.
 - A model node opens in a docked panel beside the graph (no mask, default 520px, resizable, same remembered width). The graph fills the viewport, and dragging from one node to another drafts a relation between entities or an edge otherwise. Fields, inputs and outputs, conditions, states, constraints, preconditions, effects and relations are inline tables; one **保存** writes the whole panel, including API bindings and edges. The old data schema is read-only under 高级.
-- The left navigation no longer adds a group named after the system under test. It stays fixed: **被测系统** (switcher, then overview, version and requirements, strategy, tasks, cases, executions, defects), **建模** (graph, review, API registry), cross-system executions, defects and test reports, then people, agent and users. Strategy and tasks have their own routes (`/versions/{id}/strategy`, `/versions/{id}/tasks`); `?tab=strategy` and `?tab=tasks` redirect. `/cases` redirects to the current system's cases, or to the system list. The menu highlights the workflow stage. Progress paths follow the same routes; step keys are unchanged.
+- Strategy and tasks have their own routes (`/versions/{id}/strategy`, `/versions/{id}/tasks`); `?tab=strategy` and `?tab=tasks` redirect. `/cases` redirects to the current system's cases, or to the system list. The menu highlights the workflow stage. Progress paths follow the same routes; step keys are unchanged.
 - The web UI and the agent's default output language are now Simplified Chinese (Ant Design `zh_CN`, `index.html` `lang="zh-CN"`, and `TESTAGENT_AGENT_LANGUAGE` defaulting to `Simplified Chinese`). Set `TESTAGENT_AGENT_LANGUAGE` to override the agent language (for example `English`).
 - The default `UV_IMAGE` is now the Nanjing University GHCR mirror (`ghcr.nju.edu.cn/astral-sh/uv:0.13`). Set `UV_IMAGE=ghcr.io/astral-sh/uv:0.13` in `.env` to use the official GitHub Container Registry.
 - Leftover English UI chrome from the first Simplified Chinese pass is now translated (stepper, SUT overview, model graph/list/relations/review, API registry, cases, people, reports, and related toasts/help). `TESTAGENT_AGENT_LANGUAGE` in `docker-compose.yml` now also defaults to `Simplified Chinese` (it previously still defaulted to `English`).

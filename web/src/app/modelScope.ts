@@ -14,5 +14,5 @@ export function usePageSut() {
     retry: false,
   });
   const sutId = fromPath || version.data?.sut_id || "";
-  return { sutId, versionId, ready: Boolean(sutId) };
+  return { sutId, versionId, ready: Boolean(sutId), version: version.data, sealed: Boolean(version.data?.sealed) };
 }

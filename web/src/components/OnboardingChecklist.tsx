@@ -12,10 +12,10 @@ const ICON: Record<StepStatus, React.ReactNode> = {
 const TEXT: Record<StepStatus, string> = { done: "已完成", doing: "进行中", todo: "未开始" };
 const WHY: Record<string, string> = {
   sut: "登记被测系统的地址（环境）；平台在执行前会检查其是否可达",
-  model: "描述业务对象、动作和关系；AI 据此生成用例和脚本。完成后请在“模型评审”中逐项检查",
+  model: "描述业务对象、动作和关系；AI 据此生成用例和脚本",
   requirements: "创建版本，录入并确认需求，然后冻结（会生成模型快照）",
-  strategy: "确定测试范围、类型和深度",
-  tasks: "把用例编成任务，选择执行器和环境，必要时设置调度",
+  strategy: "确定测试范围和深度",
+  tasks: "把用例编成任务，选择执行方式和环境，必要时设置调度",
   cases: "用 AI 或手工生成用例；由人评审并设为就绪；AI 可以生成自动化脚本",
   runs: "执行任务，并查看每个用例的结果、截图和断言",
   results: "处理失败产生的缺陷（关联到需求、归因到人员）并阅读报告",

@@ -1,6 +1,6 @@
 import { FileTextOutlined, LockOutlined, PlusOutlined, RobotOutlined, UnlockOutlined } from "@ant-design/icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Tabs, Tag, Timeline } from "antd";
+import { Alert, App, Button, Card, Descriptions, Form, Input, Modal, Select, Space, Tabs, Tag, Timeline } from "antd";
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
@@ -98,7 +98,8 @@ export function VersionPage() {
 
   const [runTasks, setRunTasks] = useState(false);
   const v = version.data;
-  const locked = Boolean(v && v.status !== "planning");
+  const sealed = Boolean(v?.sealed);
+  const locked = Boolean(v && (v.status !== "planning" || sealed));
   const tab = params.get("tab");
   if (tab === "strategy" || tab === "tasks") {
     const next = new URLSearchParams(params);
@@ -109,17 +110,27 @@ export function VersionPage() {
   return (
     <>
       {v && <RunTasksModal open={runTasks} versionId={v.id} startTesting={v.status === "requirements_frozen"} onClose={() => setRunTasks(false)} onDone={refreshVersion} />}
+      {sealed && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title="已封板"
+          description="该版本已封板，模型和需求只读。可以基于它新建版本。"
+        />
+      )}
       <Card style={{ marginBottom: 16 }} loading={version.isLoading}>
         {v && (
           <Descriptions
             title={
               <Space>
                 版本 {v.name} <VersionStatusTag status={v.status} />
+                {sealed && <Tag color="gold">已封板</Tag>}
               </Space>
             }
             extra={
               <Space>
-                {v.status === "planning" && (
+                {v.status === "planning" && !sealed && (
                   <Button
                     type="primary"
                     icon={<LockOutlined />}
@@ -199,14 +210,14 @@ export function VersionPage() {
                               label: "AI 结构化",
                               run: (id: string) => api(`/requirements/${id}/structure`, { method: "POST" }),
                             },
+                            {
+                              key: "confirm",
+                              label: "确认",
+                              primary: true,
+                              confirm: `要确认所选的 ${reqSel.length} 条需求吗？（只有已结构化的需求可以确认）`,
+                              run: (id: string) => api(`/requirements/${id}/confirm`, { method: "POST" }),
+                            },
                           ]),
-                      {
-                        key: "confirm",
-                        label: "确认",
-                        primary: true,
-                        confirm: `要确认所选的 ${reqSel.length} 条需求吗？（只有已结构化的需求可以确认）`,
-                        run: (id: string) => api(`/requirements/${id}/confirm`, { method: "POST" }),
-                      },
                       ...(locked
                         ? []
                         : [
@@ -265,7 +276,7 @@ export function VersionPage() {
               label: listTitle("模型建议", suggestions.data?.length),
               children: (
                 <>
-                  <Button icon={<RobotOutlined />} loading={complete.isPending} disabled={!sutId} onClick={() => complete.mutate()} style={{ marginBottom: 12 }}>
+                  <Button icon={<RobotOutlined />} loading={complete.isPending} disabled={!sutId || sealed} onClick={() => complete.mutate()} style={{ marginBottom: 12 }}>
                     AI 补全模型
                   </Button>
                   <SuggestionList
@@ -313,6 +324,7 @@ export function VersionPage() {
         reqId={params.get("req")}
         sutId={sutId}
         locked={locked}
+        sealed={sealed}
         onClose={() => setParam("req", null)}
         onOpenRun={(id) => setParam("run", id)}
       />

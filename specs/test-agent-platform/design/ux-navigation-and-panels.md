@@ -17,23 +17,20 @@
 一级顺序：
 
 1. **全部被测系统**（独立一级，始终可点）→ `/suts`。这是管理系统、进入某个系统的入口，不再嵌在可变形的子菜单里，也不再在选中系统后被挤到底部。
-2. **当前系统区**（仅当已经进入某个被测系统时显示，不是会把第 1 项吃掉的一级）：
+2. **当前系统**（一级菜单，字重与「全部被测系统」相同。未选系统时子项禁用并提示「请先选择被测系统」）：
    - 顶部是**当前系统切换**和**当前版本切换**，与顶栏选择器同步。从这里就能换系统、换版本。
    - 其下按工作流程排列，全部属于当前系统（及当前版本，若该页依赖版本）：
      - 概览 → `/suts/:sutId`
-     - **建模**（子项，跟随当前版本；没有版本时三项都禁用，提示「请先创建版本」）
+     - **建模**（子项，跟随当前版本；没有版本时禁用，提示「请先创建版本」）
        - 模型图谱 → `/versions/:versionId/model`
-       - 模型评审 → `/versions/:versionId/review`
        - API 注册表 → `/versions/:versionId/apis`
      - 版本与需求 → `/versions/:versionId`
      - 策略 → `/versions/:versionId/strategy`
      - 任务 → `/versions/:versionId/tasks`
      - 用例 → `/suts/:sutId/cases?version_id=`
-     - 执行 → `/executions?sut_id=&version_id=`
-     - 缺陷 → `/defects?sut_id=&version_id=`
    - 版本与需求、策略、任务、建模在没有版本时禁用，提示「请先创建版本」。创建版本仍从概览的「管理版本 / 新建版本」和步骤条进入 `/suts/:id/versions`。
-   - 未进入任何系统时不显示当前系统区，建模也不作为孤立的一级菜单。
-3. **执行**、**缺陷**：保留跨系统的一级入口（不带系统参数，页面内可筛选，默认全部系统）。当前系统区里的同名项是当前系统的范围。
+   - 未进入任何系统时「当前系统」仍在，子项禁用。书签打开的 `/versions/:id/review` 与 `/suts/:id/review` 只显示「模型评审已移除」。
+3. **执行**、**缺陷**：只保留跨系统的一级入口（不带系统参数，页面内可筛选，默认全部系统）。不在「当前系统」下重复。
 4. **测试报告**：仍是一级，跨系统，页面内筛选。
 5. 分组 **人员**（人员、人员统计）、**Agent**（设置、运行、工具）、**用户**（仅管理员）。
 
@@ -46,11 +43,12 @@
 | 路径 | 页面 |
 |---|---|
 | `/versions/:versionId/model` | 模型图谱（当前版本） |
-| `/versions/:versionId/review` | 模型评审（当前版本） |
+| `/versions/:versionId/review` | 模型评审已移除（死路，不是菜单项） |
 | `/versions/:versionId/apis` | API 注册表（在当前版本上下文打开；接口仍按系统登记） |
 | `/versions/:versionId/strategy` | 策略（原策略页签上半） |
 | `/versions/:versionId/tasks` | 任务列表与新建任务 |
-| `/suts/:sutId/model`、`/review`、`/apis` | 重定向到当前版本的对应页；没有版本则回到概览 |
+| `/suts/:sutId/model`、`/apis` | 重定向到当前版本的对应页；没有版本则回到概览 |
+| `/suts/:sutId/review` | 模型评审已移除 |
 | `/versions/:versionId?tab=strategy` | 重定向到 `/strategy`，其余查询参数保留 |
 | `/versions/:versionId?tab=tasks` | 重定向到 `/tasks` |
 | `/cases` | 重定向，见上 |
@@ -68,10 +66,9 @@
 | `sut-strategy` | `/versions/:id/strategy` 或旧的 `?tab=strategy` |
 | `sut-tasks` | `/versions/:id/tasks`、`/tasks/:id` |
 | `sut-cases` | `/suts/:id/cases`、`/cases/:id`、版本页 `?tab=cases` |
-| `sut-executions` | 执行列表带了 `sut_id`，或执行/运行详情且已解析出当前系统 |
-| `global-executions` | `/executions` 不带系统，或详情尚不知道系统 |
-| 缺陷 | 与执行同一规则，键为 `sut-defects` / `global-defects` |
-| `model-graph` / `model-review` / `model-apis` | `/versions/:id/model`、`/review`、`/apis`（旧的 `/suts/:id/model` 等在重定向前也算） |
+| `global-executions` | `/executions`、`/runs/:id`（不再按系统另开一项） |
+| `global-defects` | `/defects` 与缺陷详情 |
+| `model-graph` / `model-apis` | `/versions/:id/model`、`/apis`（旧的 `/suts/:id/model` 等在重定向前也算） |
 | `global-reports` | `/reports` 与报告详情 |
 | `sut-list` 及人员、Agent、用户 | 对应列表页 |
 

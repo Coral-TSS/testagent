@@ -382,6 +382,9 @@ class SuggestionService:
         model = ModelService(self.db, self.bus, self.actor)
         with self.db.tx() as cur:
             sugg = self._pending(cur, sugg_id)
+            from testagent.services.version_seal import SEALED_MODEL, ensure_unsealed
+
+            ensure_unsealed(cur, sugg.get("version_id"), SEALED_MODEL)
         note = str(overrides.get("note") or "").strip()
         if sugg.get("source") == "ai_inferred" and len(note) < 5:
             raise AppError(
@@ -531,12 +534,12 @@ class SuggestionService:
     def _backfill(cur, requirement_id, payload: dict, node: dict, field: dict | None, link=None) -> bool:
         """Link the new node to the requirement part it was missing from (planning only)."""
         cur.execute(
-            "SELECT r.id, r.structured, v.status FROM requirement r JOIN version v"
+            "SELECT r.id, r.structured, v.status, v.sealed FROM requirement r JOIN version v"
             " ON v.id=r.version_id WHERE r.id=%s FOR UPDATE OF r",
             (requirement_id,),
         )
         req = cur.fetchone()
-        if req is None or req["status"] != "planning":
+        if req is None or req["sealed"] or req["status"] != "planning":
             return False
         part = payload["part"]
         cur.execute(

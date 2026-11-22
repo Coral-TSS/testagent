@@ -13,8 +13,6 @@ import { RunTasksModal } from "./RunTasksModal";
 import { DefectsPage } from "../pages/DefectsPage";
 import { ExecutionsPage } from "../pages/ExecutionsPage";
 import { ModelPage } from "../pages/ModelPage";
-import { ModelReviewPage } from "../pages/ModelReviewPage";
-import { review } from "../test/navigationFixtures";
 import { ReportsPage } from "../pages/ReportsPage";
 import { SutsPage } from "../pages/SutsPage";
 import { VersionsPage } from "../pages/VersionsPage";
@@ -126,14 +124,6 @@ describe("remaining list consistency", () => {
     expect(screen.queryByText("Payment")).toBeNull();
   });
 
-  it("keeps every model review field in the document for printing", async () => {
-    const entity = review.entities[0];
-    const fields = Array.from({ length: 51 }, (_, i) => ({ ...entity.fields[0], id: `f${i + 1}`, name: `f_${i + 1}`, display_name: `Field_${i + 1}` }));
-    mockFetch({ "GET /suts/s1/model-review": () => ({ body: { ...review, entities: [{ ...entity, fields }], links: [], actions: [] } }) });
-    renderPage(<ModelReviewPage />, { path: "/suts/:sutId/review", route: "/suts/s1/review" });
-    expect(await screen.findByText(/Field_51/)).toBeTruthy();
-    expect(screen.getByText("共 51 条")).toBeTruthy();
-  });
 });
 
 

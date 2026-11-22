@@ -36,6 +36,7 @@ export function LinkEditor({
   entities,
   fields,
   onClose,
+  readOnly = false,
 }: {
   sutId: string;
   open: boolean;
@@ -44,6 +45,7 @@ export function LinkEditor({
   entities: ModelNode[];
   fields: EntityField[];
   onClose: () => void;
+  readOnly?: boolean;
 }) {
   const [form] = Form.useForm<Values>();
   const qc = useQueryClient();
@@ -134,12 +136,15 @@ export function LinkEditor({
   return (
     <AppModal
       size="md"
-      title={link ? "编辑关系" : "新建关系"}
+      title={readOnly ? "查看关系" : link ? "编辑关系" : "新建关系"}
       help="用一句话写清谁和谁是什么关系，两个方向都要能读。"
       open={open}
       onCancel={onClose}
       forceRender
       footer={
+        readOnly ? (
+          <Button onClick={onClose}>关闭</Button>
+        ) : (
         <Space>
           {link && (
             <Button danger onClick={() => remove(false)}>
@@ -151,6 +156,7 @@ export function LinkEditor({
             保存
           </Button>
         </Space>
+        )
       }
     >
       <Alert
@@ -167,6 +173,7 @@ export function LinkEditor({
       <Form
         form={form}
         layout="vertical"
+        disabled={readOnly}
         onFinish={(values) =>
           save.mutate({
             ...values,

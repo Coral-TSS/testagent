@@ -22,7 +22,7 @@ export function SutExplainer({ repoPath, closable }: { repoPath?: string | null;
             </li>
             <li>
               <b>模型</b>：系统中有哪些业务对象（实体，例如 PurchaseOrder）、可以做什么（动作，例如 Approve purchase order）以及对象如何关联（例如 PurchaseOrder belongs to Supplier）。AI
-              会基于模型生成用例和自动化脚本，因此需要由人评审（见“模型评审”）。
+              会基于模型生成用例和自动化脚本。
             </li>
             <li>
               <b>版本</b>：每次要测的一批需求。需求确认并冻结后，再创建测试策略和任务，生成并执行用例，然后查看缺陷和报告。

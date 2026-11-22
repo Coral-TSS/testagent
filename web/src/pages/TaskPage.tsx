@@ -14,6 +14,7 @@ import { browserTimezone, fmtTime } from "../utils/time";
 import { objLabel } from "../components/ObjLink";
 import { TaskRuleCard } from "../components/TaskRuleCard";
 import { MissingScriptsModal } from "../components/MissingScriptsModal";
+import { BROWSER_USE_HINT, EXECUTION_MODE_OPTIONS } from "../app/executionMode";
 import { CATEGORY_COLOR, CATEGORY_LABEL, KIND_LABEL } from "../utils/categories";
 
 type ScheduleKind = "none" | "once" | "cron";
@@ -144,20 +145,24 @@ export function TaskPage() {
                 </Tooltip>
               )}
               {t.status === "draft" && <Button onClick={() => setStatus.mutate({ status: "ready" })}>设为就绪</Button>}
-              <Button type="primary" disabled={!STARTABLE.has(t.status)} loading={start.isPending} onClick={() => start.mutate(false)}>
-                立即执行
-              </Button>
+              <Tooltip title={t.executor === "browser_use" ? BROWSER_USE_HINT : undefined}>
+                <span>
+                  <Button type="primary" disabled={!STARTABLE.has(t.status) || t.executor === "browser_use"} loading={start.isPending} onClick={() => start.mutate(false)}>
+                    立即执行
+                  </Button>
+                </span>
+              </Tooltip>
             </Space>
           }
         >
           <Form layout="inline" style={{ marginBottom: 12 }}>
-            <Form.Item label="执行者">
+            <Form.Item label="执行方式" extra={t.executor === "browser_use" ? BROWSER_USE_HINT : undefined}>
               <Select
-                style={{ width: 120 }}
+                style={{ width: 220 }}
                 value={t.executor}
                 disabled={!editable}
                 onChange={(executor) => patch.mutate({ executor })}
-                options={Object.entries({ agent: "Agent", automation: "已自动化", human: "手工" }).map(([value, label]) => ({ value, label }))}
+                options={EXECUTION_MODE_OPTIONS.map((item) => ({ value: item.value, label: item.label }))}
               />
             </Form.Item>
             <Form.Item label="环境">
