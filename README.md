@@ -1,214 +1,129 @@
 # TestAgent
 
-Current develop documentation: [specification, architecture, plan and task status](specs/test-agent-platform/README.md). The latest recorded regression (2026-11-07) has 478 backend passes, one platform-specific skip and 167 frontend passes; real-model quality and deployment acceptance are tracked separately.
+基于本体模型的 AI 测试开发平台。把被测系统写成实体、动作、关系和字段，需求挂在这份模型上，Agent 在需求划定的范围内起草用例和 Playwright 脚本。确认、冻结、设为就绪、接受建议这些关口由人来做。
 
-English | [中文](README.zh.md)
+界面是简体中文。部署和运维的英文说明在 [docs/deployment.md](docs/deployment.md)。
 
-**An ontology-driven, agent-assisted functional test platform.** Describe your system as a small
-ontology model (entities, actions, links, fields), write requirements against it, and let an LLM agent
-draft the test strategy, test cases and runnable Playwright/pytest scripts. People stay in charge at
-every gate: they confirm, review and set things ready, the agent does the legwork.
-
-![status](https://img.shields.io/badge/status-v0.1%20initial%20release-orange)
-[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![issues](https://img.shields.io/github/issues/Coral-TSS/testagent)](https://github.com/Coral-TSS/testagent/issues)
+![license](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![python](https://img.shields.io/badge/python-3.12-blue)
 ![postgres](https://img.shields.io/badge/PostgreSQL-17-336791)
 
-![TestAgent demo: model → AI cases → self-checked script → run → AI defect → report](docs/assets/demo.gif)
+## 能做什么
 
-> The demo above runs the real UI against the bundled demo app, with a scripted (deterministic) model
-> standing in for the LLM so the recording is reproducible. A real model uses the same platform flow, but output quality and defect detection require separate validation.
+- **被测系统与版本**：一个系统下有多个版本。每个版本有自己的模型（节点、字段、关系、边、动作规则）。新建后续版本时复制来源版本，之后两边分开改。接口定义仍登记在系统上。
+- **建模**：图谱把实体和它相关的实体、动作放在一起，节点可拖动，位置记在浏览器里。「重排」按当前关系重新布局并丢掉已拖动的位置。动作到实体的线是实心曲线：作用对象标「修改」，效果明确新建或删除该实体时标「新建」或「删除」，只读引用标「读取」，执行人标「执行人」。实体之间的关系是另一种颜色的实心曲线。另有列表、模型评审（可导出）和 API 注册表（可从 OpenAPI 导入）。
+- **需求**：对照当前版本的模型来写。可以 AI 结构化，条目指向模型节点、字段和关系。确认后可冻结，并留下模型快照。
+- **用例**：按单条需求生成。生成前要确认范围预览；生成后覆盖目标必须被用例打到，或由人确认放弃。一条动作的效果若满足下一条动作的前置条件，可以生成跨需求的端到端用例。用例设为就绪后才会进入自动执行。
+- **执行**：pytest 与 Playwright 脚本、Agent 按步骤驱动浏览器或调用接口，以及手工记录结果。任务可以定时跑。
+- **缺陷与报告**：失败执行可以建缺陷或做原因分析。报告按任务、版本汇总。
+- **账号**：角色 `admin` / `member`。只有管理员能改 Agent 模型设置、环境启动命令和用户。
 
-> **Status: actively developed, single-instance platform.** See the current develop documentation above for capabilities and verification limits.
-> Feedback, bug reports and ideas are welcome. Please
-> [open an issue](https://github.com/Coral-TSS/testagent/issues).
+不配置大模型时，建模、手写用例、脚本执行、缺陷和报告仍然可用。Agent 的输出语言默认简体中文。
 
----
+## 导航
 
-## Why ontology-driven testing?
+左侧菜单：
 
-Most "AI writes your tests" tools prompt a model with a page or a spec and hope for the best. The output
-is hard to review, hard to measure and drifts with every prompt. TestAgent puts a **shared model of the
-business domain** in the middle:
+- **全部被测系统**：系统列表。
+- **当前系统**（进入某个系统后）：切换系统和版本，然后是概览、建模（模型图谱、模型评审、API 注册表）、版本与需求、策略、任务、用例、执行、缺陷。还没有版本时，建模和版本相关入口不可用。
+- **跨系统**：执行、缺陷、测试报告。
+- **人员**（人员、人员统计）、**Agent**（设置、运行、工具），管理员另有**用户**。
 
-- **Entities** (PurchaseOrder, Supplier, Payment) with typed **fields** (`amount_minor`, `state`, …)
-- **Actions** (Create purchase order, Approve, Record payment) with **preconditions and effects**
-  (`PurchaseOrder.state == pending` → `state → approved | rejected`) and the **APIs** that implement them
-- **Links** between entities with direction, readings and **cardinality** (Payment *pays* PurchaseOrder, N:1)
+## 技术栈
 
-Everything hangs off this model:
+- 后端：Python 3.12、FastAPI、PostgreSQL 17。Agent 运行时用 LangGraph，调用 OpenAI 兼容接口。
+- 前端：React、Ant Design、Vite。
+- 执行：pytest、Playwright（无头 Chromium）。生成的脚本在每个被测系统自己的 git 测试仓里。
 
-| Without a model | With the ontology model |
+## 仓库布局
+
+| 路径 | 内容 |
 |---|---|
-| Requirements are free text | Requirements are **structured** into actor / action / result / constraint items that point at model nodes and fields |
-| "Is this enough tests?" is a gut feeling | **Coverage** is measured over requirements, actions, entities and fields; gaps are listed |
-| The LLM guesses request bodies and rules | The agent reads preconditions, effects, cardinalities and real API schemas, and generates **boundary / exception** cases from them |
-| A failure is "something broke" | A failed execution traces to case → requirement → model node → API → **the people responsible** |
-| Lessons are lost | Human **corrections** become memories or prompt patches that are injected the next time |
+| `src/testagent` | 平台 API、服务和 Agent |
+| `web` | 前端 |
+| `examples/supply_chain` | 供应链演示被测系统 |
+| `ops` | 启动、种子、还原数据库 |
+| `docs` | 部署说明和演示说明 |
+| `specs/test-agent-platform` | 规格与设计 |
+| `tests` | 后端与端到端测试 |
 
-The model is the contract between people and the agent: people review the model (there is a read-only
-*Model review* page with export), the agent works from it, and the platform can check one against the
-other.
+## 快速开始
 
-## Features
+### 本机（Windows）
 
-- **Ontology modelling**: graph and list views, entity fields, actions with inputs/outputs,
-  preconditions and effects, links with cardinality and foreign-key fields, model review with export.
-- **API registry**: import from OpenAPI; the import proposes field renames and links that you accept one by one.
-- **Versions and requirements**: AI structuring against the model, owners/developers/testers per
-  requirement, confirm → freeze (with a model snapshot).
-- **Test strategy and tasks**: AI-drafted strategy (scope, test types, depth) and rule-based tasks that
-  pick up ready cases automatically.
-- **Test cases**: AI generation (normal / boundary / exception per requirement), coverage reports,
-  case library, revisions, export.
-- **Automation with self-check**: the agent writes a pytest (+ Playwright) script into a local git test
-  repo, runs it against the environment and binds it to the case **only if the final self-check passes**.
-- **Execution**: pytest scripts, an **agent browser executor** (the agent drives Chromium step by step
-  with screenshots and traces), an **agent API executor**, and manual results; scheduled and cron runs.
-- **Defects and reports**: defects from failed executions (or let the AI analyse the cause), attribution
-  to people by requirement role, task/version reports, severity-weighted people statistics.
-- **Learning loop**: corrections on cases, strategies, executions or reports are digested into memories
-  and prompt versions; every agent run is traceable (prompts, memories, tool calls).
-- **Bring your own model**: any OpenAI-compatible endpoint (OpenAI, DeepSeek, a local server, …). Without
-  a model the platform still works for modelling, manual cases, pytest runs, defects and reports.
-- **Demo SUT included**: a supply-chain app (`supply-chain`) with two versions, so each version keeps its own model.
+需要 Python 3.12、[uv](https://docs.astral.sh/uv/)、Node.js 20 或以上、PostgreSQL 17，以及配好的 `.env`（至少 `TESTAGENT_DATABASE_URL`）。
 
-## How it works
+在 `D:\CodeWork\TestAgent\release\testagent` 双击 `ops\start.cmd`，或：
 
-```mermaid
-flowchart LR
-    subgraph People
-      H1[Review model]:::h
-      H2[Confirm & freeze requirements]:::h
-      H3[Confirm strategy]:::h
-      H4[Review cases, set ready]:::h
-      H5[Triage defects]:::h
-    end
-    M[Ontology model<br/>entities · actions · links · fields · APIs] --> R[Requirements<br/>structured against the model]
-    R --> S[Test strategy & tasks]
-    S --> C[Test cases<br/>normal · boundary · exception]
-    C --> A[Automation scripts<br/>pytest + Playwright<br/>self-checked]
-    A --> E[Execution<br/>pytest · agent browser · agent API]
-    E --> D[Defects<br/>traced to requirement, node, API, people]
-    D --> P[Reports & people stats]
-    P -. corrections .-> L[Memories & prompt versions]
-    L -. injected into .-> R & S & C & A
-    H1 --- M
-    H2 --- R
-    H3 --- S
-    H4 --- C
-    H5 --- D
-    classDef h fill:#fff7e6,stroke:#fa8c16;
+```powershell
+cd D:\CodeWork\TestAgent\release\testagent
+powershell -NoProfile -ExecutionPolicy Bypass -File ops\start.ps1
 ```
 
-```mermaid
-flowchart TB
-    UI[React + Ant Design UI] -->|REST /api/v1| API[FastAPI]
-    API --> SVC[Services: model, requirements, strategy, cases, runs, defects, reports]
-    SVC --> AG[Agent runtime<br/>LangGraph · tools · prompts · memories]
-    AG -->|OpenAI-compatible| LLM[(Your LLM)]
-    SVC --> W[Worker & scheduler]
-    W --> PY[pytest + Playwright<br/>local git test repo]
-    W --> BR[Agent browser / API executors]
-    PY & BR --> SUT[(System under test)]
-    SVC --> DB[(PostgreSQL 17)]
+第一次会构建前端，然后启动平台并打开浏览器。`ops\start.cmd -Rebuild` 在改过前端之后重新构建。演示被测系统的地址是 `http://127.0.0.1:8766`。可选：`uv run python ops/seed_supply_chain.py` 写入演示系统（已有模型时不会覆盖）。
+
+检查：
+
+```powershell
+uv run pytest -q
+uv run ruff check . ; uv run ruff format --check .
+cd web ; npm run lint ; npx tsc -b --noEmit ; npm test ; npm run build
 ```
 
-- The agent is a LangGraph tool-calling loop with one **entry** per job (structure a requirement,
-  generate a strategy, generate cases, automate a case, execute a case in the browser or via API, analyse
-  a failure, summarise a report, digest corrections). Each entry gets read tools over the model,
-  requirements and APIs, and must finish with a schema-validated `submit_result`; invalid results are
-  sent back to the model with the validation errors.
-- Generated scripts live in a plain git repository per SUT (`runtime/repos/<sut>`), so you can open,
-  edit and run them with normal tools.
-- Human-only actions (confirming, freezing, setting ready, accepting suggestions, cause categories)
-  are enforced by the backend, not just the UI.
-
-## Quick start (Docker)
-
-Requirements: Docker with Compose v2. The image is ~1.8 GB (it includes Chromium).
+### Docker Compose
 
 ```bash
-git clone https://github.com/Coral-TSS/testagent.git testagent && cd testagent
-cp .env.example .env            # set POSTGRES_PASSWORD, TESTAGENT_ADMIN_USER and TESTAGENT_ADMIN_PASSWORD
+cp .env.example .env
+# 填写 POSTGRES_PASSWORD、TESTAGENT_ADMIN_USER、TESTAGENT_ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
-Open http://localhost:8765 and sign in with the admin account from `.env` (it is created on the first
-start; admins add more accounts under **Users**). Then:
+浏览器打开 `http://localhost:8765`，用 `.env` 里的管理员登录。演示被测系统在 `http://localhost:8766`。服务是 `db`、`demo`、`testagent`；公网 HTTPS 另有 `proxy`（Caddy）。端口默认只绑在 `127.0.0.1`。
 
-1. **Agent settings** → enter an OpenAI-compatible **Base URL**, **model** and **API key**, click
-   *Test connection*. Example for DeepSeek: Base URL `https://api.deepseek.com`, model `deepseek-chat`.
-   The key is stored in the `testagent-data` volume (`runtime/secrets.json`), never in the database or logs.
-2. Open **SUT → Procurement approval (demo)** and follow the step bar at the top.
+镜像里带无头 Chromium。升级已有部署后，若要换成当前仓库里的演示模型和需求，见下面的还原命令。不要删除 `caddy-data` 卷。
 
-The stack has three services: `db` (PostgreSQL 17), `demo` (the demo SUT on http://localhost:8766) and
-`testagent` (the platform on http://localhost:8765). Migrations run on start. See
-[docs/deployment.md](docs/deployment.md) for configuration, upgrades, backups and troubleshooting.
+更完整的账号、HTTPS、备份和排错：[docs/deployment.md](docs/deployment.md)。
 
-**On a server (public HTTPS, no domain needed):** set `COMPOSE_PROFILES=public` and
-`TESTAGENT_PUBLIC_HOST=<public IP>` in `.env`. A fourth service, `proxy` (Caddy), then serves
-`https://<public IP>/` on port 443 with an automatically renewed Let's Encrypt IP certificate; the platform
-and the demo SUT stay bound to `127.0.0.1`. See [Public access](docs/deployment.md#public-access-https).
+## 配置
 
-## Demo walkthrough
+写在 `.env`。模型的 Base URL、模型名和 API Key 在界面 **Agent → 设置** 里填写，密钥在 `runtime/secrets.json`，不进数据库。
 
-The bundled [supply-chain demo](examples/supply_chain/README.md) is a finished purchasing and warehouse
-app. TestAgent is seeded with v1.0 (no inspection) and v2.0 (inspection, over-receive tolerance, qualified
-suppliers), each with its own model and the fixed requirements. A typical first hour (after signing in):
+| 变量 | 含义 |
+|---|---|
+| `TESTAGENT_AGENT_LANGUAGE` | Agent 写出的文字的语言。默认 `Simplified Chinese`。例如设为 `English` 则改成英文。 |
+| `TESTAGENT_SEED_DEMO` | Docker 启动时是否尝试写入供应链演示。默认 `1`。系统里已经有模型时不会重写。 |
+| `TESTAGENT_DEMO_URL` | 演示应用不在本机时的地址。Compose 里是 `http://demo:8766`。 |
+| `TESTAGENT_ADMIN_USER` / `TESTAGENT_ADMIN_PASSWORD` | 还没有任何账号时创建的第一个管理员。密码至少 10 位。 |
 
-1. Open **供应链执行（演示）**. Switch between v1.0 and v2.0 and compare the models.
-2. **API registry → Import from OpenAPI** (environment `local`).
-3. **Version → Requirements**: the fixed REQ-001 … are already there with structured references. Confirm
-   and **freeze** when you want to generate cases.
-4. **Test strategy & tasks → AI generate strategy**, then confirm.
-5. **Test cases & coverage → AI generate cases**. Review the drafts and **set them ready**.
-6. Open a task, choose environment `local`, **Run now**.
-7. On a failed execution: **AI analyse cause** or **Create defect**; then read the task report and
-   **People stats**.
+## 供应链演示
 
-## Local development
+系统代码 `supply-chain`，名称「供应链执行（演示）」。v1.0 是申请到收货过账直接入库，没有质检、没有超收容差。v2.0 在复制 v1 之后加上质检、`inspectionRequired`、超收容差（小数，`0.1` = 10%）和「合格供应商才能下达」。固定需求 REQ-001～REQ-016 的正文、两个版本的差别，以及还原命令，写在 [docs/demo-supply-chain.md](docs/demo-supply-chain.md)。示例应用说明：[examples/supply_chain/README.md](examples/supply_chain/README.md)。
 
-Python 3.12 with [uv](https://docs.astral.sh/uv/), Node.js ≥ 20 and PostgreSQL 17:
+还原（默认只演练；`--apply` 清掉该系统的平台数据后重建，并保留系统行和环境）：
 
-```bash
-uv sync
-cp .env.example .env                      # set TESTAGENT_DATABASE_URL (and TESTAGENT_TEST_DATABASE_URL for tests)
-uv run python ops/init_db.py              # creates the databases if missing
-PLAYWRIGHT_BROWSERS_PATH=0 uv run playwright install chromium
-cd web && npm ci && npm run build && cd ..
-uv run python ops/seed_supply_chain.py   # optional: the demo SUT
-uv run testagent                          # opens the browser signed in; starts the demo SUT too
+```powershell
+cd D:\CodeWork\TestAgent\release\testagent
+uv run python ops/restore_supply_chain.py
+uv run python ops/restore_supply_chain.py --apply --keep-repo --demo-url http://127.0.0.1:8766
 ```
 
-On Windows you can double-click `ops\start.cmd`. Checks:
-
 ```bash
-uv run pytest -q                          # uses TESTAGENT_TEST_DATABASE_URL only
-uv run ruff check . && uv run ruff format --check .
-cd web && npm run lint && npx tsc -b --noEmit && npm test && npm run build
+cd ~/testagent
+git pull && docker compose up -d --build
+docker compose exec testagent python ops/restore_supply_chain.py
+docker compose exec testagent python ops/restore_supply_chain.py --apply --keep-repo --demo-url http://demo:8766
 ```
 
-Details: [docs/deployment.md](docs/deployment.md).
+容器里用 `python`，不要在宿主机上用 `uv`。不能直接跑 Docker 时在命令前加 `sudo`。
 
-## Roadmap
+## 文档
 
-- The UI and agent output default to Simplified Chinese; override the agent language with
-  `TESTAGENT_AGENT_LANGUAGE` (for example `English`)
-- Multi-user mode with accounts and roles (today: single user, local)
-- More executors and integrations (CI trigger, issue trackers, test management export)
-- Non-functional tests (performance, security) beyond marking them as skipped
-- Model import from code / database schemas; richer model-based case generation
+- [供应链演示与还原](docs/demo-supply-chain.md)
+- [部署](docs/deployment.md)
+- [服务器升级（中文）](docs/server-upgrade.zh.md)
+- [规格与设计](specs/test-agent-platform/README.md)
+- [贡献](CONTRIBUTING.md) · [安全问题](SECURITY.md) · [第三方许可](docs/third-party-licenses.md)
 
-Have an idea or a use case? [Open an issue](https://github.com/Coral-TSS/testagent/issues).
+## 许可
 
-## Contributing
-
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Please report security issues as
-described in [SECURITY.md](SECURITY.md).
-
-## License
-
-[Apache License 2.0](LICENSE). Copyright 2026 Coral-Lee. Third-party components keep their own
-licenses, see [docs/third-party-licenses.md](docs/third-party-licenses.md).
+[Apache License 2.0](LICENSE)。Copyright 2026 Coral-Lee。

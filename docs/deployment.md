@@ -20,7 +20,7 @@ generated scripts. There are three ways to run it:
 ### Requirements
 
 - Docker Engine 24+ (or Docker Desktop) with Compose v2 (`docker compose version`)
-- About 2.5 GB free disk space (the image is ~1.8 GB because it bundles Chromium for browser tests)
+- A few GB free disk space (the image bundles headless Chromium for browser tests; about 1.1 GB)
 
 ### Start
 
@@ -324,15 +324,40 @@ npm run lint && npx tsc -b --noEmit && npm test && npm run build
 The test suite only touches `TESTAGENT_TEST_DATABASE_URL` and refuses to run against a database whose
 name does not end in `_test`.
 
-### Resetting a SUT
+### Resetting the supply-chain demo
 
-```bash
-uv run python ops/restore_supply_chain.py                              # dry run
-uv run python ops/restore_supply_chain.py --apply --keep-repo
+`ops/restore_supply_chain.py` is a dry run until `--apply`. `--apply` deletes that SUT's platform
+data (model, versions, requirements, cases, runs, defects, reports, …), keeps the system row and
+its environments, then rebuilds v1.0 / v2.0 and REQ-001–REQ-016. `--apply` also requires
+`--keep-repo` (leave the test repo) or `--repo-archive <dir>` (move the old repo there; the script
+refuses to overwrite an existing directory). It does not run `pg_dump`; take a backup yourself
+first. `--demo-url` then `POST`s `{url}/sample/reset` on the example app.
+
+`TESTAGENT_SEED_DEMO=1` only calls `ops/seed_supply_chain.py` at container start. That seed returns
+immediately when the SUT already has a model, so an upgraded deployment keeps the old demo until
+you run restore. Use `python` inside the container, not `uv` on the host. Prefix `docker` with
+`sudo` if your user cannot talk to the daemon. Do not delete the `caddy-data` volume.
+
+Local (Windows, repo `D:\CodeWork\TestAgent\release\testagent`, demo on port 8766):
+
+```powershell
+cd D:\CodeWork\TestAgent\release\testagent
+uv run python ops/restore_supply_chain.py
+uv run python ops/restore_supply_chain.py --apply --keep-repo --demo-url http://127.0.0.1:8766
 ```
 
-This keeps the SUT and its environments, removes everything else for that SUT (after a `pg_dump`
-backup, which needs `pg_dump` on `PATH`) and moves the old test repo to the archive folder.
+Docker server (`~/testagent`):
+
+```bash
+cd ~/testagent
+git pull && docker compose up -d --build
+docker compose exec testagent python ops/restore_supply_chain.py
+docker compose exec testagent python ops/restore_supply_chain.py --apply --keep-repo --demo-url http://demo:8766
+```
+
+`ops/reset_sut_data.py --sut <code>` only wipes one SUT back to the system row and its
+environments (same dry-run / `--apply` / `--keep-repo` / `--repo-archive` rules). It does not
+rebuild the supply-chain model. Full requirement text: [demo-supply-chain.md](demo-supply-chain.md).
 
 ---
 

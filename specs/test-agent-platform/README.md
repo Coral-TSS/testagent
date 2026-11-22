@@ -2,7 +2,7 @@
 
 更新：2026-11-09。审查代码基线：`f8eb3618acfcbed4f54915e03e43db01bbd3e2a8`（develop）；当日已核对 GitHub develop 与本地一致。文档版本 v1.2 不代表新的软件发布版本。
 
-TestAgent 是测试平台与 Agent 的结合：人指导和审阅测试设计，AI 起草需求结构、策略、用例和脚本，平台负责状态、执行证据和追溯。采购审批只是可替换的被测样例。
+TestAgent 是测试平台与 Agent 的结合：人指导和审阅测试设计，AI 起草需求结构、策略、用例和脚本，平台负责状态、执行证据和追溯。自带演示被测系统是供应链执行（`supply-chain`），说明见仓库 [docs/demo-supply-chain.md](../../docs/demo-supply-chain.md)。
 
 ## 阅读入口
 

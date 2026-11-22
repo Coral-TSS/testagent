@@ -77,6 +77,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Docs: [docs/demo-supply-chain.md](docs/demo-supply-chain.md) records the supply-chain demo (v1.0 / v2.0
+  and the fixed REQ-001–REQ-016 text as seeded) and the `ops/restore_supply_chain.py` commands.
+  The README is Simplified Chinese and matches the current product.
 - Model graph: actions sit with the entities they are connected to, instead of one row under
   every entity. Nodes can be dragged; a position a person has moved is remembered in the
   browser (`testagent:graph-node-positions`). **重排** runs that layout again and forgets
