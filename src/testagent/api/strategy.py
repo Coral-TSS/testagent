@@ -21,8 +21,12 @@ class _In(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+ScopeItem = Literal["需求", "缺陷回归", "主要流程", "性能"]
+
+
 class StrategyIn(_In):
-    scope: str | None = None
+    scope: list[ScopeItem] = Field(min_length=1)
+    # Kept so older clients do not 422. The column is no longer edited or shown.
     test_types: list[Tag] = Field(default_factory=list)
     intensity: Literal["light", "standard", "thorough"] | None = None
     notes: str | None = None
@@ -58,7 +62,7 @@ class SelectorIn(_In):
 class TaskIn(_In):
     name: Name
     kind: Kind = "requirement"
-    executor: Literal["agent", "automation", "human"] = "agent"
+    executor: Literal["agent", "automation", "human", "browser_use"] = "agent"
     environment_id: UUID | None = None
     description: str | None = None
     schedule: Schedule | None = None
@@ -69,7 +73,7 @@ class TaskIn(_In):
 class TaskPatch(_In):
     name: Name | None = None
     kind: Kind | None = None
-    executor: Literal["agent", "automation", "human"] | None = None
+    executor: Literal["agent", "automation", "human", "browser_use"] | None = None
     environment_id: UUID | None = None
     description: str | None = None
     schedule: Schedule | None = None
@@ -114,7 +118,7 @@ def get_strategy(request: Request, version_id: UUID):
 
 @router.put("/versions/{version_id}/strategy")
 def put_strategy(request: Request, version_id: UUID, body: StrategyIn):
-    return _strategy(request).save(version_id, body.model_dump())
+    return _strategy(request).save(version_id, body.model_dump(exclude={"test_types"}))
 
 
 @router.post("/versions/{version_id}/strategy/generate")

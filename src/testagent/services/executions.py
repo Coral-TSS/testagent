@@ -72,6 +72,9 @@ def select_executor(
         return ("agent_api" if api or type_tag in API_TYPES else "agent_browser"), None
     if task_executor == "human":
         return "manual", "blocked"
+    if task_executor == "browser_use":
+        # Selectable in the task form; there is no Browser Use runner in this repo.
+        return "manual", "skipped"
     # automation task but the case has no script yet: not executed, never counted as an error (#18)
     return "manual", "no_script"
 

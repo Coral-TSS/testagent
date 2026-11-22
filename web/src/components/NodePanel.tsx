@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Collapse, Descriptions, Input, InputNumber, Select, Space, Switch, Tabs, Tag, Typography } from "antd";
+import { Alert, App, Button, Collapse, Descriptions, Input, InputNumber, Select, Space, Switch, Tabs, Tag, Typography } from "antd";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { ApiError, api, describeError } from "../api/client";
@@ -45,6 +45,7 @@ export interface PanelSeed {
 /** Model node editor docked beside the graph. Every change stays local until 保存. */
 export function NodePanel(props: {
   sutId: string;
+  readOnly?: boolean;
   nodeId: string;
   onClose: () => void;
   onOpenNode: (id: string) => void;
@@ -91,7 +92,7 @@ export function NodePanel(props: {
   }, [dirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!draft || !props.seed || props.seed.source !== nodeId || props.seed.nonce === seeded) return;
+    if (props.readOnly || !draft || !props.seed || props.seed.source !== nodeId || props.seed.nonce === seeded) return;
     setSeeded(props.seed.nonce);
     if (props.seed.kind === "link") {
       setDraft({ ...draft, links: [...draft.links, blankLink(props.seed.source, props.seed.target)] });
@@ -103,7 +104,10 @@ export function NodePanel(props: {
     props.onSeedConsumed?.();
   }, [props.seed, draft, nodeId, seeded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const patch = (part: Partial<NodeDraft>) => setDraft((current) => (current ? { ...current, ...part } : current));
+  const patch = (part: Partial<NodeDraft>) => {
+    if (props.readOnly) return;
+    setDraft((current) => (current ? { ...current, ...part } : current));
+  };
   const n = node.data;
   const entities = props.allNodes.filter((item) => item.kind === "entity");
   const entityOptions = entities.map((item) => ({ value: item.id, label: item.name }));
@@ -293,15 +297,19 @@ export function NodePanel(props: {
         )
       }
       extra={
-        <Button danger onClick={() => removeNode(false)}>
-          删除
-        </Button>
+        props.readOnly ? undefined : (
+          <Button danger onClick={() => removeNode(false)}>
+            删除
+          </Button>
+        )
       }
       saving={saving}
       onClose={() => void close()}
       onCancel={() => void close()}
-      onSave={() => void save()}
+      onSave={props.readOnly ? undefined : () => void save()}
+      footer={props.readOnly ? null : undefined}
     >
+      {props.readOnly && <Alert type="info" showIcon style={{ marginBottom: 12 }} title="该版本已封板，模型只读。" />}
       <UnsavedNavigationGuard when={dirty} />
       {draft && n && (
         <Tabs

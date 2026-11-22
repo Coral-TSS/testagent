@@ -9,6 +9,7 @@ from testagent.services.changelog import log_change
 from testagent.services.guards import ensure_human
 from testagent.services.model import ModelService
 from testagent.services.state import transition
+from testagent.services.version_seal import ensure_unsealed
 
 
 class VersionService:
@@ -58,6 +59,7 @@ class VersionService:
     def rename(self, version_id, name: str) -> dict:
         with self.db.tx() as cur:
             self._get(cur, version_id, lock=True)
+            ensure_unsealed(cur, version_id, "该版本已封板，不能修改。可以基于它新建版本。")
             cur.execute("UPDATE version SET name=%s WHERE id=%s RETURNING *", (name, version_id))
             row = cur.fetchone()
             log_change(cur, "version", version_id, "update", self.actor, {"name": name})

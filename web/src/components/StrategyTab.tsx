@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { useApiMutation } from "../api/hooks";
 import type { AiOutcome, Environment, Requirement, RequirementGap, Strategy, Task, TaskKind, TaskRun, Version } from "../api/types";
+import { BROWSER_USE_HINT, EXECUTION_MODE_LABEL, EXECUTION_MODE_OPTIONS } from "../app/executionMode";
 import { KIND_LABEL, describeSelector } from "../utils/categories";
 import { BatchBar } from "./BatchBar";
 import { EmptyState } from "./EmptyState";
@@ -16,8 +17,7 @@ import { CorrectionButton } from "./CorrectionButton";
 import { RunTasksModal } from "./RunTasksModal";
 import { ListTable } from "./ListView";
 
-const TEST_TYPES = ["功能", "API", "UI", "回归", "冒烟"];
-const EXECUTOR: Record<string, string> = { agent: "Agent", automation: "已自动化", human: "手工" };
+const SCOPE_OPTIONS = ["需求", "缺陷回归", "主要流程", "性能"].map((value) => ({ value, label: value }));
 
 /** Test strategy (human-confirmed) and test tasks. `section` splits the two routes; `all` keeps both. */
 export function StrategyTab({ version, onOpenRun, section = "all" }: { version: Version; onOpenRun: (id: string) => void; section?: "all" | "strategy" | "tasks" }) {
@@ -82,6 +82,7 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
     success: "已按类别补全任务",
   });
   const [taskForm] = Form.useForm();
+  const taskExecutor = Form.useWatch("executor", taskForm);
   const runTask = useApiMutation(
     (id: string) => api<TaskRun>(`/tasks/${id}/run`, { method: "POST" }),
     {
@@ -142,13 +143,10 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
         }
       >
         <Form form={form} layout="vertical" onFinish={(vals) => save.mutate(vals)}>
-          <Form.Item name="scope" label="范围">
-            <Input.TextArea rows={2} />
+          <Form.Item name="scope" label="范围" rules={[{ required: true, type: "array", min: 1, message: "请选择范围" }]}>
+            <Select mode="multiple" style={{ minWidth: 320 }} placeholder="选择范围" options={SCOPE_OPTIONS} />
           </Form.Item>
           <Space wrap>
-            <Form.Item name="test_types" label="测试类型">
-              <Select mode="tags" style={{ minWidth: 260 }} options={TEST_TYPES.map((t) => ({ value: t, label: t }))} />
-            </Form.Item>
             <Form.Item name="intensity" label="深度">
               <Select allowClear style={{ width: 140 }} options={[{ value: "light", label: "轻量" }, { value: "standard", label: "标准" }, { value: "thorough", label: "充分" }]} />
             </Form.Item>
@@ -220,9 +218,10 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
           <Form.Item name="kind" label="类型">
             <Select style={{ width: 120 }} options={(Object.keys(KIND_LABEL) as TaskKind[]).map((value) => ({ value, label: KIND_LABEL[value] }))} />
           </Form.Item>
-          <Form.Item name="executor" label="执行者">
-            <Select style={{ width: 120 }} options={Object.entries(EXECUTOR).map(([value, label]) => ({ value, label }))} />
+          <Form.Item name="executor" label="执行方式">
+            <Select style={{ width: 220 }} options={EXECUTION_MODE_OPTIONS.map((item) => ({ value: item.value, label: item.label }))} />
           </Form.Item>
+          {taskExecutor === "browser_use" && <Typography.Text type="secondary">{BROWSER_USE_HINT}</Typography.Text>}
           <Form.Item name="environment_id" label="环境">
             <Select allowClear placeholder="环境" style={{ width: 140 }} options={(envs.data || []).map((e) => ({ value: e.id, label: e.name }))} />
           </Form.Item>
@@ -259,7 +258,7 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
             emptyText: (
               tasks.isError ? "无法获取任务信息" : tasks.isLoading ? "正在加载任务…" : <EmptyState
                 title="暂无测试任务"
-                hint="测试任务用于批量执行用例：在上方输入任务名称，选择执行器（Agent 浏览器/自动化脚本/手工）和环境，点击“新建任务”，再在任务详情中挑选用例。"
+                hint="测试任务用于批量执行用例：在上方输入任务名称，选择执行方式（Playwright、自动化用例或人工）和环境，点击“新建任务”，再在任务详情中挑选用例。Browser Use 可以选，但尚未接入，不会执行。"
               />
             ),
           }}
@@ -271,7 +270,7 @@ export function StrategyTab({ version, onOpenRun, section = "all" }: { version: 
               dataIndex: "selector",
               render: (sel: Task["selector"]) => (sel ? <Tag color="cyan">{describeSelector(sel, reqCode).replace("在就绪用例中：", "")}</Tag> : <Tag>手工</Tag>),
             },
-            { title: "执行者", dataIndex: "executor", render: (e) => EXECUTOR[e] || e },
+            { title: "执行方式", dataIndex: "executor", render: (e) => EXECUTION_MODE_LABEL[e] || e },
             {
               title: "用例",
               dataIndex: "case_count",

@@ -207,8 +207,7 @@ def test_strategy_generation_builds_rule_tasks_and_lists_gaps(client, world):
         call(
             "submit_result",
             {
-                "scope": "Procurement",
-                "test_types": ["functional"],
+                "scope": ["需求", "主要流程"],
                 "intensity": "standard",
                 "tasks": [
                     {"name": "Any name", "requirement_codes": ["REQ-001"], "executor": "human"},
@@ -234,7 +233,7 @@ def test_strategy_generation_builds_rule_tasks_and_lists_gaps(client, world):
     # regenerating does not pile up tasks
     use_model(
         client,
-        call("submit_result", {"scope": "s", "test_types": ["functional"], "intensity": "light"}),
+        call("submit_result", {"scope": ["需求"], "intensity": "light"}),
     )
     again = client.post(f"{V1}/versions/{world['version']}/strategy/generate").json()
     assert sorted(t["name"] for t in again["strategy"]["tasks"]) == sorted(tasks)

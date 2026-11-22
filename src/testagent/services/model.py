@@ -19,6 +19,7 @@ from testagent.services.attributes import AttributeService
 from testagent.services.changelog import log_change
 from testagent.services.io_spec import validate_params
 from testagent.services.links import LinkService
+from testagent.services.version_seal import ensure_unsealed
 
 KINDS = ("entity", "action", "relation")
 END_ROLES = ("source", "target")
@@ -187,6 +188,7 @@ class ModelService:
         if not same_version(source["version_id"], target["version_id"]):
             raise AppError("VALIDATION", "Both ends of an edge must belong to the same version")
         version_id = source["version_id"]
+        ensure_unsealed(cur, version_id)
         if role in END_ROLES:
             if source["kind"] != "relation":
                 raise AppError("VALIDATION", "source/target edges can only start from link nodes")
@@ -234,6 +236,7 @@ class ModelService:
             from testagent.services.model_scope import AUTO, resolve_version
 
             version_id = resolve_version(cur, sut_id, data["version_id"] if "version_id" in data else AUTO)
+            ensure_unsealed(cur, version_id)
             io = check_io(cur, sut_id, kind, data, version_id=version_id)
             rules = check_rules(cur, sut_id, kind, data, version_id=version_id)
             cur.execute(
@@ -303,6 +306,7 @@ class ModelService:
             raise AppError("VALIDATION", "The node type cannot be changed after creation")
         with self.db.tx() as cur:
             node = self._node(cur, node_id, lock=True)
+            ensure_unsealed(cur, node["version_id"])
             if "attributes" in data:
                 data["attributes"] = validate_attributes(data["attributes"])
             if "module_id" in data:
@@ -388,7 +392,8 @@ class ModelService:
     def delete_node(self, node_id, *, confirm: bool = False) -> dict:
         """Without confirm, a referenced node is not deleted and the references are returned."""
         with self.db.tx() as cur:
-            self._node(cur, node_id, lock=True)
+            node = self._node(cur, node_id, lock=True)
+            ensure_unsealed(cur, node["version_id"])
             refs = self._references(cur, node_id)
             if refs and not confirm:
                 raise AppError(
@@ -490,6 +495,7 @@ class ModelService:
             edge = cur.fetchone()
             if edge is None:
                 raise AppError("NOT_FOUND", "Edge not found")
+            ensure_unsealed(cur, edge["version_id"])
             if edge["role"] in END_ROLES:
                 raise AppError(
                     "CONFLICT",

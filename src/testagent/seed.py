@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from testagent.core.events import EventBus
+from testagent.demo_api_schemas import API_SPECS
 from testagent.services.apis import ApiService
 from testagent.services.attributes import AttributeService
 from testagent.services.links import LinkService
@@ -23,23 +24,7 @@ PEOPLE = [
     ("Tess Tester", "测试"),
 ]
 
-APIS = [
-    ("POST", "/sample/requisitions", "新建采购申请"),
-    ("POST", "/sample/requisitions/{req_id}/submit", "提交采购申请"),
-    ("POST", "/sample/requisitions/{req_id}/decision", "审批采购申请"),
-    ("POST", "/sample/orders", "按申请创建采购订单"),
-    ("POST", "/sample/orders/{order_id}/submit", "提交采购订单"),
-    ("POST", "/sample/orders/{order_id}/decision", "审批采购订单"),
-    ("POST", "/sample/orders/{order_id}/issue", "下达采购订单"),
-    ("POST", "/sample/orders/{order_id}/receive", "按订单收货"),
-    ("POST", "/sample/receipts/{receipt_id}/post", "收货过账入库"),
-    ("POST", "/sample/orders/{order_id}/close", "关闭采购订单"),
-    ("POST", "/sample/orders/{order_id}/cancel", "取消采购订单"),
-    ("POST", "/sample/suppliers/{supplier_id}/freeze", "冻结供应商"),
-    ("GET", "/sample/inventory", "查询库存"),
-    ("POST", "/sample/receipts/{receipt_id}/inspections", "创建质检单"),
-    ("POST", "/sample/inspections/{inspection_id}/decision", "判定质检"),
-]
+APIS = API_SPECS
 
 
 def seed_supply_chain(db, bus: EventBus | None = None, demo_url: str | None = None) -> dict:
@@ -72,22 +57,35 @@ def seed_supply_chain(db, bus: EventBus | None = None, demo_url: str | None = No
             modules[name] = ModuleService(db, bus).create({"sut_id": sut_id, "name": name})["id"]
     apis = ApiService(db, bus)
     api_ids = {}
-    for method, path, name in APIS:
+    for spec in APIS:
+        method, path, name = spec["method"], spec["path"], spec["name"]
+        schema = {
+            "request_schema": spec["request_schema"],
+            "response_schema": spec["response_schema"],
+        }
         found = [a for a in apis.list_for_sut(sut_id) if a["method"] == method and a["path"] == path]
         if found:
             api_ids[(method, path)] = found[0]["id"]
+            if not found[0].get("request_schema") and not found[0].get("response_schema"):
+                apis.update(found[0]["id"], schema)
         else:
             api_ids[(method, path)] = apis.create(
-                {"sut_id": sut_id, "method": method, "path": path, "name": name, "code_ref": CODE_REF}
+                {"sut_id": sut_id, "method": method, "path": path, "name": name, "code_ref": CODE_REF, **schema}
             )["id"]
     versions = VersionService(db, bus)
     v1 = versions.create(sut_id, "v1.0")["id"]
     _build_v1(db, bus, sut_id, v1, modules, api_ids)
     _requirements(db, bus, v1, _index(db, v1), v2=False)
+    _seal(db, v1)
     v2 = versions.create(sut_id, "v2.0", v1)["id"]
     _extend_v2(db, bus, sut_id, v2, modules, api_ids)
     _requirements(db, bus, v2, _index(db, v2), v2=True)
     return {"sut_id": str(sut_id), "created": True, "versions": [str(v1), str(v2)]}
+
+
+def _seal(db, version_id) -> None:
+    with db.tx() as cur:
+        cur.execute("UPDATE version SET sealed=true WHERE id=%s", (version_id,))
 
 
 def _has_model(db, sut_id) -> bool:
@@ -761,7 +759,10 @@ def _requirements(db, bus, version_id, idx, *, v2: bool) -> None:
         "REQ-008": REQ_008[v2],
         "REQ-009": REQ_009[v2],
     }
-    for code, (title, _text) in REQS.items():
+    # v1 keeps REQ-001–REQ-012. v2 only carries the sentences that changed plus REQ-013–REQ-016.
+    codes = ("REQ-007", "REQ-008", "REQ-009") if v2 else tuple(REQS)
+    for code in codes:
+        title, _text = REQS[code]
         add(code, title, bodies[code], common[code])
     if not v2:
         return

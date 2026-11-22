@@ -2,13 +2,14 @@ import { withContext } from "./navContext";
 
 /** Which menu row is current. Keys are workflow stages, not pathnames. */
 export function menuSelection(pathname: string, search: string, sutId?: string): string {
+  void sutId;
   const parts = pathname.split("/").filter(Boolean);
   const q = new URLSearchParams(search);
   if (parts[0] === "suts" && !parts[1]) return "sut-list";
   if (parts[0] === "suts" && parts[1]) {
     const sub = parts[2];
     if (sub === "model") return "model-graph";
-    if (sub === "review") return "model-review";
+    if (sub === "review") return "";
     if (sub === "apis") return "model-apis";
     if (sub === "versions") return "sut-requirements";
     if (sub === "cases") return "sut-cases";
@@ -16,7 +17,7 @@ export function menuSelection(pathname: string, search: string, sutId?: string):
   }
   if (parts[0] === "versions" && parts[1]) {
     if (parts[2] === "model") return "model-graph";
-    if (parts[2] === "review") return "model-review";
+    if (parts[2] === "review") return "";
     if (parts[2] === "apis") return "model-apis";
     if (parts[2] === "strategy" || q.get("tab") === "strategy") return "sut-strategy";
     if (parts[2] === "tasks" || q.get("tab") === "tasks") return "sut-tasks";
@@ -25,14 +26,8 @@ export function menuSelection(pathname: string, search: string, sutId?: string):
   }
   if (parts[0] === "tasks") return "sut-tasks";
   if (parts[0] === "cases") return "sut-cases";
-  if (parts[0] === "executions" || parts[0] === "runs") {
-    const scoped = Boolean(q.get("sut_id")) || (parts.length > 1 && Boolean(sutId));
-    return scoped ? "sut-executions" : "global-executions";
-  }
-  if (parts[0] === "defects") {
-    const scoped = Boolean(q.get("sut_id")) || (parts.length > 1 && Boolean(sutId));
-    return scoped ? "sut-defects" : "global-defects";
-  }
+  if (parts[0] === "executions" || parts[0] === "runs") return "global-executions";
+  if (parts[0] === "defects") return "global-defects";
   if (parts[0] === "reports") return "global-reports";
   if (pathname === "/persons") return "persons";
   if (pathname === "/stats/people") return "people-stats";
@@ -56,7 +51,6 @@ export function sutLinks(sutId: string, versionId?: string) {
     defects: withContext("/defects", sutId, versionId),
     reports: withContext("/reports", sutId, versionId),
     model: versionId ? `/versions/${versionId}/model` : "",
-    review: versionId ? `/versions/${versionId}/review` : "",
     apis: versionId ? `/versions/${versionId}/apis` : "",
     versions: `/suts/${sutId}/versions`,
   };

@@ -19,6 +19,8 @@ from testagent.services.task_binding import TaskBindingService, version_gaps
 FUNCTIONAL = "functional"
 Intensity = Literal["light", "standard", "thorough"]
 Tag = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,31}$")]
+ScopeItem = Literal["需求", "缺陷回归", "主要流程", "性能"]
+SCOPE_OPTIONS = ("需求", "缺陷回归", "主要流程", "性能")
 
 
 class TaskDraft(BaseModel):
@@ -31,8 +33,7 @@ class TaskDraft(BaseModel):
 
 
 class StrategyOut(BaseModel):
-    scope: Annotated[str, Field(min_length=1)]
-    test_types: list[Tag] = Field(min_length=1)
+    scope: list[ScopeItem] = Field(min_length=1)
     intensity: Intensity
     notes: str | None = None
     tasks: list[TaskDraft] = Field(default_factory=list)
@@ -64,9 +65,11 @@ def strategy_entry(db) -> Entry:
             "search_memory",
         ),
         instructions=(
-            "Propose a test strategy for the frozen version: scope, test type tags, intensity "
-            "and notes. Only functional testing is executed in this platform; other types "
-            "(performance, security, ...) may be listed as tags but get no executable tasks. "
+            "Propose a test strategy for the frozen version: scope, intensity and notes. "
+            "scope is a non-empty list chosen only from 需求, 缺陷回归, 主要流程, 性能 "
+            "(a strategy may include more than one). Do not invent a separate test-type field. "
+            "Only functional testing is executed in this platform; other types "
+            "(performance, security, ...) may be named on a task's type_tag but get no executable tasks. "
             "Tasks are built by the platform from rules over the existing test cases: one "
             "requirement task per requirement (kind=requirement; its normal/boundary/exception and "
             "input-validation cases), one quality task (kind=quality: idempotency, concurrency, "
@@ -123,9 +126,9 @@ class StrategyService:
     def _upsert(self, cur, version: dict, values: dict, *, agent_run_id=None) -> dict:
         cur.execute("SELECT * FROM test_strategy WHERE version_id=%s FOR UPDATE", (version["id"],))
         current = cur.fetchone()
+        chosen = [item for item in SCOPE_OPTIONS if item in (values.get("scope") or [])]
         fields = {
-            "scope": values.get("scope"),
-            "test_types": Jsonb(values.get("test_types") or []),
+            "scope": Jsonb(chosen),
             "intensity": values.get("intensity"),
             "notes": values.get("notes"),
             "source": "agent" if agent_run_id else "human",

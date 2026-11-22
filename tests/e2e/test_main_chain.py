@@ -244,8 +244,7 @@ def test_main_chain(client, db, demo_app):
         call(
             "submit_result",
             {
-                "scope": "Purchase order creation and approval threshold",
-                "test_types": ["functional"],
+                "scope": ["需求", "主要流程"],
                 "intensity": "standard",
                 "tasks": [{"name": "Approval threshold", "requirement_codes": ["REQ-001"]}],
             },

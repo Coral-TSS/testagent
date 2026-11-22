@@ -123,6 +123,8 @@ class RunService:
         task = cur.fetchone()
         if task is None:
             raise AppError("NOT_FOUND", "Task not found")
+        if task["executor"] == "browser_use":
+            raise AppError("VALIDATION", "Browser Use 尚未接入，该执行方式不会执行。")
         cur.execute(
             "SELECT id FROM task_run WHERE task_id=%s AND status IN ('queued','running')",
             (task_id,),
@@ -187,6 +189,8 @@ class RunService:
                 reason = None
                 if row["active_run_id"]:
                     reason = "running"
+                elif row["executor"] == "browser_use":
+                    reason = "browser_use"
                 elif row["case_count"] == 0:
                     reason = "no_cases"
                 elif row["status"] == "draft":

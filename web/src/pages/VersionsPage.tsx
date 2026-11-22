@@ -1,7 +1,7 @@
 import { ListTable } from "../components/ListView";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Card, Form, Input, Modal, Space, Typography } from "antd";
+import { Button, Card, Form, Input, Modal, Space, Tag, Typography } from "antd";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
@@ -57,7 +57,7 @@ export function VersionsPage() {
         }}
         columns={[
           { title: "版本", dataIndex: "name", render: (n, v) => <Link to={`/versions/${v.id}`}>{n}</Link> },
-          { title: "状态", dataIndex: "status", render: (s) => <VersionStatusTag status={s} /> },
+          { title: "状态", dataIndex: "status", render: (s, row) => <Space size={4}><VersionStatusTag status={s} />{row.sealed && <Tag color="gold">已封板</Tag>}</Space> },
           { title: "需求", dataIndex: "requirement_count" },
           { title: "冻结于", dataIndex: "frozen_at", render: (t: string | null) => fmtTime(t, { seconds: true }) },
         ]}

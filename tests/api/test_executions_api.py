@@ -87,6 +87,7 @@ def test_executor_selection_matrix():
     assert select_executor("manual", None, f, "agent") == ("agent_browser", None)
     assert select_executor("manual", None, f, "human") == ("manual", "blocked")
     assert select_executor("manual", None, f, "automation") == ("manual", "no_script")
+    assert select_executor("manual", None, f, "browser_use") == ("manual", "skipped")
     assert select_executor("automated", None, f, "agent") == ("agent_browser", None)
     assert select_executor("manual", None, "performance", "agent") == ("manual", "skipped")
     assert select_executor("automated", "t.py", "security", "agent") == ("pytest", "skipped")

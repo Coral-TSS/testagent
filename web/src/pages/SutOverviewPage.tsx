@@ -70,7 +70,6 @@ export function SutOverviewPage() {
             <Descriptions.Item label="描述">{sut.data?.description || "-"}</Descriptions.Item>
             <Descriptions.Item label="快捷键">
               <Link to={progress.data?.version ? `/versions/${progress.data.version.id}/model` : `/suts/${sutId}/versions`}>模型</Link>&nbsp;·&nbsp;
-              <Link to={progress.data?.version ? `/versions/${progress.data.version.id}/review` : `/suts/${sutId}/versions`}>模型评审</Link>&nbsp;·&nbsp;
               <Link to={progress.data?.version ? `/versions/${progress.data.version.id}/apis` : `/suts/${sutId}/versions`}>API 注册表</Link>
             </Descriptions.Item>
             <Descriptions.Item label="本地测试仓库（存放自动化脚本的 git 仓库）" span={3}>
@@ -164,6 +163,7 @@ export function SutOverviewPage() {
           {(versions.data || []).map((v) => (
             <Tag key={v.id} style={{ padding: "4px 8px" }}>
               <Link to={`/versions/${v.id}`}>{v.name}</Link> <VersionStatusTag status={v.status} />
+              {v.sealed && <Tag color="gold">已封板</Tag>}
             </Tag>
           ))}
           {versions.data?.length === 0 && (

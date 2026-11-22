@@ -61,22 +61,21 @@ def use_model(client, *script):
 def test_strategy_requires_frozen_version(client):
     sut = client.post(f"{V1}/suts", json={"code": "S", "name": "s"}).json()["id"]
     version = client.post(f"{V1}/suts/{sut}/versions", json={"name": "v"}).json()["id"]
-    resp = client.put(f"{V1}/versions/{version}/strategy", json={"scope": "x"})
+    resp = client.put(f"{V1}/versions/{version}/strategy", json={"scope": ["需求"]})
     assert resp.status_code == 409
     assert client.get(f"{V1}/versions/{version}/strategy").status_code == 404
 
 
 def test_strategy_edit_after_confirm_returns_draft(client, frozen):
     url = f"{V1}/versions/{frozen['version']}/strategy"
-    first = client.put(
-        url, json={"scope": "Procurement flow", "test_types": ["functional"], "intensity": "standard"}
-    ).json()
+    first = client.put(url, json={"scope": ["需求", "主要流程"], "intensity": "standard"}).json()
     assert first["status"] == "draft" and first["revision"] == 1
     assert first["snapshot_id"] == frozen["snapshot"]  # BR-02
     confirmed = client.post(f"{V1}/strategy/{first['id']}/confirm").json()
     assert confirmed["status"] == "confirmed" and confirmed["confirmed_by"] == TEST_USER
     assert client.post(f"{V1}/strategy/{first['id']}/confirm").status_code == 409
-    edited = client.put(url, json={"scope": "Purchase+payment", "test_types": ["functional"]}).json()
+    edited = client.put(url, json={"scope": ["需求"]}).json()
+    assert edited["scope"] == ["需求"]
     assert edited["status"] == "draft" and edited["revision"] == 2
     assert edited["confirmed_at"] is None
 
@@ -88,8 +87,7 @@ def test_generate_strategy_creates_tasks(client, frozen, db):
         call(
             "submit_result",
             {
-                "scope": "Purchase order creation and approval",
-                "test_types": ["functional", "performance"],
+                "scope": ["需求", "主要流程"],
                 "intensity": "standard",
                 "tasks": [
                     {"name": "Purchase order creation", "requirement_codes": ["REQ-001"]},
@@ -128,8 +126,7 @@ def test_generate_strategy_creates_tasks(client, frozen, db):
         call(
             "submit_result",
             {
-                "scope": "s",
-                "test_types": ["functional"],
+                "scope": ["需求"],
                 "intensity": "light",
                 "tasks": [{"name": "Merged task", "requirement_codes": ["REQ-001", "REQ-002"]}],
             },
@@ -147,8 +144,7 @@ def test_nonfunctional_types_are_tags_only(client, frozen):
         call(
             "submit_result",
             {
-                "scope": "s",
-                "test_types": ["functional", "performance", "security"],
+                "scope": ["需求", "性能"],
                 "intensity": "thorough",
                 "tasks": [
                     {"name": "Functional", "requirement_codes": ["REQ-001"]},
@@ -159,7 +155,7 @@ def test_nonfunctional_types_are_tags_only(client, frozen):
         ),
     )
     out = client.post(f"{V1}/versions/{frozen['version']}/strategy/generate").json()
-    assert out["strategy"]["test_types"] == ["functional", "performance", "security"]
+    assert out["strategy"]["scope"] == ["需求", "性能"]
     assert {t["kind"] for t in out["strategy"]["tasks"]} == {"requirement", "quality", "regression"}
     assert not any("Load test" in t["name"] or "Pen test" in t["name"] for t in out["strategy"]["tasks"])
     assert out["tag_only_types"] == ["performance", "security"]
@@ -167,8 +163,7 @@ def test_nonfunctional_types_are_tags_only(client, frozen):
 
 def test_generate_rejects_unknown_requirement_codes(client, frozen):
     bad = {
-        "scope": "s",
-        "test_types": ["functional"],
+        "scope": ["需求"],
         "intensity": "light",
         "tasks": [{"name": "x", "requirement_codes": ["REQ-404"]}],
     }
@@ -179,8 +174,35 @@ def test_generate_rejects_unknown_requirement_codes(client, frozen):
     assert client.get(f"{V1}/versions/{frozen['version']}/strategy").status_code == 404
 
 
+def test_scope_free_text_maps_only_obvious_phrases(db):
+    with db.tx() as cur:
+        cur.execute("SELECT map_strategy_scope(%s) AS s", ("性能和回归",))
+        assert set(cur.fetchone()["s"]) == {"性能", "缺陷回归"}
+        cur.execute("SELECT map_strategy_scope(%s) AS s", ("Procurement flow",))
+        assert cur.fetchone()["s"] == []
+        cur.execute("SELECT map_strategy_scope(%s) AS s", ("requirement smoke",))
+        assert set(cur.fetchone()["s"]) == {"需求", "主要流程"}
+
+
+def test_browser_use_can_be_chosen_but_does_not_run(client, frozen, db):
+    case_id = make_cases(db, frozen["sut"], 1)[0]
+    task = client.post(
+        f"{V1}/versions/{frozen['version']}/tasks",
+        json={"name": "Browser Use smoke", "executor": "browser_use", "environment_id": frozen["env"]},
+    ).json()
+    assert task["executor"] == "browser_use"
+    assert client.put(f"{V1}/tasks/{task['id']}/cases", json={"case_ids": [case_id]}).status_code == 200
+    assert client.post(f"{V1}/tasks/{task['id']}/status", json={"status": "ready"}).status_code == 200
+    refused = client.post(f"{V1}/tasks/{task['id']}/run")
+    assert refused.status_code == 422
+    assert "Browser Use" in refused.json()["message"]
+    listed = client.get(f"{V1}/versions/{frozen['version']}/runnable-tasks").json()
+    row = next(item for item in listed if item["id"] == task["id"])
+    assert row["runnable"] is False and row["reason"] == "browser_use"
+
+
 def test_agent_cannot_confirm_strategy(client, frozen, db):
-    sid = client.put(f"{V1}/versions/{frozen['version']}/strategy", json={"scope": "x"}).json()["id"]
+    sid = client.put(f"{V1}/versions/{frozen['version']}/strategy", json={"scope": ["需求"]}).json()["id"]
     with pytest.raises(AppError, match="can only be done by a person"):
         StrategyService(db, client.app.state.bus, actor="agent:1").confirm(sid)
 

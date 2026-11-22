@@ -15,6 +15,7 @@ from testagent.services.io_spec import (
     merge_params,
     validate_params,
 )
+from testagent.services.version_seal import ensure_node_unsealed
 
 METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
 
@@ -107,6 +108,7 @@ class ApiService(Crud):
             node = cur.fetchone()
             if node is None:
                 raise AppError("NOT_FOUND", "Node not found")
+            ensure_node_unsealed(cur, node_id)
             if node["kind"] != "action" and unique:
                 raise AppError("VALIDATION", "Only action nodes can be linked to APIs")
             if unique:

@@ -2,9 +2,9 @@ import { ExpandableDescription } from "../components/ExpandableDescription";
 import { ListTable, listTitle } from "../components/ListView";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Form, Input, Select, Space, Tabs, Tag, Typography } from "antd";
+import { Alert, Button, Form, Input, Select, Space, Tabs, Tag, Typography } from "antd";
 import { useMemo, useRef, useState } from "react";
-import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 import { usePageSut } from "../app/modelScope";
 import { api } from "../api/client";
@@ -20,7 +20,7 @@ import { KIND_COLOR, KIND_LABEL } from "../components/StatusTags";
 
 /** P02 model (graph/list share one graph query) + P03 node drawer */
 export function ModelPage() {
-  const { sutId, versionId, ready } = usePageSut();
+  const { sutId, versionId, ready, sealed } = usePageSut();
   const [params, setParams] = useSearchParams();
   const moduleId = params.get("module") || undefined;
   const selected = params.get("node");
@@ -98,6 +98,7 @@ export function ModelPage() {
     return true;
   };
   const connectNodes = async (source: string, target: string) => {
+    if (sealed) return;
     const sourceNode = (fullGraph.data?.nodes || []).find((item) => item.id === source);
     const targetNode = (fullGraph.data?.nodes || []).find((item) => item.id === target);
     if (!sourceNode || !targetNode) return;
@@ -115,12 +116,20 @@ export function ModelPage() {
   return (
     <div className={tab === "graph" ? "model-stage" : "model-stage model-stage-auto"}>
       <div className="model-stage-main">
+      {sealed && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          title="已封板"
+          description="该版本已封板，模型只读。可以基于它新建版本。"
+        />
+      )}
       <Space style={{ marginBottom: 16, width: "100%", justifyContent: "space-between" }}>
         <Typography.Title level={3} style={{ margin: 0 }}>
           模型
         </Typography.Title>
         <Space>
-          <RouterLink to={versionId ? `/versions/${versionId}/review` : `/suts/${sutId}/review`}>模型评审（只读，可导出）</RouterLink>
           <Select
             allowClear
             placeholder="全部分组"
@@ -129,14 +138,14 @@ export function ModelPage() {
             onChange={(v) => setParam("module", v)}
             options={(modules.data || []).map((m) => ({ value: m.id, label: m.name }))}
           />
-          <Button icon={<PlusOutlined />} onClick={() => {
+          <Button icon={<PlusOutlined />} disabled={sealed} onClick={() => {
             const current = (fullGraph.data?.nodes || []).find((item) => item.id === selected);
             if (current?.kind === "entity") setSeed({ nonce: Date.now(), source: current.id, target: "", kind: "link" });
             else setLinkEdit({ link: null });
           }}>
             新建关系
           </Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+          <Button type="primary" icon={<PlusOutlined />} disabled={sealed} onClick={() => setCreating(true)}>
             新建节点
           </Button>
         </Space>
@@ -247,7 +256,7 @@ export function ModelPage() {
                 <LinksTable links={links.data} loading={links.isLoading} error={links.isError} onRetry={() => links.refetch()} onOpen={(l) => setLinkEdit({ link: l })} />
                 <Space style={{ margin: "16px 0 8px" }}>
                   <Typography.Text strong>待评审的关系建议（{pendingLinks.length}）</Typography.Text>
-                  <Button size="small" loading={suggest.isPending} onClick={() => suggest.mutate()}>
+                  <Button size="small" disabled={sealed} loading={suggest.isPending} onClick={() => suggest.mutate()}>
                     根据外键字段建议
                   </Button>
                 </Space>
@@ -272,6 +281,7 @@ export function ModelPage() {
       <LinkEditor
         sutId={sutId}
         open={Boolean(linkEdit)}
+        readOnly={sealed}
         link={linkEdit?.link}
         entities={fullGraph.data?.nodes || []}
         fields={fields.data || []}
@@ -313,6 +323,7 @@ export function ModelPage() {
       {selected && (
         <NodePanel
           sutId={sutId}
+          readOnly={sealed}
           nodeId={selected}
           onClose={() => setParam("node", null)}
           onOpenNode={(id) => void openNode(id)}

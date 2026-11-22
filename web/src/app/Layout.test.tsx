@@ -47,12 +47,13 @@ describe("Layout", () => {
     expect(screen.getByRole("link", { name: "策略" }).getAttribute("href")).toBe("/versions/v1/strategy");
     expect(screen.getByRole("link", { name: "任务" }).getAttribute("href")).toBe("/versions/v1/tasks");
     expect(screen.getByRole("link", { name: "用例" }).getAttribute("href")).toBe("/suts/s1/cases?version_id=v1");
-    expect(screen.getByRole("link", { name: "模型评审" }).getAttribute("href")).toBe("/versions/v1/review");
+    expect(screen.queryByRole("link", { name: "模型评审" })).toBeNull();
     expect(screen.getByRole("link", { name: "API 注册表" }).getAttribute("href")).toBe("/versions/v1/apis");
-    expect(screen.getAllByRole("link", { name: "执行" }).map((el) => el.getAttribute("href"))).toEqual([
-      "/executions?sut_id=s1&version_id=v1",
-      "/executions",
-    ]);
+    expect(screen.getAllByRole("link", { name: "执行" }).map((el) => el.getAttribute("href"))).toEqual(["/executions"]);
+    expect(screen.getAllByRole("link", { name: "缺陷" }).map((el) => el.getAttribute("href"))).toEqual(["/defects"]);
+    const current = screen.getByText("当前系统").closest(".ant-menu-submenu");
+    expect(current?.className).toContain("ant-menu-submenu");
+    expect(current?.className).not.toContain("ant-menu-item-group");
     expect(screen.getByRole("link", { name: "测试报告" }).getAttribute("href")).toBe("/reports?sut_id=s1&version_id=v1");
     expect(screen.getAllByText("人员").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Agent").length).toBeGreaterThan(0);
@@ -68,8 +69,8 @@ describe("Layout", () => {
     const all = await screen.findByRole("link", { name: "全部被测系统" });
     expect(all.getAttribute("href")).toBe("/suts");
     expect(all.closest(".ant-menu-item")?.className).toContain("ant-menu-item-selected");
-    expect(screen.queryByText("当前系统")).toBeNull();
+    expect(screen.getByText("当前系统")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "模型图谱" })).toBeNull();
-    expect(screen.queryByText("建模")).toBeNull();
+    expect(screen.getByText("建模").closest(".ant-menu-item")?.className).toContain("ant-menu-item-disabled");
   });
 });
